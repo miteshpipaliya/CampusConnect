@@ -1,8 +1,9 @@
 'use client';
 import { SocialPanels } from './social-panels';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
-import { Heart,MessageCircle,Camera,LogOut } from 'lucide-react';
+import { Heart,MessageCircle } from 'lucide-react';
 
 type Post={id:string;caption:string;authorHandle:string;mediaId:string|null;likes:number;liked:boolean;comments:number};
 type Me={uid:string;email:string;profile:{handle:string;name:string;branch:string;division:string}|null};
@@ -86,20 +87,23 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
   </section>
  </main>;
 }
+let feedCache:Post[]|null=null;
+let accountCache:Me|null=null;
 export function ConnectedFeed(){
- const [me,setMe]=useState<Me|null>(null),[posts,setPosts]=useState<Post[]>([]);
+ const params=useSearchParams();
+ const [me,setMe]=useState<Me|null>(accountCache),[posts,setPosts]=useState<Post[]>(feedCache||[]);
  const [caption,setCaption]=useState(''),[file,setFile]=useState<File|null>(null);
  const [section,setSection]=useState('home');
  const [composeOpen,setComposeOpen]=useState(false),[previewUrl,setPreviewUrl]=useState<string|null>(null),[mediaStep,setMediaStep]=useState<'preview'|'caption'>('preview');
- const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[loading,setLoading]=useState(true);
+ const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[loading,setLoading]=useState(feedCache===null);
  const [opened,setOpened]=useState<string|null>(null),[comments,setComments]=useState<Record<string,Array<{id:string;handle:string;text:string}>>>({}),[reply,setReply]=useState('');
- async function refresh(){const x=await api<{posts:Post[]}>('/api/posts');setPosts(x.posts)}
+ async function refresh(){const x=await api<{posts:Post[]}>('/api/posts');feedCache=x.posts;setPosts(x.posts)}
  useEffect(()=>{Promise.all([api<{user:Me}>('/api/auth'),api<{posts:Post[]}>('/api/posts')])
-  .then(([account,feed])=>{setMe(account.user);setPosts(feed.posts)})
+  .then(([account,feed])=>{accountCache=account.user;feedCache=feed.posts;setMe(account.user);setPosts(feed.posts)})
   .catch(()=>setStatus('Sign in to view the live feed.')).finally(()=>setLoading(false));},[]);
  useEffect(()=>{const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh().catch(()=>{});},10000);return()=>window.clearInterval(timer)},[]);
  useEffect(()=>{if(!file){setPreviewUrl(null);return}const url=URL.createObjectURL(file);setPreviewUrl(url);return()=>URL.revokeObjectURL(url)},[file]);
- useEffect(()=>{const params=new URLSearchParams(window.location.search);const selected=params.get('section')||'home';setSection(['home','reels','chat','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[]);
+ useEffect(()=>{const selected=params.get('section')||'home';setSection(['home','reels','chat','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[params]);
  async function toggleLike(id:string){try{await api('/api/posts/'+id+'/likes','POST',{});await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Like failed')}}
  async function openComments(id:string){if(opened===id){setOpened(null);return}try{const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));setOpened(id)}catch(e){setStatus(e instanceof Error?e.message:'Comments unavailable')}}
  async function sendComment(event:FormEvent<HTMLFormElement>,id:string){event.preventDefault();try{await api('/api/posts/'+id+'/comments','POST',{text:reply});setReply('');const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Comment failed')}}
@@ -117,13 +121,8 @@ export function ConnectedFeed(){
    setCaption('');setFile(null);setComposeOpen(false);setMediaStep('preview');setStatus('Post published');await refresh();
   }catch(e){setStatus(e instanceof Error?e.message:'Unable to publish')}finally{setBusy(false)}
  }
- return <section className="cc-connected-feed"><SocialPanels section={section}/>
-  {(section==='home'||section==='community')&&<>
-  <header className="cc-live-bar"><h1>Home</h1>
-   {me?<div><span>{me.profile?.handle||me.email}</span><button type="button" onClick={async()=>{await api('/api/auth','POST',{action:'logout'});window.location.assign('/login')}} aria-label="Log out"><LogOut size={19}/></button></div>:<Link href="/login">Sign in</Link>}
-  </header>
-  {!me&&!loading?<div className="cc-live-empty"><h2>Sign in to CampusConnect</h2><Link href="/login">Sign in</Link></div>:<>
-  <div className="cc-compose-live"><h2>Share a campus moment</h2><button type="button" onClick={()=>{setComposeOpen(true);setMediaStep('preview')}}>Create a post or reel +</button>{status&&<p role="status">{status}</p>}</div>
+ return <section className={'cc-connected-feed'+(section==='chat'?' cc-chat-view':'')}><SocialPanels section={section}/>
+  {status&&<p role="status">{status}</p>}
   {composeOpen&&<div className="cc-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setComposeOpen(false)}}>
    <section className="cc-dialog" role="dialog" aria-modal="true" aria-label="Create a campus post">
     <header><h2>{mediaStep==='preview'?'Preview your post':'Caption and hashtags'}</h2><button type="button" aria-label="Close" disabled={busy} onClick={()=>setComposeOpen(false)}>✕</button></header>
@@ -137,7 +136,7 @@ export function ConnectedFeed(){
     </form>
    </section>
   </div>}
-  {loading?<p>Loading posts...</p>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
+  {(section==='home'||section==='community')&&(loading&&!feedCache?<p className="cc-feed-skeleton" aria-label="Loading posts"/>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
    <Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><strong>@{post.authorHandle}</strong></Link>
    {post.mediaId&&<img src={'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
    <p>{post.caption}</p>
@@ -147,8 +146,6 @@ export function ConnectedFeed(){
     {(comments[post.id]||[]).map(c=><p key={c.id}><b>@{c.handle}</b> {c.text}</p>)}
     <form onSubmit={e=>sendComment(e,post.id)}><input value={reply} onChange={e=>setReply(e.target.value)} maxLength={1000} placeholder="Write a comment" required/><button disabled={!reply.trim()}>Post</button></form>
    </div>}
-  </article>):<div className="cc-live-empty">No published posts yet. Be the first to share.</div>}
-  </>}
-  </>}
+  </article>):<div className="cc-live-empty">No published posts yet. Be the first to share.</div>)}
  </section>;
 }
