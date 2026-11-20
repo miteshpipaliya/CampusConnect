@@ -1,5 +1,5 @@
-import { SocialPanels } from './social-panels';
 'use client';
+import { SocialPanels } from './social-panels';
 import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
 import { Heart,MessageCircle,Camera,LogOut } from 'lucide-react';
