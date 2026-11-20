@@ -4,7 +4,7 @@ import { LiveStories } from './live-stories';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
-import { Heart,MessageCircle } from 'lucide-react';
+import { Heart,MessageCircle,Repeat2 } from 'lucide-react';
 
 type Post={id:string;caption:string;authorHandle:string;mediaId:string|null;likes:number;liked:boolean;comments:number};
 type Me={uid:string;email:string;profile:{handle:string;name:string;branch:string;division:string}|null};
@@ -106,6 +106,7 @@ export function ConnectedFeed(){
  useEffect(()=>{if(!file){setPreviewUrl(null);return}const url=URL.createObjectURL(file);setPreviewUrl(url);return()=>URL.revokeObjectURL(url)},[file]);
  useEffect(()=>{const selected=params.get('section')||'home';setSection(['home','reels','chat','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[params]);
  async function toggleLike(id:string){try{await api('/api/posts/'+id+'/likes','POST',{});await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Like failed')}}
+ async function repost(id:string){try{const result=await api<{reposted:boolean}>('/api/reposts','POST',{postId:id});setStatus(result.reposted?'Added to your reposts':'Removed from reposts')}catch(e){setStatus(e instanceof Error?e.message:'Repost failed')}}
  async function openComments(id:string){if(opened===id){setOpened(null);return}try{const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));setOpened(id)}catch(e){setStatus(e instanceof Error?e.message:'Comments unavailable')}}
  async function sendComment(event:FormEvent<HTMLFormElement>,id:string){event.preventDefault();try{await api('/api/posts/'+id+'/comments','POST',{text:reply});setReply('');const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Comment failed')}}
  async function publish(event:FormEvent<HTMLFormElement>){
@@ -143,7 +144,7 @@ export function ConnectedFeed(){
    {post.mediaId&&<img src={'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
    <p>{post.caption}</p>
    <div><button type="button" onClick={()=>toggleLike(post.id)}><Heart size={20} fill={post.liked?'currentColor':'none'}/> {post.likes||0}</button>
-   <button type="button" onClick={()=>openComments(post.id)}><MessageCircle size={20}/> {post.comments||0}</button></div>
+   <button type="button" onClick={()=>openComments(post.id)}><MessageCircle size={20}/> {post.comments||0}</button><button type="button" onClick={()=>repost(post.id)} aria-label="Toggle repost"><Repeat2 size={20}/> Repost</button></div>
    {opened===post.id&&<div className="cc-live-comments">
     {(comments[post.id]||[]).map(c=><p key={c.id}><b>@{c.handle}</b> {c.text}</p>)}
     <form onSubmit={e=>sendComment(e,post.id)}><input value={reply} onChange={e=>setReply(e.target.value)} maxLength={1000} placeholder="Write a comment" required/><button disabled={!reply.trim()}>Post</button></form>
