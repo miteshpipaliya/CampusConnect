@@ -99,7 +99,7 @@ export async function POST(request:NextRequest){
       if((await tx.get(handle)).exists)throw Error('HANDLE_TAKEN');
       if((await tx.get(profile)).exists)throw Error('PROFILE_EXISTS');
       tx.create(handle,{uid:user!.uid});
-      tx.create(profile,{uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts[1]+parts[2]+parts[3],branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:2000+Number(parts[1]),emailBranchCode:parts[2],verifiedInstitutionalEmail:true,createdAt:FieldValue.serverTimestamp()});
+      tx.create(profile,{uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:`${parts[1]!}${parts[2]!}${parts[3]!}`,branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:2000+Number(parts[1]),emailBranchCode:parts[2],verifiedInstitutionalEmail:true,createdAt:FieldValue.serverTimestamp()});
      });
     }catch(e){if(e instanceof Error&&e.message==='HANDLE_TAKEN')return errorResponse(409,'Username already taken. Choose another');if(e instanceof Error&&e.message==='PROFILE_EXISTS')return errorResponse(409,'Account already exists. Sign in');throw e}
    }else if(user&&!user.emailVerified)await auth().updateUser(user.uid,{emailVerified:true});
