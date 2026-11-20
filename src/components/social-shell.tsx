@@ -19,9 +19,11 @@ const links: NavItem[] = [
   {label:'Profile',href:'/profile/me',Icon:UserRound},
 ];
 const mobileLabels = new Set(['Home', 'Search', 'Reels', 'Create', 'Community', 'Profile']);
-function activeLink(pathname: string, item: NavItem) {
+function activeLink(pathname: string, item: NavItem, section: string) {
   if (item.label === 'Create') return false;
-  if (['Reels','Messages','Search','Notifications','Community'].includes(item.label)) return false;
+  const sections:Record<string,string>={Reels:'reels',Messages:'chat',Search:'search',Notifications:'notifications',Community:'community'};
+  if(sections[item.label])return section===sections[item.label];
+  if(item.label==='Home')return pathname==='/home'&&section==='home';
   if (item.label === 'Profile') return pathname.startsWith('/profile');
   if (item.label === 'Search') return pathname.startsWith('/explore');
   if (item.label === 'Community') return pathname.startsWith('/communities');
@@ -33,10 +35,10 @@ function Brand({ compact = false }: { compact?: boolean }) {
     <span className="cc-wordmark">Campus<span>Connect</span><small>BVM CAMPUS</small></span>
   </Link>;
 }
-function Nav({ pathname, mobile = false }: { pathname: string; mobile?: boolean }) {
+function Nav({ pathname, section, mobile = false }: { pathname: string; section:string; mobile?: boolean }) {
   return <nav className={mobile ? 'cc-mobile-nav' : 'cc-navigation'} aria-label={mobile ? 'Mobile navigation' : 'Main navigation'}>
     {links.filter((item) => !mobile || mobileLabels.has(item.label)).map((item) => {
-      const active = activeLink(pathname, item);
+      const active = activeLink(pathname, item, section);
       const Icon = item.Icon;
       return <a key={item.label} href={item.href} className={'cc-nav-item' + (active ? ' is-active' : '')}
         aria-current={active ? 'page' : undefined} aria-label={item.label} title={item.label}>
@@ -50,7 +52,8 @@ function Suggestions({handle}:{handle:string}){return <aside className="cc-sugge
 
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname=usePathname(),router=useRouter();
-  const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false);
+  const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
+  useEffect(()=>{setSection(new URLSearchParams(window.location.search).get('section')||'home')},[pathname]);
   useEffect(()=>{let live=true;fetch('/api/auth',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(x=>{
    if(!live)return;setChecked(true);if(x?.user?.profile?.handle)setHandle(x.user.profile.handle);else router.replace('/login');
   }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[pathname,router]);
@@ -58,7 +61,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   return <div className="cc-app">
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
-      <Nav pathname={pathname} />
+      <Nav pathname={pathname} section={section} />
       <details className="cc-more">
         <summary><Menu size={25} strokeWidth={1.8} /><span>More</span></summary>
         <div><Link href="/home"><Home size={18}/>Home</Link></div>
@@ -69,6 +72,6 @@ export default function SocialShell({ children }: { children: ReactNode }) {
       <div className="cc-page">{children}</div>
     </main>
     <Suggestions handle={handle}/>
-    <Nav pathname={pathname} mobile />
+    <Nav pathname={pathname} section={section} mobile />
   </div>;
 }
