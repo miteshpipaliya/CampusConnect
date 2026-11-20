@@ -102,7 +102,7 @@ export function ConnectedFeed(){
    {opened===post.id&&<div className="cc-live-comments">
     {(comments[post.id]||[]).map(c=><p key={c.id}><b>@{c.handle}</b> {c.text}</p>)}
     <form onSubmit={e=>sendComment(e,post.id)}><input value={reply} onChange={e=>setReply(e.target.value)} maxLength={1000} placeholder="Write a comment" required/><button disabled={!reply.trim()}>Post</button></form>
-   </div>
+   </div>}
   </article>):<div className="cc-live-empty">No published posts yet. Be the first to share.</div>}
   </>}
  </section>;
