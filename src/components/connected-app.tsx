@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
 import { Heart,MessageCircle,Camera,LogOut } from 'lucide-react';
-import { degreeCourses } from '@/lib/student-email';
 
 type Post={id:string;caption:string;authorHandle:string;mediaId:string|null;likes:number;liked:boolean;comments:number};
 type Me={uid:string;email:string;profile:{handle:string;name:string;branch:string;division:string}|null};
@@ -14,76 +13,71 @@ async function api<T>(path:string,method='GET',data?:object):Promise<T>{
  if(!r.ok)throw Error(result.error||'Request failed');return result as T;
 }
 export function CampusAuth({mode}:{mode:'login'|'register'}){
- const [fields,setFields]=useState({email:'',password:'',handle:'',name:'',degree:'BTech',enrollmentNumber:'',branch:'',division:'',relationshipStatus:'',relationshipVisibility:'me',acceptTerms:false,acknowledgePrivacy:false});
- const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
- const [awaitingVerification,setAwaitingVerification]=useState(false);
- const [step,setStep]=useState(0);
- const groups=[['name','handle'],['degree','branch'],['enrollmentNumber','email'],['division','relationshipStatus'],['relationshipVisibility','password'],['acceptTerms','acknowledgePrivacy']] as const;
- const advance=()=>{
-  const inputs=Array.from(document.querySelectorAll<HTMLInputElement|HTMLSelectElement>('.auth-form input, .auth-form select'));
-  const invalid=inputs.find(x=>!x.checkValidity());
-  if(invalid){invalid.reportValidity();return;}
-  setStep(x=>Math.min(x+1,groups.length-1));
- };
- const previous=()=>setStep(x=>Math.max(0,x-1));
- useEffect(()=>{
-  if(mode!=='register'||!awaitingVerification)return;
-  let active=true;
-  const check=async()=>{
-   try{
-    await api('/api/auth','POST',{action:'login',email:fields.email,password:fields.password});
-    if(active)window.location.assign('/home');
-   }catch(e){
-    if(active&&e instanceof Error&&e.message!=='Verify your email before signing in'&&e.message!=='Authentication unavailable or credentials invalid')setMessage(e.message);
-   }
-  };
-  const interval=window.setInterval(check,15000);
-  return()=>{active=false;window.clearInterval(interval)};
- },[awaitingVerification,mode,fields.email,fields.password]);
- const edit=(k:keyof typeof fields,v:string|boolean)=>setFields(f=>({...f,[k]:v}));
- async function submit(event:FormEvent<HTMLFormElement>){
-  event.preventDefault();if(mode==='register'&&step<groups.length-1){advance();return;}setBusy(true);setMessage('');
-  try{
-   const result=await api<{message?:string}>('/api/auth','POST',{action:mode==='register'?'register':'login',
-    ...fields,handle:fields.handle.toLowerCase().trim()});
-   if(mode==='login')window.location.assign('/home');
-   else {setAwaitingVerification(true);setMessage('Account created! Open the verification email sent to your BVM address. After verification, this page will sign you in automatically. Keep this tab open.');}
-  }catch(e){setMessage(e instanceof Error?e.message:'Please try again')}finally{setBusy(false)}
+ const [email,setEmail]=useState(''),[code,setCode]=useState(''),[stage,setStage]=useState<'email'|'otp'|'profile'|'privacy'|'done'>('email');
+ const [name,setName]=useState(''),[handle,setHandle]=useState(''),[relationshipStatus,setRelationshipStatus]=useState(''),[relationshipVisibility,setRelationshipVisibility]=useState('me');
+ const [acceptTerms,setAcceptTerms]=useState(false),[acknowledgePrivacy,setAcknowledgePrivacy]=useState(false);
+ const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[resendAt,setResendAt]=useState(0);
+ const parsed=/^(\\d{2})(cp|el|ec|it|me|cl|ee|pr)(\\d{3,8})@bvmengineering\\.ac\\.in$/i.exec(email.trim());
+ const branchName:Record<string,string>={cp:'Computer Engineering',el:'Electrical Engineering',ec:'Electronics & Communication Engineering',it:'Information Technology',me:'Mechanical Engineering',cl:'Civil Engineering',ee:'Electronics Engineering',pr:'Production Engineering'};
+ const enrollment=parsed?parsed[1]+parsed[2]+parsed[3]:'';
+ const branch=parsed?branchName[parsed[2].toLowerCase()]:'';
+ async function requestCode(){
+  if(!parsed){setMessage('Enter a valid BVM student email, for example 26el309@bvmengineering.ac.in');return}
+  setBusy(true);setMessage('');
+  try{const r=await api<{message:string}>('/api/auth','POST',{action:'requestOtp',email:email.trim().toLowerCase()});setStage('otp');setResendAt(Date.now()+60000);setMessage(r.message)}
+  catch(e){setMessage(e instanceof Error?e.message:'Unable to send code')}finally{setBusy(false)}
+ }
+ async function submit(e:FormEvent<HTMLFormElement>){
+  e.preventDefault();setMessage('');
+  if(stage==='email'){await requestCode();return}
+  if(stage==='profile'){setStage('privacy');return}
+  if(stage==='otp'){
+   setBusy(true);
+   try{const r=await api<{needsProfile:boolean}>('/api/auth','POST',{action:'verifyOtp',email:email.trim().toLowerCase(),code});if(r.needsProfile){setStage('profile');setMessage('Email verified. Complete your campus profile.')}else{await api('/api/auth','POST',{action:'finishOtp',email:email.trim().toLowerCase()});window.location.assign('/home')}}
+   catch(e){setMessage(e instanceof Error?e.message:'Verification failed')}finally{setBusy(false)}
+   return;
+  }
+  if(stage==='privacy'){
+   if(!acceptTerms||!acknowledgePrivacy){setMessage('Accept the terms and acknowledge the privacy policy to continue');return}
+   setBusy(true);
+   try{await api('/api/auth','POST',{action:'finishOtp',email:email.trim().toLowerCase(),profile:{name,handle:handle.toLowerCase().trim(),relationshipStatus,relationshipVisibility,acceptTerms,acknowledgePrivacy}});window.location.assign('/home')}
+   catch(e){setMessage(e instanceof Error?e.message:'Account creation failed')}finally{setBusy(false)}
+  }
  }
  return <main className="auth-page">
   <Link className="brand" href="/"><span className="brand-mark">CC</span><span>Campus<span className="brand-lite">Connect</span></span></Link>
-  <section className="auth-card wide"><h1>{mode==='login'?'Sign in to CampusConnect':'Join CampusConnect'}</h1>
-   <p>Student social network · secure server-side authentication</p>
-   {mode==='register'&&<p className="auth-legal">Step {step+1} of {groups.length} · Two details at a time</p>}
-   {awaitingVerification&&<p role="status">{message} Verification is required before access; this page will sign you in automatically afterward.</p>}
+  <section className="auth-card wide cc-otp-card">
+   <div className="cc-otp-icon" aria-hidden="true">✦</div>
+   <h1>{stage==='email'?'Welcome to CampusConnect':stage==='otp'?'Verify your college email':'Make it yours'}</h1>
+   <p>{stage==='email'?'Your campus, your community. Start with your BVM email.':stage==='otp'?'Enter the six-digit code sent to your institutional inbox.':'A few details to finish your verified campus profile.'}</p>
+   <div className="cc-otp-steps" aria-label="Registration progress"><span className="active"/><span className={stage!=='email'?'active':''}/><span className={stage==='profile'||stage==='privacy'?'active':''}/></div>
    <form className="auth-form" onSubmit={submit}>
-    {mode==='register'&&<>
-     {step===0&&<label>Your name<input required maxLength={70} value={fields.name} onChange={e=>edit('name',e.target.value)}/></label>}
-     {step===0&&<label>Username<input required pattern="[a-z][a-z0-9._]{2,29}" maxLength={30} placeholder="first.last" value={fields.handle} onChange={e=>edit('handle',e.target.value.toLowerCase())}/></label>}
-     {step===1&&<label>Degree<select required value={fields.degree} onChange={e=>{setFields(f=>({...f,degree:e.target.value,branch:''}))}}><option value="BTech">B.Tech</option><option value="MTech">M.Tech</option></select></label>}
-     {step===1&&<label>Branch / Specialization<select required value={fields.branch} onChange={e=>edit('branch',e.target.value)}><option value="">Select your course</option>{degreeCourses[fields.degree as keyof typeof degreeCourses].map(c=><option key={c} value={c}>{c}</option>)}</select></label>}
-     {step===3&&<label>Division<input required maxLength={20} value={fields.division} onChange={e=>edit('division',e.target.value)}/></label>}
-     {step===3&&<label>Relationship status (required)<select required value={fields.relationshipStatus} onChange={e=>edit('relationshipStatus',e.target.value)}>
-      <option value="">Select your status</option>
-      {['Single','In Relationship','Engaged','Married','Situationship'].map(x=><option key={x} value={x}>{x}</option>)}
-     </select></label>}
-     {step===4&&<label>Relationship visibility<select value={fields.relationshipVisibility} onChange={e=>edit('relationshipVisibility',e.target.value)}>
-      <option value="me">Only me</option><option value="followers">Followers</option><option value="campus">Campus members</option>
-     </select></label>}
-     {step===5&&<label><input type="checkbox" required checked={fields.acceptTerms} onChange={e=>edit('acceptTerms',e.target.checked)}/> I accept the Terms of Service</label>}
-     {step===5&&<label><input type="checkbox" required checked={fields.acknowledgePrivacy} onChange={e=>edit('acknowledgePrivacy',e.target.checked)}/> I acknowledge the Privacy Policy</label>}
+    {stage==='email'&&<>
+     <label>BVM student email<input autoFocus required type="email" autoComplete="email" placeholder="26el309@bvmengineering.ac.in" value={email} onChange={e=>setEmail(e.target.value.toLowerCase().trim())}/></label>
+     {parsed&&<div className="cc-email-preview"><strong>Student details detected</strong><span>Enrollment: {enrollment.toLowerCase()}</span><span>Branch: {branch}</span><small>Branch mapping is provisional and must be confirmed by BVM.</small></div>}
     </>}
-    {mode==='login'||step===2?<label>Institutional BVM email<input required type="email" placeholder="26cp309@bvmengineering.ac.in" autoComplete="email" maxLength={254} value={fields.email} onChange={e=>edit('email',e.target.value)}/></label>:null}
-    {mode==='login'||step===4?<label>Password<input required type="password" autoComplete={mode==='login'?'current-password':'new-password'}
-     minLength={mode==='register'?12:1} maxLength={128} value={fields.password} onChange={e=>edit('password',e.target.value)}/></label>:null}
-    {mode==='register'&&step===2&&<label>Enrollment number<input required pattern="[0-9]{2}[a-zA-Z]{2}[0-9]{3,8}" placeholder="26cp309" value={fields.enrollmentNumber} onChange={e=>edit('enrollmentNumber',e.target.value.toLowerCase())}/></label>}
-    {mode==='register'&&step===2&&<p className="auth-legal">Enrollment number must exactly match the part before @ in your institutional email. Branch codes are provisional and require college confirmation.</p>}
-    {message&&!awaitingVerification&&<p role="status" className="form-error">{message}</p>}
-    {mode==='register'&&step>0&&<button type="button" onClick={previous}>Back</button>}
-    <button disabled={busy} type="submit" className="primary-button full">{busy?'Processing...':mode==='login'?'Sign in':step<groups.length-1?'Continue':'Create account'}</button>
+    {stage==='otp'&&<>
+     <div className="cc-email-preview">Code sent to <strong>{email}</strong></div>
+     <label>Verification code<input autoFocus required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={code} onChange={e=>setCode(e.target.value.replace(/\\D/g,''))}/></label>
+     <button type="button" className="cc-text-action" disabled={busy||Date.now()<resendAt} onClick={requestCode}>Resend verification code (after 60 seconds)</button>
+     <button type="button" className="cc-text-action" onClick={()=>{setStage('email');setCode('');setMessage('')}}>Change email address</button>
+    </>}
+    {stage==='profile'&&<>
+     <label>Full name<input autoFocus required minLength={2} maxLength={70} autoComplete="name" placeholder="Your full name" value={name} onChange={e=>setName(e.target.value)}/></label>
+     <label>Username<input required pattern="[a-z][a-z0-9._]{2,29}" maxLength={30} placeholder="your.username" value={handle} onChange={e=>setHandle(e.target.value.toLowerCase())}/></label>
+    </>}
+    {stage==='privacy'&&<>
+     <label>Relationship status<select required value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value)}><option value="">Choose your status</option>{['Single','In Relationship','Engaged','Married','Situationship'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+     <label>Who can see your relationship status?<select required value={relationshipVisibility} onChange={e=>setRelationshipVisibility(e.target.value)}><option value="me">Only me (recommended)</option><option value="followers">Followers only</option><option value="campus">Campus members</option></select></label>
+     <label className="cc-check"><input type="checkbox" required checked={acceptTerms} onChange={e=>setAcceptTerms(e.target.checked)}/> I accept the Terms of Service</label>
+     <label className="cc-check"><input type="checkbox" required checked={acknowledgePrivacy} onChange={e=>setAcknowledgePrivacy(e.target.checked)}/> I acknowledge the Privacy Policy</label>
+    </>}
+    {message&&<p role="status" className={message.toLowerCase().includes('failed')||message.toLowerCase().includes('invalid')||message.toLowerCase().includes('unable')?'form-error':'auth-legal'}>{message}</p>}
+    {stage==='privacy'&&<button type="button" className="cc-text-action" onClick={()=>setStage('profile')}>Back</button>}
+    <button disabled={busy} type="submit" className="primary-button full">{busy?'Please wait…':stage==='email'?'Send verification code':stage==='otp'?'Verify code':stage==='profile'?'Continue':'Create account & enter CampusConnect'}</button>
    </form>
-   <p className="auth-foot">{mode==='login'?<Link href="/register">Create an account</Link>:<Link href="/login">Already registered? Sign in</Link>}</p>
-   <p className="auth-legal">Email verification is required. Google sign-in is not yet connected; Firebase Google provider setup alone does not enable the website button.</p>
+   <p className="auth-foot">Already registered? <Link href="/login">Sign in with email OTP</Link></p>
+   <p className="auth-legal">Only verified BVM institutional addresses are accepted. No password needed.</p>
   </section>
  </main>;
 }
