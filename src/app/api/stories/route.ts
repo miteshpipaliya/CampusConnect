@@ -38,3 +38,16 @@ export async function DELETE(request:NextRequest){
  if(!/^[A-Za-z0-9_-]{10,40}$/.test(id))return errorResponse(400,'Invalid story ID');
  try{const ref=db().collection('stories').doc(id),story=await ref.get();if(!story.exists)return errorResponse(404,'Story not found');if(story.data()?.authorUid!==user.uid)return errorResponse(403,'Not your story');await ref.delete();return NextResponse.json({deleted:true},{headers:safeHeaders})}catch{return errorResponse(503,'Unable to delete story')}
 }
+
+export async function PATCH(request:NextRequest){
+ if(!sameOrigin(request))return errorResponse(403,'Untrusted request origin');
+ const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
+ const input=z.object({id:z.string().min(10).max(40),highlight:z.boolean()}).safeParse(await request.json().catch(()=>null));
+ if(!input.success)return errorResponse(400,'Invalid highlight request');
+ try{const ref=db().collection('stories').doc(input.data.id),doc=await ref.get();
+  if(!doc.exists)return errorResponse(404,'Story not found');
+  if(doc.data()?.authorUid!==user.uid)return errorResponse(403,'Not your story');
+  await ref.update({highlight:input.data.highlight});
+  return NextResponse.json({ok:true},{headers:safeHeaders});
+ }catch{return errorResponse(503,'Unable to update highlight')}
+}
