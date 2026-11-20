@@ -12,9 +12,14 @@ export function SocialPanels({section}:{section:string}){
  const [search,setSearch]=useState(''),lastTyping=useRef(0);
  const [notifications,setNotifications]=useState<Notification[]>([]);
  const [reels,setReels]=useState<Array<{id:string;caption:string;authorHandle:string;mediaId:string}>>([]);
- useEffect(()=>{if(section==='chat'||section==='search')get<{members:Member[]}>('/api/chat').then(d=>setMembers(d.members)).catch(e=>setNotice(String(e)));
+ useEffect(()=>{if(section==='chat'){const withHandle=new URLSearchParams(window.location.search).get('with');if(withHandle)setPeer(withHandle)}if(section==='chat'||section==='search')get<{members:Member[]}>('/api/chat').then(d=>setMembers(d.members)).catch(e=>setNotice(String(e)));
  if(section==='notifications')get<{notifications:Notification[]}>('/api/notifications').then(d=>setNotifications(d.notifications)).catch(e=>setNotice(String(e)));
  if(section==='reels')get<{reels:Array<{id:string;caption:string;authorHandle:string;mediaId:string}>}>('/api/reels').then(d=>setReels(d.reels)).catch(e=>setNotice(String(e)));},[section]);
+ useEffect(()=>{if(section!=='reels'&&section!=='notifications')return;
+ const refresh=()=>{if(document.visibilityState!=='visible')return;
+ if(section==='reels')void get<{reels:Array<{id:string;caption:string;authorHandle:string;mediaId:string}>}>('/api/reels').then(d=>setReels(d.reels)).catch(()=>{});
+ if(section==='notifications')void get<{notifications:Notification[]}>('/api/notifications').then(d=>setNotifications(d.notifications)).catch(()=>{});
+ };const timer=window.setInterval(refresh,10000);return()=>window.clearInterval(timer)},[section]);
  useEffect(()=>{if(section!=='chat'||!peer)return;
  let active=true;const refresh=async()=>{try{const d=await get<{messages:Message[];peerTyping:boolean;myUid:string}>('/api/chat?with='+encodeURIComponent(peer));if(!active)return;setMessages(d.messages);setTyping(d.peerTyping);setMyUid(d.myUid);
  if(d.messages.some(m=>m.senderUid!==d.myUid&&!m.seen))await post('/api/chat',{action:'read',recipientHandle:peer});
