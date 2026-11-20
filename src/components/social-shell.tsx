@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bookmark, Clapperboard, Compass, Heart, Home, Menu, MessageCircle, PlusSquare, Search, Settings, UsersRound, UserRound } from 'lucide-react';
+import { Home, Menu, PlusSquare, UserRound } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';

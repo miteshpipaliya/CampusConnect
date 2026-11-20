@@ -53,7 +53,7 @@ export async function POST(request:NextRequest){
      });
     });
    }catch(e){await auth().deleteUser(userId).catch(()=>{});if(e instanceof Error&&e.message==='HANDLE_TAKEN')return errorResponse(409,'Username already in use');throw e}
-   await firebaseIdentity('sendOobCode',{requestType:'VERIFY_EMAIL',idToken:result.idToken}).catch(()=>{});
+   await firebaseIdentity('sendOobCode',{requestType:'VERIFY_EMAIL',idToken:result.idToken}).catch(()=>{throw Error('VERIFY_EMAIL_SEND_FAILED')});
    return NextResponse.json({ok:true,message:'Check your email and verify your account before signing in.'},{headers:safeHeaders});
   }
   if(action==='login'){

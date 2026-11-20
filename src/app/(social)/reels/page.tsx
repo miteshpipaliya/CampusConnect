@@ -1,2 +1,2 @@
-import { ReelsPage } from '@/components/social-pages';
-export default function Reels(){return <ReelsPage/>}
+import Link from 'next/link';
+export default function NotReady(){return <section className="cc-live-empty"><h2>Feature not available yet</h2><p>This section is being connected to real campus accounts. No demo content is shown.</p><Link href="/home">Return to your live feed</Link></section>}
