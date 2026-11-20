@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Bookmark, Clapperboard, Compass, Heart, Home, Menu, MessageCircle, PlusSquare, Search, Settings, UsersRound, UserRound } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { DemoProvider } from '@/lib/demo-store';
+import { useRouter } from 'next/navigation';
 
 type NavItem = { label: string; href: string; Icon: LucideIcon };
 const links: NavItem[] = [
@@ -16,7 +16,7 @@ const links: NavItem[] = [
   { label: 'Notifications', href: '/notifications', Icon: Heart },
   { label: 'Create', href: '/home?compose=1', Icon: PlusSquare },
   { label: 'Community', href: '/communities', Icon: UsersRound },
-  { label: 'Profile', href: '/profile/mitesh.pipaliya', Icon: UserRound },
+  { label: 'Profile', href: '/profile/me', Icon: UserRound },
 ];
 const mobileLabels = new Set(['Home', 'Search', 'Reels', 'Create', 'Community', 'Profile']);
 function activeLink(pathname: string, item: NavItem) {
@@ -45,27 +45,16 @@ function Nav({ pathname, mobile = false }: { pathname: string; mobile?: boolean 
     })}
   </nav>;
 }
-function Suggestions() {
-  const [samples,setSamples]=useState<Array<{handle:string;name:string;branch:string}>>([]);
-  const [following,setFollowing]=useState<string[]>([]);
-  useEffect(()=>{let active=true;fetch('/api/demo/profiles').then(r=>r.ok?r.json():null).then(d=>{if(active)setSamples((d?.profiles||[]).filter((p:{handle:string})=>p.handle!=='mitesh.pipaliya'))}).catch(()=>{});return()=>{active=false}},[]);
-  return <aside className="cc-suggestions" aria-label="Suggested campus accounts">
-    <div className="cc-me"><span className="cc-person-avatar you">CC</span><div><Link href="/profile/mitesh.pipaliya"><b>campus.demo</b></Link><small>Your campus profile · demo</small></div><Link href="/profile/mitesh.pipaliya">View</Link></div>
-    <div className="cc-suggestion-heading"><b>Suggested for you</b><Link href="/connections">See all</Link></div>
-    {samples.slice(0,8).map((person,i)=><div className="cc-suggested" key={person.handle}>
-      <span className={'cc-person-avatar hue-'+i} aria-hidden="true">{person.name.split(' ').map(x=>x[0]).join('')}</span>
-      <div><Link href={'/profile/'+person.handle}><b>{person.handle}</b></Link><small>{person.branch} · sample</small></div>
-      <button type="button" onClick={()=>setFollowing(prev=>prev.includes(person.handle)?prev.filter(x=>x!==person.handle):[...prev,person.handle])}>{following.includes(person.handle)?'Following':'Follow'}</button>
-    </div>)}
-    <div className="cc-aside-links"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/community-guidelines">Guidelines</Link><Link href="/settings">Settings</Link></div>
-    <p className="cc-copyright">© 2026 CAMPUSCONNECT · BVM</p>
-    <p className="cc-demo-disclaimer">Fictional profiles; follow buttons affect this page only. No login or database.</p>
-  </aside>;
-}
+function Suggestions({handle}:{handle:string}){return <aside className="cc-suggestions"><div className="cc-me"><span className="cc-person-avatar you">CC</span><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your real campus account</small></div><Link href="/profile/me">View</Link></div><div className="cc-suggestion-heading">Campus members</div><p style={{fontSize:12,color:'#aaa'}}>Student suggestions will appear when the real follow system is ready.</p></aside>}
 
 export default function SocialShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  return <DemoProvider><div className="cc-app">
+  const pathname=usePathname(),router=useRouter();
+  const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false);
+  useEffect(()=>{let live=true;fetch('/api/auth',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(x=>{
+   if(!live)return;setChecked(true);if(x?.user?.profile?.handle)setHandle(x.user.profile.handle);else router.replace('/login');
+  }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[pathname,router]);
+  if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
+  return <div className="cc-app">
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} />
@@ -78,7 +67,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
       <header className="cc-mobile-header"><Brand compact/><div><Link href="/notifications" aria-label="Notifications"><Heart size={23}/></Link><Link href="/messages" aria-label="Messages"><MessageCircle size={23}/></Link></div></header>
       <div className="cc-page">{children}</div>
     </main>
-    <Suggestions/>
+    <Suggestions handle={handle}/>
     <Nav pathname={pathname} mobile />
-  </div></DemoProvider>;
+  </div>;
 }

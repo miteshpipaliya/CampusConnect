@@ -10,9 +10,10 @@ export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  try{
   const snap=await db().collection('posts').orderBy('createdAt','desc').limit(30).get();
-  const posts=snap.docs.filter(d=>d.data().visibility==='campus'||d.data().authorUid===user.uid).map(d=>({
-   id:d.id,caption:d.data().caption,authorHandle:d.data().authorHandle,
-   authorUid:d.data().authorUid,mediaId:d.data().mediaId||null
+  const visible=snap.docs.filter(d=>d.data().visibility==='campus'||d.data().authorUid===user.uid);
+  const posts=await Promise.all(visible.map(async d=>{
+   const [likes,comments,ownLike]=await Promise.all([d.ref.collection('likes').count().get(),d.ref.collection('comments').count().get(),d.ref.collection('likes').doc(user.uid).get()]);
+   return {id:d.id,caption:d.data().caption,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId||null,likes:likes.data().count,comments:comments.data().count,liked:ownLike.exists};
   }));
   return NextResponse.json({posts},{headers:safeHeaders});
  }catch{return errorResponse(503,'Feed unavailable')}
