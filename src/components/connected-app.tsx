@@ -85,6 +85,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
 export function ConnectedFeed(){
  const [me,setMe]=useState<Me|null>(null),[posts,setPosts]=useState<Post[]>([]);
  const [caption,setCaption]=useState(''),[file,setFile]=useState<File|null>(null);
+ const [section,setSection]=useState('home');
  const [composeOpen,setComposeOpen]=useState(false),[previewUrl,setPreviewUrl]=useState<string|null>(null),[mediaStep,setMediaStep]=useState<'preview'|'caption'>('preview');
  const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[loading,setLoading]=useState(true);
  const [opened,setOpened]=useState<string|null>(null),[comments,setComments]=useState<Record<string,Array<{id:string;handle:string;text:string}>>>({}),[reply,setReply]=useState('');
@@ -94,6 +95,7 @@ export function ConnectedFeed(){
   .catch(()=>setStatus('Sign in to view the live feed.')).finally(()=>setLoading(false));},[]);
  useEffect(()=>{const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh().catch(()=>{});},10000);return()=>window.clearInterval(timer)},[]);
  useEffect(()=>{if(!file){setPreviewUrl(null);return}const url=URL.createObjectURL(file);setPreviewUrl(url);return()=>URL.revokeObjectURL(url)},[file]);
+ useEffect(()=>{const params=new URLSearchParams(window.location.search);const selected=params.get('section')||'home';setSection(['home','reels','chat','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[]);
  async function toggleLike(id:string){try{await api('/api/posts/'+id+'/likes','POST',{});await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Like failed')}}
  async function openComments(id:string){if(opened===id){setOpened(null);return}try{const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));setOpened(id)}catch(e){setStatus(e instanceof Error?e.message:'Comments unavailable')}}
  async function sendComment(event:FormEvent<HTMLFormElement>,id:string){event.preventDefault();try{await api('/api/posts/'+id+'/comments','POST',{text:reply});setReply('');const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Comment failed')}}
@@ -111,7 +113,8 @@ export function ConnectedFeed(){
    setCaption('');setFile(null);setComposeOpen(false);setMediaStep('preview');setStatus('Post published');await refresh();
   }catch(e){setStatus(e instanceof Error?e.message:'Unable to publish')}finally{setBusy(false)}
  }
- return <section className="cc-connected-feed"><SocialPanels/>
+ return <section className="cc-connected-feed"><SocialPanels section={section}/>
+  {(section==='home'||section==='community')&&<>
   <header className="cc-live-bar"><h1>Home</h1>
    {me?<div><span>{me.profile?.handle||me.email}</span><button type="button" onClick={async()=>{await api('/api/auth','POST',{action:'logout'});window.location.assign('/login')}} aria-label="Log out"><LogOut size={19}/></button></div>:<Link href="/login">Sign in</Link>}
   </header>
@@ -141,6 +144,7 @@ export function ConnectedFeed(){
     <form onSubmit={e=>sendComment(e,post.id)}><input value={reply} onChange={e=>setReply(e.target.value)} maxLength={1000} placeholder="Write a comment" required/><button disabled={!reply.trim()}>Post</button></form>
    </div>}
   </article>):<div className="cc-live-empty">No published posts yet. Be the first to share.</div>}
+  </>}
   </>}
  </section>;
 }
