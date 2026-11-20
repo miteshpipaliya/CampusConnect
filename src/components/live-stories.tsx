@@ -26,8 +26,7 @@ export function LiveStories(){
  </div>{error&&<p role="alert" className="cc-story-error">{error}</p>}
  {story&&<div className="cc-live-story-overlay" role="presentation" onClick={()=>setSelected(null)}><section className="cc-live-story-dialog" role="dialog" aria-modal="true" aria-label={'Story from '+story.authorHandle} onClick={e=>e.stopPropagation()}>
   <header><Link href={'/profile/'+encodeURIComponent(story.authorHandle)}>@{story.authorHandle}</Link><button type="button" onClick={()=>setSelected(null)} aria-label="Close story">✕</button></header>
-  <img src={'/api/media?id='+encodeURIComponent(story.mediaId)} alt={'Story by '+story.authorHandle} onError={e=>{e.currentTarget.style.display='none'}}/>
-  <video src={'/api/media?id='+encodeURIComponent(story.mediaId)} controls playsInline autoPlay onError={e=>{e.currentTarget.style.display='none'}}/>
+  {story.contentType?.startsWith('video/')?<video src={'/api/media?id='+encodeURIComponent(story.mediaId)} controls playsInline autoPlay/>:<img src={'/api/media?id='+encodeURIComponent(story.mediaId)} alt={'Story by '+story.authorHandle}/>} 
   {story.caption&&<p>{story.caption}</p>}
   <footer><button type="button" onClick={()=>setSelected(i=>i===null?null:Math.max(0,i-1))} disabled={selected===0}>‹ Previous</button><button type="button" onClick={()=>setSelected(i=>i===null?null:i+1>=stories.length?null:i+1)}>Next ›</button></footer>
  </section></div>}</>;
