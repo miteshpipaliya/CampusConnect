@@ -10,7 +10,7 @@ export async function GET(request:NextRequest){
  try{
   const now=Timestamp.now();
   const snapshot=await db().collection('stories').where('expiresAt','>',now).limit(100).get();
-  const stories=snapshot.docs.filter(d=>d.data().visibility==='campus'||d.data().authorUid===user.uid).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
+  const stories=snapshot.docs.filter(d=>d.data().visibility==='campus'||d.data().authorUid===user.uid).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',highlight:Boolean(d.data().highlight),isMine:d.data().authorUid===user.uid,createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
   return NextResponse.json({stories},{headers:safeHeaders});
  }catch{return errorResponse(503,'Stories unavailable')}
 }
