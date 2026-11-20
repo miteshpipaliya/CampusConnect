@@ -78,7 +78,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
     </>}
     {message&&<p role="status" className={message.toLowerCase().includes('failed')||message.toLowerCase().includes('invalid')||message.toLowerCase().includes('unable')?'form-error':'auth-legal'}>{message}</p>}
     {stage==='privacy'&&<button type="button" className="cc-text-action" onClick={()=>setStage('profile')}>Back</button>}
-    {stage==='email'&&mode==='login'&&<button type="button" className="cc-text-action" onClick={()=>{setResetMode(v=>!v);setMessage('')}}>{resetMode?'Back to password login':'Set or reset password using email verification'}</button>}}
+    {stage==='email'&&mode==='login'&&<button type="button" className="cc-text-action" onClick={()=>{setResetMode(v=>!v);setMessage('')}}>{resetMode?'Back to password login':'Set or reset password using email verification'}</button>}
     <button disabled={busy} type="submit" className="primary-button full">{busy?'Please wait…':stage==='email'?(mode==='login'&&!resetMode?'Sign in':'Send verification code'):stage==='otp'?'Verify code':stage==='profile'?'Continue':stage==='privacy'?'Continue':'Save password & enter CampusConnect'}</button>
    </form>
    <p className="auth-foot">Already registered? <Link href="/login">Sign in with email and password</Link></p>
