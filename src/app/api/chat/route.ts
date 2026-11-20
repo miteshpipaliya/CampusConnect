@@ -28,7 +28,7 @@ export async function POST(request:NextRequest){
  try{const input=parsed.data,other=await peer(input.recipientHandle);if(!other||other.id===user.uid)return errorResponse(404,'Member unavailable');
  const id=[user.uid,other.id].sort().join('_'),room=db().collection('chats').doc(id);
  if(input.action==='typing'){await room.set({participants:[user.uid,other.id],typing:{[user.uid]:input.typing?Date.now():0}},{merge:true});return NextResponse.json({ok:true},{headers:safeHeaders})}
- if(input.action==='read'){const snap=await room.collection('messages').where('recipientUid','==',user.uid).where('seen','==',false).limit(50).get();const batch=db().batch();snap.docs.forEach(d=>batch.update(d.ref,{seen:true,seenAt:FieldValue.serverTimestamp()}));await batch.commit();return NextResponse.json({ok:true},{headers:safeHeaders})}
+ if(input.action==='read'){const snap=await room.collection('messages').orderBy('createdAt','desc').limit(50).get();const batch=db().batch();snap.docs.filter(d=>d.data().recipientUid===user.uid&&!d.data().seen).forEach(d=>batch.update(d.ref,{seen:true,seenAt:FieldValue.serverTimestamp()}));await batch.commit();return NextResponse.json({ok:true},{headers:safeHeaders})}
  await room.set({participants:[user.uid,other.id],updatedAt:FieldValue.serverTimestamp()},{merge:true});
  await room.collection('messages').add({senderUid:user.uid,recipientUid:other.id,text:input.text,seen:false,createdAt:FieldValue.serverTimestamp()});
  return NextResponse.json({ok:true},{headers:safeHeaders});
