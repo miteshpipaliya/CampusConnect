@@ -8,7 +8,7 @@ import { session, setSession, clearSession, sameOrigin, errorResponse, safeHeade
 
 export const runtime='nodejs';
 const emailSchema=z.string().trim().toLowerCase().email().max(254);
-const emailPattern=/^(\\d{2})(cp|el|ec|it|me|cl|ee|pr)(\\d{3,8})@bvmengineering\\.ac\\.in$/;
+const emailPattern=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/;
 const profileSchema=z.object({name:z.string().trim().min(2).max(70),handle:z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/),relationshipStatus:z.enum(relationshipStatuses),relationshipVisibility:z.enum(relationshipVisibilities),acceptTerms:z.literal(true),acknowledgePrivacy:z.literal(true)});
 const secret=()=>{const s=process.env.OTP_SIGNING_SECRET;if(!s||s.length<32)throw Error('OTP signing secret missing');return s};
 const digest=(s:string)=>createHmac('sha256',secret()).update(s).digest('hex');
@@ -55,7 +55,7 @@ export async function POST(request:NextRequest){
   }catch(e){if(e instanceof Error&&e.message==='COOLDOWN')return errorResponse(429,'Wait 60 seconds before requesting another code');if(e instanceof Error&&e.message==='LIMIT')return errorResponse(429,'Too many codes requested. Try again in one hour');return errorResponse(503,'Unable to send verification code')}
  }
  if(action==='verifyOtp'){
-  const parsed=z.object({email:emailSchema,code:z.string().regex(/^\\d{6}$/)}).safeParse(raw);
+  const parsed=z.object({email:emailSchema,code:z.string().regex(/^\d{6}$/)}).safeParse(raw);
   if(!parsed.success)return errorResponse(400,'Enter your six-digit code');
   try{
    const email=parsed.data.email,ref=challengeRef(email),now=Date.now();
