@@ -1,15 +1,23 @@
-# Security notes
+# CampusConnect security — frontend-only demo
 
-- Never commit `.env.local`; only publishable Supabase URL/key may use `NEXT_PUBLIC_`.
-- Domain restrictions are validated server-side against `APPROVED_EMAIL_DOMAINS`.
-- Supabase Auth performs password storage and verification. Confirm email OTP/link expiry and rate limits in Auth settings.
-- PostgreSQL RLS is enabled for all tables in the initial migration. An unapplied incremental migration closes global likes/comments reads and private-profile direct-follow bypasses. Treat policies as unreviewed until they pass adversarial tests against multiple accounts.
-- Social feed and account examples are local demo content. Post edits, reports, settings, messages and relationships are not transmitted to or enforced by a backend.
-- User-selected media previews use object URLs and are not uploaded. Object URLs are revoked when the preview changes or the composer unmounts.
-- Baseline security headers are configured in `next.config.js`; a strict CSP, upload pipeline, and application-level rate limiting are not yet implemented.
-- Protected pages validate Supabase claims and current email-confirmed user state in middleware. Production requests fail closed if Supabase is unconfigured; local demo mode remains available without credentials.
-- No service role key is used in application code. Environment values in the committed templates are blank; `.env*` files are ignored except the three checked-in `.example` templates.
-- CI pins external Actions to commit SHAs and gives `GITHUB_TOKEN` only `contents: read`; Gitleaks scans full history on pushes and pull requests.
-- Local Gitleaks 8.30.1 scanned all three commits and the working tree with no findings. npm audit found six moderate transitive development-toolchain findings and no high/critical findings.
+## Scope
 
-Before launch: test cross-account access, block edge cases, policy recursion, message membership, admin elevation, storage, account deletion, request throttles and email enumeration behavior. Configure backup and restore drills.
+CampusConnect is a **public demo with fictional content**, not an authenticated social network. It does **not** connect to Supabase, Firebase, a database, or an upload backend. Any likes, follows, posts, settings, or messages are browser-local UI state and **not private, authenticated, or enforced server-side**. Do not enter real student details, passwords, confidential messages, or sensitive content.
+
+## Controls in source
+
+- No database SDK or credentials required. The GitHub repository was initialized with fresh history.
+- GitHub Actions uses read-only permissions, pinned action commits, lint, typecheck, tests, production build, npm audit (high/critical gate), and Gitleaks scanning.
+- HTTP response headers include CSP, HSTS, X-Frame-Options, no-sniff, restrictive Permissions-Policy, and COOP.
+- CSP restricts remote media to explicit demo providers. **It currently allows inline scripts and styles for Next.js hydration**, so it is not a strict nonce-based XSS policy. Do not claim otherwise.
+- Demo file previews are local object URLs; the app does not send them to a server. Client-side size and MIME checks are UX guards, **not a secure upload validation pipeline**.
+
+## Required before real users
+
+- Introduce authenticated accounts, server-side authorization, rate limits, input validation, privacy enforcement, abuse reports, moderation, and safe media processing.
+- Use server-issued CSP nonces and remove unsafe-inline from script-src; validate all third-party media licenses and privacy terms.
+- Configure GitHub main-branch ruleset requiring PR review, passing quality and secret-scan checks, no force pushes or deletion, and least-privilege collaborator access.
+- Review dependency advisories including moderate severity, and run browser-based security/accessibility tests.
+- Keep Dependabot security alerts enabled in GitHub Settings → Security & analysis. Version-update automation was removed to honor the one-branch request; check for security updates manually.
+
+**Audit status:** CI passing is necessary but does not prove a full penetration test or a production-ready secure social network.

@@ -29,7 +29,7 @@ function activeLink(pathname: string, item: NavItem) {
 function Brand({ compact = false }: { compact?: boolean }) {
   return <Link href="/home" className={'cc-brand' + (compact ? ' cc-brand-mobile' : '')} aria-label="CampusConnect home">
     <span className="cc-logo" aria-hidden="true"><span style={{fontWeight:900,letterSpacing:"-0.12em"}}>C<span style={{color:"#c4a0ff"}}>C</span></span></span>
-    <span className="cc-wordmark">Campus<span>Culture</span><small>BVM CAMPUS</small></span>
+    <span className="cc-wordmark">Campus<span>Connect</span><small>BVM CAMPUS</small></span>
   </Link>;
 }
 function Nav({ pathname, mobile = false }: { pathname: string; mobile?: boolean }) {

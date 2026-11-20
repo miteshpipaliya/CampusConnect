@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, 'migration/**', 'feature/**']
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -35,7 +35,7 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
-      - name: Dependency audit
+      - name: Dependency audit (high and critical)
         run: npm run audit
       - name: Production build
         run: npm run build

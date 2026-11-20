@@ -24,9 +24,9 @@ const defaults:DemoState={posts:initialPosts,people:initialPeople,communities:in
 type Store=DemoState&{addPost:(body:string,image?:string)=>void;togglePost:(id:string,key:'liked'|'saved'|'following')=>void;comment:(id:string,body:string)=>void;repost:(id:string)=>void;removePost:(id:string)=>void;editPost:(id:string,body:string)=>void;toggleJoin:(slug:string)=>void;addCommunity:(name:string,description:string)=>void;setPerson:(handle:string,state:DemoPerson['state'])=>void;toggleEvent:(id:string,key:'interested'|'going')=>void;sendMessage:(id:string,text:string)=>void;markAllRead:()=>void;setDraft:(value:string)=>void;};
 const Context=createContext<Store|null>(null);
 export function DemoProvider({children}:{children:ReactNode}){const [data,setData]=useState<DemoState>(defaults);const [ready,setReady]=useState(false);
- useEffect(()=>{try{const raw=localStorage.getItem('bvm-demo-v2');if(raw){const saved=JSON.parse(raw) as Partial<DemoState>;setData({...defaults,...saved});}}catch{}setReady(true);},[]);
- useEffect(()=>{if(ready)localStorage.setItem('bvm-demo-v2',JSON.stringify(data));},[data,ready]);
- const update=useCallback((change:(current:DemoState)=>DemoState)=>setData(current=>{const next=change(current);try{if(ready)localStorage.setItem('bvm-demo-v2',JSON.stringify(next));}catch{}return next}),[ready]);
+ useEffect(()=>{try{const raw=localStorage.getItem('campusconnect-demo-v1');if(raw){const saved=JSON.parse(raw) as Partial<DemoState>;setData({...defaults,...saved});}}catch{}setReady(true);},[]);
+ useEffect(()=>{if(ready)localStorage.setItem('campusconnect-demo-v1',JSON.stringify(data));},[data,ready]);
+ const update=useCallback((change:(current:DemoState)=>DemoState)=>setData(current=>{const next=change(current);try{if(ready)localStorage.setItem('campusconnect-demo-v1',JSON.stringify(next));}catch{}return next}),[ready]);
  const value=useMemo<Store>(()=>({...data,
   addPost:(body,image)=>update(d=>({ ...d,draft:'',posts:[{id:`post-${Date.now()}`,name:'Mitesh Pipaliya',handle:'mitesh.pipaliya',dept:'Computer Engineering · 3rd year',time:'now',body,likes:0,replies:0,reposts:0,tag:'CAMPUS',liked:false,saved:false,following:true,comments:[],own:true,...(image?{image}:{})},...d.posts]})),
   togglePost:(id,key)=>update(d=>({...d,posts:togglePostState(d.posts,id,key)})),
