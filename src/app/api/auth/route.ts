@@ -8,6 +8,8 @@ import { session, setSession, clearSession, sameOrigin, errorResponse, safeHeade
 
 export const runtime='nodejs';
 const emailSchema=z.string().trim().toLowerCase().email().max(254);
+const testEmail='taushalquery@gmail.com';
+const allowedEmail=(email:string)=>email===testEmail||emailPattern.test(email);
 const emailPattern=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/;
 const profileSchema=z.object({name:z.string().trim().min(2).max(70),handle:z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/),relationshipStatus:z.enum(relationshipStatuses),relationshipVisibility:z.enum(relationshipVisibilities),acceptTerms:z.literal(true),acknowledgePrivacy:z.literal(true)});
 const secret=()=>{const s=process.env.OTP_SIGNING_SECRET;if(!s||s.length<32)throw Error('OTP signing secret missing');return s};
@@ -37,7 +39,7 @@ export async function POST(request:NextRequest){
  if(action==='logout'){const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);return r}
  if(action==='requestOtp'){
   const parsed=emailSchema.safeParse((raw as {email?:unknown}).email);
-  if(!parsed.success||!emailPattern.test(parsed.data))return errorResponse(400,'Enter your valid BVM institutional email');
+  if(!parsed.success||!allowedEmail(parsed.data))return errorResponse(400,'Enter your valid BVM institutional email');
   const email=parsed.data;
   try{
    const apiKey=process.env.RESEND_API_KEY, sender=process.env.RESEND_FROM_EMAIL;
@@ -60,7 +62,7 @@ export async function POST(request:NextRequest){
     if(r.status===429)return errorResponse(503,'Email provider rate limit reached. Please try again later.');
     return errorResponse(502,'Email delivery failed. Check Resend email logs and Vercel function logs.');
    }
-   return NextResponse.json({ok:true,message:'A six-digit code was sent to your BVM email.'},{headers:safeHeaders});
+   return NextResponse.json({ok:true,message:'A six-digit verification code was sent to your email.'},{headers:safeHeaders});
   }catch(e){if(e instanceof Error&&e.message==='COOLDOWN')return errorResponse(429,'Wait 60 seconds before requesting another code');if(e instanceof Error&&e.message==='LIMIT')return errorResponse(429,'Too many codes requested. Try again in one hour');return errorResponse(503,'Unable to send verification code')}
  }
  if(action==='verifyOtp'){
@@ -90,7 +92,7 @@ export async function POST(request:NextRequest){
   const parsed=z.object({email:emailSchema,profile:profileSchema.optional()}).safeParse(raw);
   if(!parsed.success)return errorResponse(400,'Please complete all required details');
   const email=parsed.data.email,proof=request.cookies.get(otpCookie)?.value;
-  if(!proof||!emailPattern.test(email))return errorResponse(403,'Verify your college email first');
+  if(!proof||!allowedEmail(email))return errorResponse(403,'Verify your college email first');
   try{
    const ref=challengeRef(email),challenge=await ref.get(),data=challenge.data();
    if(!data||!data.verified||data.used||data.proofExpires<Date.now()||data.proofHash!==digest(proof))return errorResponse(403,'Verification expired. Request a new code');
@@ -98,8 +100,9 @@ export async function POST(request:NextRequest){
    const existingProfile=user?await db().collection('users').doc(user.uid).get():null;
    if(!existingProfile?.exists){
     if(!parsed.data.profile)return errorResponse(400,'Complete your profile first');
-    const p=parsed.data.profile,parts=emailPattern.exec(email)!;
-    const branch=branchFor(parts[2] as keyof typeof proposedCodes);
+    const p=parsed.data.profile,parts=emailPattern.exec(email);
+    if(!parts&&email!==testEmail)return errorResponse(403,'Unsupported email address');
+    const branch=parts?branchFor(parts[2] as keyof typeof proposedCodes):'';
     if(!user)user=await auth().createUser({email,emailVerified:true,disabled:false});
     else await auth().updateUser(user.uid,{emailVerified:true});
     try{
@@ -108,7 +111,7 @@ export async function POST(request:NextRequest){
       if((await tx.get(handle)).exists)throw Error('HANDLE_TAKEN');
       if((await tx.get(profile)).exists)throw Error('PROFILE_EXISTS');
       tx.create(handle,{uid:user!.uid});
-      tx.create(profile,{uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:`${parts[1]!}${parts[2]!}${parts[3]!}`,branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:2000+Number(parts[1]),emailBranchCode:parts[2],verifiedInstitutionalEmail:true,createdAt:FieldValue.serverTimestamp()});
+      tx.create(profile,{uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts?`${parts[1]!}${parts[2]!}${parts[3]!}`:'',branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:parts?2000+Number(parts[1]):null,emailBranchCode:parts?.[2]??null,verifiedInstitutionalEmail:Boolean(parts),createdAt:FieldValue.serverTimestamp()});
      });
     }catch(e){if(e instanceof Error&&e.message==='HANDLE_TAKEN')return errorResponse(409,'Username already taken. Choose another');if(e instanceof Error&&e.message==='PROFILE_EXISTS')return errorResponse(409,'Account already exists. Sign in');throw e}
    }else if(user&&!user.emailVerified)await auth().updateUser(user.uid,{emailVerified:true});
