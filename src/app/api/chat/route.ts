@@ -43,7 +43,16 @@ export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  try{
   const handle=request.nextUrl.searchParams.get('with');
-  if(!handle){const s=await db().collection('users').limit(100).get();return NextResponse.json({members:s.docs.filter(d=>d.id!==user.uid).map(d=>({handle:d.data().handle,name:d.data().name})).filter(x=>x.handle)},{headers:safeHeaders})}
+  if(!handle){
+   // Only channels the signed-in member belongs to; do not expose the entire campus directory.
+   const result=await stream('/channels/query','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
+   const channels=(result.channels||[]) as Array<{channel?:{id?:string;members?:Array<{user_id?:string;user?:{id?:string}}>};members?:Array<{user_id?:string;user?:{id?:string}}>;messages?:Array<{text?:string;created_at?:string}>}>;
+   const peerIds=[...new Set(channels.flatMap(c=>(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').filter(id=>id&&id!==user.uid)))];
+   const profiles=await Promise.all(peerIds.map(async id=>{const doc=await db().collection('users').doc(id).get();return {id,handle:doc.data()?.handle as string|undefined,name:doc.data()?.name as string|undefined}}));
+   const byId=new Map(profiles.map(p=>[p.id,p]));
+   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{handle:profile.handle,name:profile.name||profile.handle,preview:c.messages?.at(-1)?.text||'',updatedAt:c.messages?.at(-1)?.created_at||''}]});
+   return NextResponse.json({conversations},{headers:safeHeaders});
+  }
   const other=await peer(handle);if(!other||other.id===user.uid)return errorResponse(404,'Member unavailable');
   const {id,result}=await ensureChannel(user.uid,other.id,handle,other.data().name);
   const messages=(result.messages||[]).map((m:{id:string;text?:string;user?:{id:string};created_at?:string})=>({id:m.id,text:m.text||'',senderUid:m.user?.id||'',createdAt:m.created_at||null,seen:Boolean((result.read||[]).find((x:{user?:{id:string};last_read?:string})=>x.user?.id===other.id&&x.last_read&&m.created_at&&x.last_read>=m.created_at))}));
