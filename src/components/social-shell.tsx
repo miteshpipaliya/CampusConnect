@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Menu, PlusSquare, UserRound } from 'lucide-react';
+import { Home, Menu, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -10,12 +10,18 @@ import { useRouter } from 'next/navigation';
 type NavItem = { label: string; href: string; Icon: LucideIcon };
 const links: NavItem[] = [
   {label:'Home',href:'/home',Icon:Home},
+  {label:'Reels',href:'/home?section=reels',Icon:Clapperboard},
+  {label:'Messages',href:'/home?section=chat',Icon:Send},
+  {label:'Search',href:'/home?section=search',Icon:Search},
+  {label:'Notifications',href:'/home?section=notifications',Icon:Heart},
   {label:'Create',href:'/home?compose=1',Icon:PlusSquare},
+  {label:'Community',href:'/home?section=community',Icon:Users},
   {label:'Profile',href:'/profile/me',Icon:UserRound},
 ];
 const mobileLabels = new Set(['Home', 'Search', 'Reels', 'Create', 'Community', 'Profile']);
 function activeLink(pathname: string, item: NavItem) {
   if (item.label === 'Create') return false;
+  if (['Reels','Messages','Search','Notifications','Community'].includes(item.label)) return false;
   if (item.label === 'Profile') return pathname.startsWith('/profile');
   if (item.label === 'Search') return pathname.startsWith('/explore');
   if (item.label === 'Community') return pathname.startsWith('/communities');
@@ -32,11 +38,11 @@ function Nav({ pathname, mobile = false }: { pathname: string; mobile?: boolean 
     {links.filter((item) => !mobile || mobileLabels.has(item.label)).map((item) => {
       const active = activeLink(pathname, item);
       const Icon = item.Icon;
-      return <Link key={item.label} href={item.href} className={'cc-nav-item' + (active ? ' is-active' : '')}
+      return <a key={item.label} href={item.href} className={'cc-nav-item' + (active ? ' is-active' : '')}
         aria-current={active ? 'page' : undefined} aria-label={item.label} title={item.label}>
         <Icon size={mobile ? 23 : 25} strokeWidth={active ? 2.8 : 1.8} fill={active && item.label === 'Home' ? 'currentColor' : 'none'} aria-hidden="true" />
         <span>{item.label}</span>
-      </Link>;
+      </a>;
     })}
   </nav>;
 }
