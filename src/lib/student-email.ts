@@ -24,7 +24,7 @@ export function checkStudentEmail(value:string,branch:string,nowYear=2026,enroll
  const normalizedBranch=branch.trim().toLowerCase().replace(/\s+/g,' ');
  const courseDepartment:Record<string,BranchCode>={'environmental engineering':'cl','construction engineering and management':'cl','structural engineering':'cl','transportation engineering':'cl','infrastructure engineering and technology':'cl','computer engineering (software engineering)':'cp','machine design':'me','automation and robotics':'me'};
  if(!degreeCourses[degree].some(c=>c.toLowerCase()===normalizedBranch))return {ok:false,reason:'Select a valid BVM programme'};
- if(enrollmentNumber!==undefined&&enrollmentNumber.trim().toLowerCase()!==m[1]+m[2]+m[3])return {ok:false,reason:'Enrollment number must exactly match the part of your BVM email before @'};
+ if(enrollmentNumber!==undefined&&enrollmentNumber.trim().toLowerCase()!==`${m[1]!}${m[2]!}${m[3]!}`)return {ok:false,reason:'Enrollment number must exactly match the part of your BVM email before @'};
  if(degree==='MTech'){
   const expected=courseDepartment[normalizedBranch]||Object.entries(aliases).find(([,names])=>names.includes(normalizedBranch))?.[0];
   if(expected!==code)return {ok:false,reason:'Email code does not match the selected M.Tech department (provisional mapping)'};
