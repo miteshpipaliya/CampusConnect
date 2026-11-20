@@ -256,3 +256,28 @@
 .cc-dm-modal-results small{color:#a1a1ae}
 .cc-dm-action{margin-left:auto;color:#9aaeff;font-size:13px}
 @media(max-width:768px){.cc-messages-section .cc-chat-layout{height:calc(100dvh - 76px)!important;min-height:0!important}.cc-messages-section .cc-chat-people{width:100%;padding:16px!important}.cc-messages-section .cc-chat-thread{height:100%!important}}
+
+
+/* Actual application shell is .social-shell (not .cc-app). Isolate inbox sizing here. */
+@media(min-width:769px){
+.social-shell:has(.cc-messages-section){display:grid!important;grid-template-columns:76px minmax(0,1fr)!important;gap:0!important;padding:0!important;max-width:none!important;width:100%!important;margin:0!important;justify-content:stretch!important}
+.social-shell:has(.cc-messages-section)>.left-rail{width:76px!important;min-width:76px!important;overflow:hidden!important;box-sizing:border-box;padding:16px 10px!important;margin:0!important}
+.social-shell:has(.cc-messages-section)>.main-column{min-width:0!important;width:100%!important;max-width:none!important;padding:0!important;margin:0!important}
+.social-shell:has(.cc-messages-section)>.right-rail{display:none!important}
+.social-shell:has(.cc-messages-section) .cc-connected-feed.cc-chat-view{width:100%!important;max-width:none!important;padding:0!important;margin:0!important}
+.social-shell:has(.cc-messages-section) .cc-social{padding:0!important;margin:0!important}
+.social-shell:has(.cc-messages-section) .cc-chat-layout{width:100%!important;max-width:none!important;display:grid!important;grid-template-columns:minmax(300px,380px) minmax(0,1fr)!important;height:100dvh!important;min-height:0!important;border:0!important;border-radius:0!important;margin:0!important}
+}
+.social-shell:has(.cc-messages-section) .cc-inbox-tabs{display:none!important}
+.social-shell:has(.cc-messages-section) .cc-chat-people{min-width:0!important;overflow-x:hidden!important}
+.social-shell:has(.cc-messages-section) .cc-inbox-title{display:flex!important;justify-content:space-between!important;align-items:center!important;width:100%!important}
+.social-shell:has(.cc-messages-section) .cc-inbox-title h2{display:block!important;position:static!important;white-space:nowrap!important;overflow:visible!important;text-indent:0!important}
+.social-shell:has(.cc-messages-section) .cc-chat-people>input{display:block!important;width:100%!important;min-width:0!important}
+@media(max-width:768px){
+.social-shell:has(.cc-messages-section) .right-rail{display:none!important}
+.social-shell:has(.cc-messages-section) .main-column{min-width:0!important;padding:0!important}
+.social-shell:has(.cc-messages-section) .cc-chat-layout{grid-template-columns:1fr!important;width:100%!important;height:calc(100dvh - 64px)!important}
+.social-shell:has(.cc-messages-section) .cc-chat-people-selected{display:none!important}
+.social-shell:has(.cc-messages-section) .cc-chat-people:not(.cc-chat-people-selected)+.cc-chat-thread{display:none!important}
+.social-shell:has(.cc-messages-section) .cc-chat-back{display:inline-flex!important}
+}
