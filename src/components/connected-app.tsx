@@ -1,3 +1,4 @@
+import { SocialPanels } from './social-panels';
 'use client';
 import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
@@ -107,7 +108,7 @@ export function ConnectedFeed(){
    setCaption('');setFile(null);setStatus('Post published');await refresh();
   }catch(e){setStatus(e instanceof Error?e.message:'Unable to publish')}finally{setBusy(false)}
  }
- return <section className="cc-connected-feed">
+ return <section className="cc-connected-feed"><SocialPanels/>
   <header className="cc-live-bar"><h1>Home</h1>
    {me?<div><span>{me.profile?.handle||me.email}</span><button type="button" onClick={async()=>{await api('/api/auth','POST',{action:'logout'});window.location.assign('/login')}} aria-label="Log out"><LogOut size={19}/></button></div>:<Link href="/login">Sign in</Link>}
   </header>
