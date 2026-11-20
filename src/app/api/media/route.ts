@@ -60,6 +60,7 @@ export async function GET(request:NextRequest){
   if(!item.exists||item.data()?.status!=='uploaded')return errorResponse(404,'File unavailable');
   const data=item.data()!;
   if(data.ownerUid!==user.uid){
+   if(data.avatarOwnerUid){const owner=await db().collection('users').doc(data.avatarOwnerUid).get();if(owner.exists&&owner.data()?.avatarMediaId===id){const {client,Bucket}=storage();const url=await getSignedUrl(client,new GetObjectCommand({Bucket,Key:data.key}),{expiresIn:60});const response=NextResponse.redirect(url,302);response.headers.set('Cache-Control','private, no-store');response.headers.set('Referrer-Policy','no-referrer');return response;}}
    if(data.storyId){
     const story=await db().collection('stories').doc(data.storyId).get();
     if(!story.exists||story.data()?.visibility!=='campus'||(story.data()?.expiresAt?.toMillis?.()<=Date.now()&&!story.data()?.highlight))return errorResponse(403,'Story unavailable');
