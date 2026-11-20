@@ -62,7 +62,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    if(!live)return;setChecked(true);if(x?.user?.profile?.handle)setHandle(x.user.profile.handle);else router.replace('/login');
   }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router]);
   if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
-  return <div className="cc-app">
+  return <div className={'cc-app'+(pathname.startsWith('/profile')?' cc-profile-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} />
@@ -75,7 +75,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
       <header className="cc-mobile-header"><Brand compact/></header>
       <div className="cc-page">{children}</div>
     </main>
-    <Suggestions handle={handle}/>
+    {!pathname.startsWith('/profile')&&<Suggestions handle={handle}/>}
     <Nav pathname={pathname} section={section} mobile />
   </div>;
 }
