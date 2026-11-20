@@ -17,7 +17,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
  const [name,setName]=useState(''),[handle,setHandle]=useState(''),[relationshipStatus,setRelationshipStatus]=useState(''),[relationshipVisibility,setRelationshipVisibility]=useState('me');
  const [acceptTerms,setAcceptTerms]=useState(false),[acknowledgePrivacy,setAcknowledgePrivacy]=useState(false);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[resendAt,setResendAt]=useState(0);
- const parsed=/^(\\d{2})(cp|el|ec|it|me|cl|ee|pr)(\\d{3,8})@bvmengineering\\.ac\\.in$/i.exec(email.trim());
+ const parsed=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/i.exec(email.trim());
  const branchName:Record<string,string>={cp:'Computer Engineering',el:'Electrical Engineering',ec:'Electronics & Communication Engineering',it:'Information Technology',me:'Mechanical Engineering',cl:'Civil Engineering',ee:'Electronics Engineering',pr:'Production Engineering'};
  const enrollment=parsed?parsed[1]+parsed[2]+parsed[3]:'';
  const branch=parsed?branchName[parsed[2].toLowerCase()]:'';
