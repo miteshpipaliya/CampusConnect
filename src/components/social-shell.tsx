@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Bookmark, Clapperboard, Compass, Heart, Home, Menu, MessageCircle, PlusSquare, Search, Settings, UsersRound, UserRound } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { DemoProvider, useDemo } from '@/lib/demo-store';
+import { DemoProvider } from '@/lib/demo-store';
 
 type NavItem = { label: string; href: string; Icon: LucideIcon };
 const links: NavItem[] = [
