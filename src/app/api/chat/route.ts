@@ -21,7 +21,7 @@ async function stream(path:string,method='POST',data?:object){
  const url='https://chat.stream-io-api.com'+path+(path.includes('?')?'&':'?')+'api_key='+encodeURIComponent(key);
  const response=await fetch(url,{method,headers:{'Content-Type':'application/json','Authorization':jwt(secret,{server:true}),'stream-auth-type':'jwt'},...(data?{body:JSON.stringify(data)}:{}),cache:'no-store'});
  const body=await response.json().catch(()=>({}));
- if(!response.ok){console.error('Stream chat request rejected',{status:response.status,code:body?.code});throw Error('Stream service rejected request')}
+ if(!response.ok){console.error('Stream chat request rejected',{path:path.split('?')[0],status:response.status,code:body?.code,message:String(body?.message||'').slice(0,180)});throw Error('Stream service rejected request')}
  return body;
 }
 const schema=z.discriminatedUnion('action',[
