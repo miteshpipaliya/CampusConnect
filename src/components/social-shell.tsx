@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bookmark, Clapperboard, Compass, Heart, Home, Menu, MessageCircle, PlusSquare, Search, Settings, UsersRound, UserRound } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { DemoProvider, useDemo } from '@/lib/demo-store';
 
@@ -46,22 +46,23 @@ function Nav({ pathname, mobile = false }: { pathname: string; mobile?: boolean 
   </nav>;
 }
 function Suggestions() {
-  const { people, setPerson } = useDemo();
+  const [samples,setSamples]=useState<Array<{handle:string;name:string;branch:string}>>([]);
+  const [following,setFollowing]=useState<string[]>([]);
+  useEffect(()=>{let active=true;fetch('/api/demo/profiles').then(r=>r.ok?r.json():null).then(d=>{if(active)setSamples((d?.profiles||[]).filter((p:{handle:string})=>p.handle!=='mitesh.pipaliya'))}).catch(()=>{});return()=>{active=false}},[]);
   return <aside className="cc-suggestions" aria-label="Suggested campus accounts">
-    <div className="cc-me"><span className="cc-person-avatar you">MP</span><div><Link href="/profile/mitesh.pipaliya"><b>mitesh.pipaliya</b></Link><small>Your campus profile · demo</small></div><Link href="/profile/mitesh.pipaliya">View</Link></div>
+    <div className="cc-me"><span className="cc-person-avatar you">CC</span><div><Link href="/profile/mitesh.pipaliya"><b>campus.demo</b></Link><small>Your campus profile · demo</small></div><Link href="/profile/mitesh.pipaliya">View</Link></div>
     <div className="cc-suggestion-heading"><b>Suggested for you</b><Link href="/connections">See all</Link></div>
-    {people.slice(0,5).map((person,i) => <div className="cc-suggested" key={person.handle}>
-      <span className={'cc-person-avatar hue-' + i} aria-hidden="true">{person.name.split(' ').map(x => x[0]).join('')}</span>
-      <div><Link href={'/profile/' + person.handle}><b>{person.handle}</b></Link><small>{person.dept}</small></div>
-      <button type="button" onClick={() => setPerson(person.handle, person.state === 'connected' ? 'none' : 'connected')}>
-        {person.state === 'connected' ? 'Following' : 'Follow'}
-      </button>
+    {samples.slice(0,8).map((person,i)=><div className="cc-suggested" key={person.handle}>
+      <span className={'cc-person-avatar hue-'+i} aria-hidden="true">{person.name.split(' ').map(x=>x[0]).join('')}</span>
+      <div><Link href={'/profile/'+person.handle}><b>{person.handle}</b></Link><small>{person.branch} · sample</small></div>
+      <button type="button" onClick={()=>setFollowing(prev=>prev.includes(person.handle)?prev.filter(x=>x!==person.handle):[...prev,person.handle])}>{following.includes(person.handle)?'Following':'Follow'}</button>
     </div>)}
     <div className="cc-aside-links"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/community-guidelines">Guidelines</Link><Link href="/settings">Settings</Link></div>
     <p className="cc-copyright">© 2026 CAMPUSCONNECT · BVM</p>
-    <p className="cc-demo-disclaimer">Demo mode: interactions and sample identities are local, not live student data.</p>
+    <p className="cc-demo-disclaimer">Fictional profiles; follow buttons affect this page only. No login or database.</p>
   </aside>;
 }
+
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   return <DemoProvider><div className="cc-app">
