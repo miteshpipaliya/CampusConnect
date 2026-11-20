@@ -11,6 +11,7 @@ const emailSchema=z.string().trim().toLowerCase().email().max(254);
 const testEmail='taushalquery@gmail.com';
 const allowedEmail=(email:string)=>email===testEmail||emailPattern.test(email);
 const emailPattern=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/;
+const passwordSchema=z.string().min(12).max(128);
 const profileSchema=z.object({name:z.string().trim().min(2).max(70),handle:z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/),relationshipStatus:z.enum(relationshipStatuses),relationshipVisibility:z.enum(relationshipVisibilities),acceptTerms:z.literal(true),acknowledgePrivacy:z.literal(true)});
 const secret=()=>{const s=process.env.OTP_SIGNING_SECRET;if(!s||s.length<32)throw Error('OTP signing secret missing');return s};
 const digest=(s:string)=>createHmac('sha256',secret()).update(s).digest('hex');
@@ -37,6 +38,20 @@ export async function POST(request:NextRequest){
  let raw:unknown;try{raw=await request.json()}catch{return errorResponse(400,'Invalid JSON')}
  const action=(raw as {action?:string})?.action;
  if(action==='logout'){const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);return r}
+ if(action==='loginPassword'){
+  const parsed=z.object({email:emailSchema,password:z.string().min(1).max(128)}).safeParse(raw);
+  if(!parsed.success||!allowedEmail(parsed.data.email))return errorResponse(401,'Invalid email or password');
+  try{
+   const response=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(identityKey()),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:parsed.data.email,password:parsed.data.password,returnSecureToken:true}),cache:'no-store'});
+   const result=await response.json() as {idToken?:string};
+   if(!response.ok||!result.idToken)return errorResponse(401,'Invalid email or password');
+   const decoded=await auth().verifyIdToken(result.idToken);
+   const profile=await db().collection('users').doc(decoded.uid).get();
+   if(!profile.exists)return errorResponse(403,'Complete your campus registration first');
+   const cookie=await auth().createSessionCookie(result.idToken,{expiresIn:5*24*60*60*1000});
+   const reply=NextResponse.json({ok:true},{headers:safeHeaders});setSession(reply,cookie);return reply;
+  }catch{return errorResponse(503,'Sign-in unavailable')}
+ }
  if(action==='requestOtp'){
   const parsed=emailSchema.safeParse((raw as {email?:unknown}).email);
   if(!parsed.success||!allowedEmail(parsed.data))return errorResponse(400,'Enter your valid BVM institutional email');
@@ -89,7 +104,7 @@ export async function POST(request:NextRequest){
   }catch{return errorResponse(400,'Code expired or verification failed. Request a new code')}
  }
  if(action==='finishOtp'){
-  const parsed=z.object({email:emailSchema,profile:profileSchema.optional()}).safeParse(raw);
+  const parsed=z.object({email:emailSchema,password:passwordSchema,profile:profileSchema.optional()}).safeParse(raw);
   if(!parsed.success)return errorResponse(400,'Please complete all required details');
   const email=parsed.data.email,proof=request.cookies.get(otpCookie)?.value;
   if(!proof||!allowedEmail(email))return errorResponse(403,'Verify your college email first');
@@ -103,8 +118,8 @@ export async function POST(request:NextRequest){
     const p=parsed.data.profile,parts=emailPattern.exec(email);
     if(!parts&&email!==testEmail)return errorResponse(403,'Unsupported email address');
     const branch=parts?branchFor(parts[2] as keyof typeof proposedCodes):'';
-    if(!user)user=await auth().createUser({email,emailVerified:true,disabled:false});
-    else await auth().updateUser(user.uid,{emailVerified:true});
+    if(!user)user=await auth().createUser({email,emailVerified:true,disabled:false,password:parsed.data.password});
+    else await auth().updateUser(user.uid,{emailVerified:true,password:parsed.data.password});
     try{
      await db().runTransaction(async tx=>{
       const handle=db().collection('handles').doc(p.handle),profile=db().collection('users').doc(user!.uid);
@@ -114,7 +129,7 @@ export async function POST(request:NextRequest){
       tx.create(profile,{uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts?`${parts[1]!}${parts[2]!}${parts[3]!}`:'',branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:parts?2000+Number(parts[1]):null,emailBranchCode:parts?.[2]??null,verifiedInstitutionalEmail:Boolean(parts),createdAt:FieldValue.serverTimestamp()});
      });
     }catch(e){if(e instanceof Error&&e.message==='HANDLE_TAKEN')return errorResponse(409,'Username already taken. Choose another');if(e instanceof Error&&e.message==='PROFILE_EXISTS')return errorResponse(409,'Account already exists. Sign in');throw e}
-   }else if(user&&!user.emailVerified)await auth().updateUser(user.uid,{emailVerified:true});
+   }else if(user)await auth().updateUser(user.uid,{emailVerified:true,password:parsed.data.password});
    if(!user)throw Error('User creation failed');
    const response=NextResponse.json({ok:true},{headers:safeHeaders});
    await signIn(user.uid,response);
