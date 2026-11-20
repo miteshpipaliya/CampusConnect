@@ -40,7 +40,7 @@ export async function POST(request:NextRequest){
   if(!parsed.success||!emailPattern.test(parsed.data))return errorResponse(400,'Enter your valid BVM institutional email');
   const email=parsed.data;
   try{
-   const apiKey=process.env.BREVO_API_KEY, sender=process.env.BREVO_SENDER_EMAIL;
+   const apiKey=process.env.RESEND_API_KEY, sender=process.env.RESEND_FROM_EMAIL;
    if(!apiKey||!sender)return errorResponse(503,'Email verification is not configured yet');
    const ref=challengeRef(email),now=Date.now(),code=String(randomInt(0,1000000)).padStart(6,'0'),nonce=randomBytes(20).toString('hex');
    await db().runTransaction(async tx=>{
@@ -49,8 +49,8 @@ export async function POST(request:NextRequest){
     if(data&&typeof data.windowStart==='number'&&now-data.windowStart<3600000&&data.sends>=5)throw Error('LIMIT');
     tx.set(ref,{email,codeHash:digest(email+':'+nonce+':'+code),nonce,expires:now+600000,lastSent:now,windowStart:data&&now-data.windowStart<3600000?data.windowStart:now,sends:data&&now-data.windowStart<3600000?data.sends+1:1,attempts:0,verified:false,used:false});
    });
-   const r=await fetch('https://api.brevo.com/v3/smtp/email',{method:'POST',headers:{'Content-Type':'application/json','api-key':apiKey,accept:'application/json'},body:JSON.stringify({sender:{email:sender,name:'CampusConnect'},to:[{email}],subject:'CampusConnect verification code',textContent:'Your CampusConnect verification code is '+code+'. It expires in 10 minutes. Do not share it.'}),cache:'no-store'});
-   if(!r.ok){await ref.delete();return errorResponse(502,'Email delivery failed. Check Brevo sender verification and transactional logs')}
+   const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},body:JSON.stringify({from:'CampusConnect <'+sender+'>',to:[email],subject:'Your CampusConnect verification code',text:'Your CampusConnect verification code is '+code+'. It expires in 10 minutes. Do not share it.'}),cache:'no-store'});
+   if(!r.ok){await ref.delete();return errorResponse(502,'Email delivery failed. Check Resend domain verification and email logs')}
    return NextResponse.json({ok:true,message:'A six-digit code was sent to your BVM email.'},{headers:safeHeaders});
   }catch(e){if(e instanceof Error&&e.message==='COOLDOWN')return errorResponse(429,'Wait 60 seconds before requesting another code');if(e instanceof Error&&e.message==='LIMIT')return errorResponse(429,'Too many codes requested. Try again in one hour');return errorResponse(503,'Unable to send verification code')}
  }
