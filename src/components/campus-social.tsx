@@ -156,7 +156,7 @@ export function CampusProfile({ username }: { username: string }) {
   const { posts } = useDemo();
   const own = username === 'mitesh.pipaliya';
   const target = posts.find(post => post.handle === username);
-  const title = own ? 'Mitesh Pipaliya' : (target?.name || username.replaceAll('.', ' '));
+  const title = own ? 'Your demo profile' : (target?.name || username.replaceAll('.', ' '));
   const list = own ? posts.filter(post => post.own) : posts.filter(post => post.handle === username);
   const [profile, setProfile] = useState<ProfileSettings>(initialProfile);
   const [form, setForm] = useState<ProfileSettings>(initialProfile);
@@ -164,6 +164,12 @@ export function CampusProfile({ username }: { username: string }) {
   const [tab, setTab] = useState('Posts');
   const [follow, setFollow] = useState(false);
   const [statInfo, setStatInfo] = useState(false);
+  const [statMode, setStatMode] = useState<'followers'|'following'>('followers');
+  const [sampleProfile, setSampleProfile] = useState<{name:string;bio:string;branch:string;division:string;posts:number;private:boolean}|null>(null);
+  const [sampleCounts, setSampleCounts] = useState<{followers:number;following:number}|null>(null);
+  const [sampleList, setSampleList] = useState<Array<{handle:string;name:string;branch:string;division:string}>>([]);
+  useEffect(()=>{let active=true;fetch('/api/demo/profiles?handle='+encodeURIComponent(username)).then(r=>r.ok?r.json():null).then(d=>{if(active&&d?.profile){setSampleProfile(d.profile);setSampleCounts({followers:d.followers,following:d.following});}}).catch(()=>{});return()=>{active=false}},[username]);
+  useEffect(()=>{if(!statInfo)return;let active=true;fetch('/api/demo/profiles?handle='+encodeURIComponent(username)+'&relation='+statMode).then(r=>r.ok?r.json():null).then(d=>{if(active)setSampleList(d?.profiles||[])}).catch(()=>{if(active)setSampleList([])});return()=>{active=false}},[username,statMode,statInfo]);
   useEffect(() => {
     if (!own) return;
     try {
@@ -184,12 +190,12 @@ export function CampusProfile({ username }: { username: string }) {
         <div className="cc-profile-controls">
           {own ? <><button onClick={() => { setForm(profile); setEdit(true); }}>Edit profile</button><Link href="/settings">Settings</Link></> : <><button onClick={() => setFollow(!follow)}>{follow ? 'Following' : 'Follow'}</button><Link href="/messages">Message</Link></>}
         </div>
-        <div className="cc-profile-stats"><span><b>{list.length}</b> posts</span><button onClick={() => setStatInfo(!statInfo)}><b>{own ? '128' : '64'}</b> followers</button><button onClick={() => setStatInfo(!statInfo)}><b>{own ? '96' : '48'}</b> following</button></div>
-        <div className="cc-profile-bio"><strong>{title}</strong>{own ? profile.bio : 'Campus moments, friends and projects.'}<div className="cc-profile-meta">{own ? profile.branch + ' · Division ' + profile.division + ' · ' + profile.relationship : 'BVM student'}</div></div>
+        <div className="cc-profile-stats"><span><b>{list.length}</b> posts</span><button onClick={() => {setStatMode('followers');setStatInfo(true)}}><b>{sampleCounts?.followers ?? '—'}</b> followers</button><button onClick={() => {setStatMode('following');setStatInfo(true)}}><b>{sampleCounts?.following ?? '—'}</b> following</button></div>
+        <div className="cc-profile-bio"><strong>{sampleProfile?.name || title}</strong>{own ? profile.bio : (sampleProfile?.bio || 'Campus moments, friends and projects.')}<div className="cc-profile-meta">{own ? profile.branch + ' · Division ' + profile.division + ' · ' + profile.relationship : 'BVM student'}</div></div>
         {own && <p className="cc-profile-private"><LockKeyhole size={13}/> {profile.privacy} account · demo preference only</p>}
       </div>
     </div>
-    {statInfo && <p className="cc-dialog-note">Follower counts are sample data. Follower counts are sample data; no student records are connected.</p>}
+    {statInfo && <div className="cc-modal-backdrop" role="presentation" onClick={()=>setStatInfo(false)}><section className="cc-dialog" role="dialog" aria-modal="true" aria-label={statMode} onClick={e=>e.stopPropagation()}><header><h2>{statMode==='followers'?'Followers':'Following'} · demo</h2><button aria-label="Close list" onClick={()=>setStatInfo(false)}><X/></button></header><div className="cc-profile-tabs"><button className={statMode==='followers'?'selected':''} onClick={()=>setStatMode('followers')}>Followers</button><button className={statMode==='following'?'selected':''} onClick={()=>setStatMode('following')}>Following</button></div><div className="cc-search-results">{sampleList.length?sampleList.map(p=><Link href={'/profile/'+p.handle} key={p.handle} className="cc-search-result" onClick={()=>setStatInfo(false)}><span className="cc-person-avatar">{initials(p.name)}</span><div><b>{p.handle}</b><small>{p.name} · {p.branch} · Division {p.division}</small></div></Link>):<p className="cc-dialog-note">No sample profiles in this list.</p>}</div><p className="cc-dialog-note">Fictional sample profiles. Following actions remain local to your browser.</p></section></div>}
     <div className="cc-profile-tabs">{[['Posts', Grid3X3],['Reels', Clapperboard],['Tagged', Camera],['Saved', Bookmark]].map(([label, Icon]) => {
       const Comp = Icon as typeof Grid3X3;
       return <button key={label as string} className={tab === label ? 'selected' : ''} onClick={() => setTab(label as string)}><Comp size={14}/>{label as string}</button>;
@@ -220,13 +226,8 @@ export function CampusSearch({ initialQuery = '' }: { initialQuery?: string }) {
   const matchingCommunities = communities.filter(c => (c.name + ' ' + c.description).toLowerCase().includes(q));
   const [classBranch, setClassBranch] = useState('Computer Engineering');
   const [classDivision, setClassDivision] = useState('4');
-  const demoStudents = [
-    {name:'Campus Demo One',handle:'campus.demo.one',branch:'Computer Engineering',division:'4'},
-    {name:'Campus Demo Two',handle:'campus.demo.two',branch:'Computer Engineering',division:'4'},
-    {name:'Campus Demo Three',handle:'campus.demo.three',branch:'Computer Engineering',division:'2'},
-    {name:'Campus Demo Four',handle:'campus.demo.four',branch:'Mechanical Engineering',division:'4'},
-  ];
-  const matches = demoStudents.filter(p => p.branch.trim().toLowerCase() === classBranch.trim().toLowerCase() && p.division.trim().toLowerCase() === classDivision.trim().toLowerCase());
+  const [matches,setMatches]=useState<Array<{name:string;handle:string;branch:string;division:string}>>([]);
+  useEffect(()=>{let active=true;const url='/api/demo/profiles?branch='+encodeURIComponent(classBranch.trim())+'&division='+encodeURIComponent(classDivision.trim());fetch(url).then(r=>r.ok?r.json():null).then(d=>{if(active)setMatches(d?.profiles||[])}).catch(()=>{if(active)setMatches([])});return()=>{active=false}},[classBranch,classDivision]);
   return <section className="cc-search-page">
     <h1 className="cc-search-header">Search</h1>
     <div className="cc-classmate-finder"><h2>Find your classmates</h2><p>Match a branch and division against sample profiles. Real classmate matching needs verified student accounts.</p><div className="cc-classmate-form"><label>Branch<input value={classBranch} maxLength={64} onChange={event=>setClassBranch(event.target.value)} aria-label="Classmate branch"/></label><label>Division<input value={classDivision} maxLength={20} onChange={event=>setClassDivision(event.target.value)} aria-label="Classmate division"/></label></div><div className="cc-search-results">{matches.length?matches.map(p=><Link href={'/profile/'+p.handle} className="cc-search-result" key={p.handle}><span className="cc-person-avatar">{initials(p.name)}</span><div><b>{p.name}</b><small>{p.branch} · Division {p.division} · sample account</small></div></Link>):<p className="cc-dialog-note">No matching sample classmates.</p>}</div></div>
