@@ -48,7 +48,11 @@ function Nav({ pathname, section, mobile = false }: { pathname: string; section:
     })}
   </nav>;
 }
-function Suggestions({handle}:{handle:string}){return <aside className="cc-suggestions"><div className="cc-me"><span className="cc-person-avatar you">CC</span><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your real campus account</small></div><Link href="/profile/me">View</Link></div><div className="cc-suggestion-heading">Campus members</div><p style={{fontSize:12,color:'#aaa'}}>Student suggestions will appear when the real follow system is ready.</p></aside>}
+function Suggestions({handle}:{handle:string}){
+ const [members,setMembers]=useState<Array<{handle:string;name:string}>>([]);
+ useEffect(()=>{let active=true;fetch('/api/chat?directory=1',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.members))setMembers(d.members.filter((m:{handle:string})=>m.handle&&m.handle!==handle).slice(0,8))}).catch(()=>{});return()=>{active=false}},[handle]);
+ return <aside className="cc-suggestions"><div className="cc-me"><span className="cc-person-avatar you">CC</span><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your campus account</small></div><Link href="/profile/me">View</Link></div><div className="cc-suggestion-heading">Campus members</div>{members.length?members.map(m=><div className="cc-suggested" key={m.handle}><span className="cc-person-avatar">{m.name.slice(0,1).toUpperCase()}</span><div><Link href={'/profile/'+encodeURIComponent(m.handle)}><b>@{m.handle}</b></Link><small>{m.name}</small></div><Link href={'/home?section=chat&with='+encodeURIComponent(m.handle)}>Message</Link></div>):<p style={{fontSize:12,color:'#aaa'}}>No other campus members found.</p>}</aside>;
+}
 
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname=usePathname(),params=useSearchParams(),router=useRouter();
