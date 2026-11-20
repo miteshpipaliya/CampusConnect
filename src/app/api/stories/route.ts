@@ -10,7 +10,7 @@ export async function GET(request:NextRequest){
  try{
   const now=Timestamp.now();
   const snapshot=await db().collection('stories').where('expiresAt','>',now).limit(100).get();
-  const stories=snapshot.docs.filter(d=>d.data().visibility==='campus'||d.data().authorUid===user.uid).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,caption:d.data().caption||'',createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
+  const stories=snapshot.docs.filter(d=>d.data().visibility==='campus'||d.data().authorUid===user.uid).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
   return NextResponse.json({stories},{headers:safeHeaders});
  }catch{return errorResponse(503,'Stories unavailable')}
 }
@@ -25,7 +25,7 @@ export async function POST(request:NextRequest){
   await store.runTransaction(async t=>{
    const media=await t.get(mediaRef);
    if(!media.exists||media.data()?.ownerUid!==user.uid||media.data()?.status!=='uploaded'||media.data()?.postId||media.data()?.storyId)throw Error('Media unavailable');
-   t.create(storyRef,{authorUid:user.uid,authorHandle:profile.data()?.handle,mediaId:parsed.data.mediaId,caption:parsed.data.caption,visibility:'campus',createdAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
+   t.create(storyRef,{authorUid:user.uid,authorHandle:profile.data()?.handle,mediaId:parsed.data.mediaId,contentType:media.data()?.contentType||'image/jpeg',caption:parsed.data.caption,visibility:'campus',createdAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
    t.update(mediaRef,{storyId:storyRef.id});
   });
   return NextResponse.json({id:storyRef.id},{status:201,headers:safeHeaders});
