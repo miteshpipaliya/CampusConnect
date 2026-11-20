@@ -60,9 +60,14 @@ export async function GET(request:NextRequest){
   if(!item.exists||item.data()?.status!=='uploaded')return errorResponse(404,'File unavailable');
   const data=item.data()!;
   if(data.ownerUid!==user.uid){
-   if(!data.postId)return errorResponse(403,'Private media');
-   const post=await db().collection('posts').doc(data.postId).get();
-   if(!post.exists||post.data()?.visibility!=='campus')return errorResponse(403,'Private media');
+   if(data.storyId){
+    const story=await db().collection('stories').doc(data.storyId).get();
+    if(!story.exists||story.data()?.visibility!=='campus'||story.data()?.expiresAt?.toMillis?.()<=Date.now())return errorResponse(403,'Story unavailable');
+   }else{
+    if(!data.postId)return errorResponse(403,'Private media');
+    const post=await db().collection('posts').doc(data.postId).get();
+    if(!post.exists||post.data()?.visibility!=='campus')return errorResponse(403,'Private media');
+   }
   }
   const {client,Bucket}=storage();
   const downloadUrl=await getSignedUrl(client,new GetObjectCommand({Bucket,Key:data.key}),{expiresIn:60});
