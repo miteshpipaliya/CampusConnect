@@ -22,7 +22,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
  const enrollment=parsed?.[1]&&parsed?.[2]&&parsed?.[3]?`${parsed[1]}${parsed[2]}${parsed[3]}`:'';
  const branch=parsed?.[2]?branchName[parsed[2].toLowerCase()]??'':'';
  async function requestCode(){
-  if(!parsed||!enrollment||!branch){setMessage('Enter a valid BVM student email, for example 26el309@bvmengineering.ac.in');return}
+  if(email.trim().toLowerCase()!=='taushalquery@gmail.com'&&(!parsed||!enrollment||!branch)){setMessage('Enter a valid BVM student email, for example 26el309@bvmengineering.ac.in');return}
   setBusy(true);setMessage('');
   try{const r=await api<{message:string}>('/api/auth','POST',{action:'requestOtp',email:email.trim().toLowerCase()});setStage('otp');setResendAt(Date.now()+60000);setMessage(r.message)}
   catch(e){setMessage(e instanceof Error?e.message:'Unable to send code')}finally{setBusy(false)}
@@ -49,11 +49,11 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
   <section className="auth-card wide cc-otp-card">
    <div className="cc-otp-icon" aria-hidden="true">✦</div>
    <h1>{stage==='email'?'Welcome to CampusConnect':stage==='otp'?'Verify your college email':'Make it yours'}</h1>
-   <p>{stage==='email'?'Your campus, your community. Start with your BVM email.':stage==='otp'?'Enter the six-digit code sent to your institutional inbox.':'A few details to finish your verified campus profile.'}</p>
+   <p>{stage==='email'?'Your campus, your community. Verify your BVM email or approved test account.':stage==='otp'?'Enter the six-digit code sent to your institutional inbox.':'A few details to finish your verified campus profile.'}</p>
    <div className="cc-otp-steps" aria-label="Registration progress"><span className="active"/><span className={stage!=='email'?'active':''}/><span className={stage==='profile'||stage==='privacy'?'active':''}/></div>
    <form className="auth-form" onSubmit={submit}>
     {stage==='email'&&<>
-     <label>BVM student email<input autoFocus required type="email" autoComplete="email" placeholder="26el309@bvmengineering.ac.in" value={email} onChange={e=>setEmail(e.target.value.toLowerCase().trim())}/></label>
+     <label>BVM student email or approved tester<input autoFocus required type="email" autoComplete="email" placeholder="26el309@bvmengineering.ac.in" value={email} onChange={e=>setEmail(e.target.value.toLowerCase().trim())}/></label>
      {parsed&&<div className="cc-email-preview"><strong>Student details detected</strong><span>Enrollment: {enrollment.toLowerCase()}</span><span>Branch: {branch}</span><small>Branch mapping is provisional and must be confirmed by BVM.</small></div>}
     </>}
     {stage==='otp'&&<>
@@ -77,7 +77,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
     <button disabled={busy} type="submit" className="primary-button full">{busy?'Please wait…':stage==='email'?'Send verification code':stage==='otp'?'Verify code':stage==='profile'?'Continue':'Create account & enter CampusConnect'}</button>
    </form>
    <p className="auth-foot">Already registered? <Link href="/login">Sign in with email OTP</Link></p>
-   <p className="auth-legal">Only verified BVM institutional addresses are accepted. No password needed.</p>
+   <p className="auth-legal">BVM institutional email required, except one approved testing account. Email OTP required; no password needed.</p>
   </section>
  </main>;
 }
