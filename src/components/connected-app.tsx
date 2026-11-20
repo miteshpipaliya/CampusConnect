@@ -15,6 +15,21 @@ async function api<T>(path:string,method='GET',data?:object):Promise<T>{
 export function CampusAuth({mode}:{mode:'login'|'register'}){
  const [fields,setFields]=useState({email:'',password:'',handle:'',name:'',branch:'Computer Engineering',division:'4',relationshipStatus:'',relationshipVisibility:'me',acceptTerms:false,acknowledgePrivacy:false});
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const [awaitingVerification,setAwaitingVerification]=useState(false);
+ useEffect(()=>{
+  if(mode!=='register'||!awaitingVerification)return;
+  let active=true;
+  const check=async()=>{
+   try{
+    await api('/api/auth','POST',{action:'login',email:fields.email,password:fields.password});
+    if(active)window.location.assign('/home');
+   }catch(e){
+    if(active&&e instanceof Error&&e.message!=='Verify your email before signing in'&&e.message!=='Authentication unavailable or credentials invalid')setMessage(e.message);
+   }
+  };
+  const interval=window.setInterval(check,15000);
+  return()=>{active=false;window.clearInterval(interval)};
+ },[awaitingVerification,mode,fields.email,fields.password]);
  const edit=(k:keyof typeof fields,v:string|boolean)=>setFields(f=>({...f,[k]:v}));
  async function submit(event:FormEvent<HTMLFormElement>){
   event.preventDefault();setBusy(true);setMessage('');
@@ -22,14 +37,14 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
    const result=await api<{message?:string}>('/api/auth','POST',{action:mode==='register'?'register':'login',
     ...fields,handle:fields.handle.toLowerCase().trim()});
    if(mode==='login')window.location.assign('/home');
-   else setMessage(result.message||'Account created. Verify your email then sign in.');
+   else {setAwaitingVerification(true);setMessage('Account created! Open the verification email sent to your BVM address. After verification, this page will sign you in automatically. Keep this tab open.');}
   }catch(e){setMessage(e instanceof Error?e.message:'Please try again')}finally{setBusy(false)}
  }
  return <main className="auth-page">
   <Link className="brand" href="/"><span className="brand-mark">CC</span><span>Campus<span className="brand-lite">Connect</span></span></Link>
   <section className="auth-card wide"><h1>{mode==='login'?'Sign in to CampusConnect':'Join CampusConnect'}</h1>
    <p>Student social network · secure server-side authentication</p>
-   <form className="auth-form" onSubmit={submit}>
+   {awaitingVerification?<div role="status" className="auth-form"><p>{message}</p><button type="button" className="primary-button full" disabled={busy} onClick={async()=>{setBusy(true);try{await api('/api/auth','POST',{action:'login',email:fields.email,password:fields.password});window.location.assign('/home')}catch(e){setMessage(e instanceof Error?e.message:'Verification is not complete yet. Check your college email.')}finally{setBusy(false)}}}>{busy?'Checking...':'I verified my email — Continue'}</button><p className="auth-legal">We will also check automatically every 15 seconds while this tab stays open. If you close this tab, sign in normally after verifying.</p></div>:<form className="auth-form" onSubmit={submit}>
     {mode==='register'&&<>
      <label>Your name<input required maxLength={70} value={fields.name} onChange={e=>edit('name',e.target.value)}/></label>
      <label>Username<input required pattern="[a-z][a-z0-9._]{2,29}" maxLength={30} placeholder="first.last" value={fields.handle} onChange={e=>edit('handle',e.target.value.toLowerCase())}/></label>
@@ -50,7 +65,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
      minLength={mode==='register'?12:1} maxLength={128} value={fields.password} onChange={e=>edit('password',e.target.value)}/></label>
     {message&&<p role="status" className="form-error">{message}</p>}
     <button disabled={busy} type="submit" className="primary-button full">{busy?'Processing...':mode==='login'?'Sign in':'Create account'}</button>
-   </form>
+   </form>}
    <p className="auth-foot">{mode==='login'?<Link href="/register">Create an account</Link>:<Link href="/login">Already registered? Sign in</Link>}</p>
    <p className="auth-legal">Email verification is required. Google sign-in is not yet connected; Firebase Google provider setup alone does not enable the website button.</p>
   </section>
