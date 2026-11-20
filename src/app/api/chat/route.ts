@@ -18,8 +18,9 @@ function jwt(secret:string,claims:object){
 }
 async function stream(path:string,method='POST',data?:object){
  const {key,secret}=config();
- const url='https://chat.stream-io-api.com/api/v2/chat'+path+(path.includes('?')?'&':'?')+'api_key='+encodeURIComponent(key);
- const response=await fetch(url,{method,headers:{'Content-Type':'application/json','Authorization':jwt(secret,{server:true}),'stream-auth-type':'jwt'},...(data?{body:JSON.stringify(data)}:{}),cache:'no-store'});
+ const url=new URL('https://chat.stream-io-api.com/api/v2/chat'+path);
+ url.searchParams.set('api_key',key);
+ const response=await fetch(url.toString(),{method,headers:{'Content-Type':'application/json','Authorization':jwt(secret,{server:true}),'stream-auth-type':'jwt'},...(data?{body:JSON.stringify(data)}:{}),cache:'no-store'});
  const body=await response.json().catch(()=>({}));
  if(!response.ok){console.error('Stream chat request rejected',{path:path.split('?')[0],status:response.status,code:body?.code,message:String(body?.message||'').slice(0,180)});throw Error('Stream service rejected request')}
  return body;
@@ -61,7 +62,7 @@ export async function GET(request:NextRequest){
   const remote=(users.users||[])[0]||{};
   const peerTyping=remote.typingIn===id&&typeof remote.typingAt==='number'&&Date.now()-remote.typingAt<6500;
   return NextResponse.json({messages,peerTyping,myUid:user.uid},{headers:safeHeaders});
- }catch{return errorResponse(503,'Stream chat unavailable. Check Stream credentials and service logs.')}
+ }catch(error){console.error('CampusConnect chat GET failed',{operation:request.nextUrl.searchParams.has('with')?'conversation':'inbox',error:error instanceof Error?error.message:'unknown'});return errorResponse(503,'Stream chat unavailable. Check Stream credentials and service logs.')}
 }
 export async function POST(request:NextRequest){
  if(!sameOrigin(request))return errorResponse(403,'Untrusted origin');
@@ -81,5 +82,5 @@ export async function POST(request:NextRequest){
    await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid}});
   }
   return NextResponse.json({ok:true},{headers:safeHeaders});
- }catch{return errorResponse(503,'Stream chat operation failed')}
+ }catch(error){console.error('CampusConnect chat POST failed',{error:error instanceof Error?error.message:'unknown'});return errorResponse(503,'Stream chat operation failed')}
 }
