@@ -1,2 +1,2 @@
-import Link from 'next/link';
-export default function Login(){return <main className="auth-page"><Link className="brand" href="/home"><span className="brand-mark">CC</span><span>Campus<span className="brand-lite">Connect</span></span></Link><div className="auth-card"><span className="eyebrow purple">FRONTEND PREVIEW</span><h1>Welcome to CampusConnect.</h1><p>Explore the Instagram-inspired campus social interface without a login. No authentication service, database or server profile is connected.</p><Link className="primary-button full" href="/home">Continue to demo</Link><p className="auth-foot"><Link href="/register">Customize a local demo profile</Link></p></div></main>}
+import { CampusAuth } from '@/components/connected-app';
+export default function Login(){return <CampusAuth mode="login"/>}
