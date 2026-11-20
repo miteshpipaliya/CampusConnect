@@ -1,0 +1,27 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {GetObjectCommand} from '@aws-sdk/client-s3';
+import {z} from 'zod';
+import {db,storage} from '@/lib/server/services';
+import {session,sameOrigin,errorResponse,safeHeaders} from '@/lib/server/session';
+export const runtime='nodejs';
+const schema=z.object({mediaId:z.string().uuid()});
+export async function POST(request:NextRequest){
+ if(!sameOrigin(request))return errorResponse(403,'Untrusted origin');
+ const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
+ const parsed=schema.safeParse(await request.json().catch(()=>null));
+ if(!parsed.success)return errorResponse(400,'Invalid avatar request');
+ try{
+  const store=db(),ref=store.collection('media').doc(parsed.data.mediaId);
+  const snap=await ref.get(),data=snap.data();
+  if(!data||data.ownerUid!==user.uid||data.status!=='uploaded'||!['image/jpeg','image/png'].includes(data.contentType)||data.size>5*1024*1024)return errorResponse(400,'Upload a JPG or PNG image under 5 MB');
+  const {client,Bucket}=storage();
+  const object=await client.send(new GetObjectCommand({Bucket,Key:data.key,Range:'bytes=0-15'}));
+  const bytes=object.Body?await object.Body.transformToByteArray():new Uint8Array();
+  const jpg=bytes[0]===255&&bytes[1]===216&&bytes[2]===255;
+  const png=[137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v);
+  if(data.contentType==='image/jpeg'?!jpg:!png)return errorResponse(400,'File signature does not match image format');
+  await store.collection('users').doc(user.uid).update({avatarMediaId:parsed.data.mediaId});
+  await ref.update({avatarOwnerUid:user.uid});
+  return NextResponse.json({ok:true,mediaId:parsed.data.mediaId},{headers:safeHeaders});
+ }catch{return errorResponse(503,'Avatar update unavailable')}
+}
