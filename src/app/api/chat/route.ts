@@ -18,7 +18,7 @@ function jwt(secret:string,claims:object){
 }
 async function stream(path:string,method='POST',data?:object){
  const {key,secret}=config();
- const url='https://chat.stream-io-api.com'+path+(path.includes('?')?'&':'?')+'api_key='+encodeURIComponent(key);
+ const url='https://chat.stream-io-api.com/api/v2/chat'+path+(path.includes('?')?'&':'?')+'api_key='+encodeURIComponent(key);
  const response=await fetch(url,{method,headers:{'Content-Type':'application/json','Authorization':jwt(secret,{server:true}),'stream-auth-type':'jwt'},...(data?{body:JSON.stringify(data)}:{}),cache:'no-store'});
  const body=await response.json().catch(()=>({}));
  if(!response.ok){console.error('Stream chat request rejected',{path:path.split('?')[0],status:response.status,code:body?.code,message:String(body?.message||'').slice(0,180)});throw Error('Stream service rejected request')}
@@ -46,7 +46,7 @@ export async function GET(request:NextRequest){
   if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){const snapshot=await db().collection('users').limit(100).get();return NextResponse.json({members:snapshot.docs.filter(d=>d.id!==user.uid).map(d=>({handle:d.data().handle,name:d.data().name})).filter(x=>x.handle)},{headers:safeHeaders})}
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.
-   const result=await stream('/channels/query','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
+   const result=await stream('/channels','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
    const channels=(result.channels||[]) as Array<{channel?:{id?:string;members?:Array<{user_id?:string;user?:{id?:string}}>};members?:Array<{user_id?:string;user?:{id?:string}}>;messages?:Array<{text?:string;created_at?:string}>}>;
    const peerIds=[...new Set(channels.flatMap(c=>(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').filter(id=>id&&id!==user.uid)))];
    const profiles=await Promise.all(peerIds.map(async id=>{const doc=await db().collection('users').doc(id).get();return {id,handle:doc.data()?.handle as string|undefined,name:doc.data()?.name as string|undefined}}));
