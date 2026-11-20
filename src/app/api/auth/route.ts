@@ -7,7 +7,7 @@ import { session, setSession, clearSession, sameOrigin, errorResponse, safeHeade
 
 export const runtime='nodejs';
 const creds=z.object({email:z.string().email().max(254),password:z.string().min(1).max(128)});
-const signup=creds.extend({password:z.string().min(12).max(128),handle:z.string().regex(/^[a-z][a-z0-9._]{2,29}$/),name:z.string().trim().min(2).max(70),branch:z.string().trim().min(2).max(70),division:z.string().trim().min(1).max(20),relationshipStatus:z.enum(relationshipStatuses),relationshipVisibility:z.enum(relationshipVisibilities),acceptTerms:z.literal(true),acknowledgePrivacy:z.literal(true)});
+const signup=creds.extend({password:z.string().min(12).max(128),handle:z.string().regex(/^[a-z][a-z0-9._]{2,29}$/),name:z.string().trim().min(2).max(70),degree:z.enum(['BTech','MTech']),enrollmentNumber:z.string().trim().regex(/^\d{2}[a-z]{2}\d{3,8}$/i),branch:z.string().trim().min(2).max(70),division:z.string().trim().min(1).max(20),relationshipStatus:z.enum(relationshipStatuses),relationshipVisibility:z.enum(relationshipVisibilities),acceptTerms:z.literal(true),acknowledgePrivacy:z.literal(true)});
 async function firebaseIdentity(action:string,body:object){
  const url='https://identitytoolkit.googleapis.com/v1/accounts:'+action+'?key='+encodeURIComponent(identityKey());
  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
@@ -34,8 +34,8 @@ export async function POST(request:NextRequest){
   if(action==='register'){
    const parsed=signup.safeParse(raw);
    if(!parsed.success)return errorResponse(400,'Invalid registration details; password must have 12+ characters');
-   const {email,password,handle,name,branch,division,relationshipStatus,relationshipVisibility}=parsed.data;
-   const institutional=checkStudentEmail(email,branch);
+   const {email,password,handle,name,degree,enrollmentNumber,branch,division,relationshipStatus,relationshipVisibility}=parsed.data;
+   const institutional=checkStudentEmail(email,branch,2026,enrollmentNumber,degree);
    if(!institutional.ok)return errorResponse(400,institutional.reason);
    const result=await firebaseIdentity('signUp',{email:institutional.normalized,password,returnSecureToken:true});
    if(!result.localId||!result.idToken)throw Error('IDENTITY_FAILED');
@@ -46,7 +46,7 @@ export async function POST(request:NextRequest){
      if((await t.get(handleRef)).exists)throw Error('HANDLE_TAKEN');
      t.create(handleRef,{uid:userId});
      t.create(db().collection('users').doc(userId),{
-      uid:userId,handle,name,branch,division,branchKey:branch.toLowerCase(),divisionKey:division.toLowerCase(),
+      uid:userId,handle,name,degree,enrollmentNumber:enrollmentNumber.toLowerCase(),branch,division,branchKey:branch.toLowerCase(),divisionKey:division.toLowerCase(),
       privacy:'campus',bio:'',relationshipStatus,relationshipVisibility,
       emailYear:institutional.year,emailBranchCode:institutional.code,
       verifiedInstitutionalEmail:false,createdAt:FieldValue.serverTimestamp()
@@ -69,7 +69,7 @@ export async function POST(request:NextRequest){
    if(record.disabled)return errorResponse(403,'Account disabled');
    const profile=await db().collection('users').doc(record.uid).get();
    if(!profile.exists||!profile.data()?.relationshipStatus)return errorResponse(403,'Complete campus onboarding before signing in');
-   const college=checkStudentEmail(record.email||'',profile.data()?.branch||'');
+   const college=checkStudentEmail(record.email||'',profile.data()?.branch||'',2026,profile.data()?.enrollmentNumber,profile.data()?.degree||'BTech');
    if(!college.ok)return errorResponse(403,'Institutional email verification required');
    const cookie=await auth().createSessionCookie(login.idToken,{expiresIn:5*24*60*60*1000});
    const response=NextResponse.json({ok:true},{headers:safeHeaders});setSession(response,cookie);return response;
