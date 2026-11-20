@@ -19,10 +19,10 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[resendAt,setResendAt]=useState(0);
  const parsed=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/i.exec(email.trim());
  const branchName:Record<string,string>={cp:'Computer Engineering',el:'Electrical Engineering',ec:'Electronics & Communication Engineering',it:'Information Technology',me:'Mechanical Engineering',cl:'Civil Engineering',ee:'Electronics Engineering',pr:'Production Engineering'};
- const enrollment=parsed?parsed[1]+parsed[2]+parsed[3]:'';
- const branch=parsed?branchName[parsed[2].toLowerCase()]:'';
+ const enrollment=parsed?.[1]&&parsed?.[2]&&parsed?.[3]?`${parsed[1]}${parsed[2]}${parsed[3]}`:'';
+ const branch=parsed?.[2]?branchName[parsed[2].toLowerCase()]??'':'';
  async function requestCode(){
-  if(!parsed){setMessage('Enter a valid BVM student email, for example 26el309@bvmengineering.ac.in');return}
+  if(!parsed||!enrollment||!branch){setMessage('Enter a valid BVM student email, for example 26el309@bvmengineering.ac.in');return}
   setBusy(true);setMessage('');
   try{const r=await api<{message:string}>('/api/auth','POST',{action:'requestOtp',email:email.trim().toLowerCase()});setStage('otp');setResendAt(Date.now()+60000);setMessage(r.message)}
   catch(e){setMessage(e instanceof Error?e.message:'Unable to send code')}finally{setBusy(false)}
