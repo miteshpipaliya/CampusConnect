@@ -14,6 +14,6 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{username
   const visiblePosts=posts.docs.filter(p=>self||p.data().visibility==='campus');
   const visibleReposts=await Promise.all(reposts.docs.map(async d=>{const original=await store.collection('posts').doc(d.data().postId).get();return original.exists&&original.data()?.visibility==='campus'?{id:d.id,postId:original.id,caption:original.data()?.caption||'',mediaId:original.data()?.mediaId||null,authorHandle:original.data()?.authorHandle||''}:null}));
   return NextResponse.json({self,profile:{handle,name,branch,division,bio,relationshipStatus:self||relationshipVisibility==='campus'?relationshipStatus:undefined},
-   posts:visiblePosts.map(p=>({id:p.id,caption:p.data().caption,mediaId:p.data().mediaId||null})),reposts:visibleReposts.filter(Boolean),highlights:stories.docs.filter(d=>self||d.data().visibility==='campus').map(d=>({id:d.id,mediaId:d.data().mediaId,caption:d.data().caption||'',active:(d.data().expiresAt?.toMillis?.()||0)>Date.now()}))},{headers:safeHeaders});
+   posts:visiblePosts.map(p=>({id:p.id,caption:p.data().caption,mediaId:p.data().mediaId||null})),reposts:visibleReposts.filter(Boolean),highlights:stories.docs.filter(d=>d.data().highlight&&(self||d.data().visibility==='campus')).map(d=>({id:d.id,mediaId:d.data().mediaId,caption:d.data().caption||'',active:(d.data().expiresAt?.toMillis?.()||0)>Date.now()}))},{headers:safeHeaders});
  }catch{return errorResponse(503,'Profile unavailable')}
 }
