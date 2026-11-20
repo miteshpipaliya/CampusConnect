@@ -6,7 +6,7 @@ export const degreeCourses={
 } as const;
 const aliases:Record<BranchCode,string[]>={
  cp:['computer','computer engineering'],el:['electrical','electrical engineering'],
- ec:['electronics & communication','electronics and communication','electronics and communication engineering','ece'],
+ ec:['electronics & communication','electronics and communication','electronics and communication engineering','electronics & communication engineering','ece'],
  it:['information technology','it'],me:['mechanical','mechanical engineering'],
  cl:['civil','civil engineering'],ee:['electronics','electronics engineering'],
  pr:['production','production engineering']
