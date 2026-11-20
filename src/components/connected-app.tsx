@@ -14,7 +14,7 @@ async function api<T>(path:string,method='GET',data?:object):Promise<T>{
  if(!r.ok)throw Error(result.error||'Request failed');return result as T;
 }
 export function CampusAuth({mode}:{mode:'login'|'register'}){
- const [email,setEmail]=useState(''),[code,setCode]=useState(''),[stage,setStage]=useState<'email'|'otp'|'profile'|'privacy'|'done'>('email');
+ const [email,setEmail]=useState(''),[code,setCode]=useState(''),[password,setPassword]=useState(''),[resetMode,setResetMode]=useState(false),[needsProfile,setNeedsProfile]=useState(false),[stage,setStage]=useState<'email'|'otp'|'profile'|'privacy'|'password'|'done'>('email');
  const [name,setName]=useState(''),[handle,setHandle]=useState(''),[relationshipStatus,setRelationshipStatus]=useState(''),[relationshipVisibility,setRelationshipVisibility]=useState('me');
  const [acceptTerms,setAcceptTerms]=useState(false),[acknowledgePrivacy,setAcknowledgePrivacy]=useState(false);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[resendAt,setResendAt]=useState(0);
@@ -30,18 +30,19 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
  }
  async function submit(e:FormEvent<HTMLFormElement>){
   e.preventDefault();setMessage('');
-  if(stage==='email'){await requestCode();return}
+  if(stage==='email'){if(mode==='login'&&!resetMode){setBusy(true);try{await api('/api/auth','POST',{action:'loginPassword',email:email.trim().toLowerCase(),password});window.location.assign('/home')}catch(e){setMessage(e instanceof Error?e.message:'Sign-in failed')}finally{setBusy(false)}}else await requestCode();return}
   if(stage==='profile'){setStage('privacy');return}
   if(stage==='otp'){
    setBusy(true);
-   try{const r=await api<{needsProfile:boolean}>('/api/auth','POST',{action:'verifyOtp',email:email.trim().toLowerCase(),code});if(r.needsProfile){setStage('profile');setMessage('Email verified. Complete your campus profile.')}else{await api('/api/auth','POST',{action:'finishOtp',email:email.trim().toLowerCase()});window.location.assign('/home')}}
+   try{const r=await api<{needsProfile:boolean}>('/api/auth','POST',{action:'verifyOtp',email:email.trim().toLowerCase(),code});setNeedsProfile(r.needsProfile);if(r.needsProfile){setStage('profile');setMessage('Email verified. Complete your campus profile.')}else{setStage('password');setMessage('Email verified. Create a password to sign in next time.')}}
    catch(e){setMessage(e instanceof Error?e.message:'Verification failed')}finally{setBusy(false)}
    return;
   }
-  if(stage==='privacy'){
-   if(!acceptTerms||!acknowledgePrivacy){setMessage('Accept the terms and acknowledge the privacy policy to continue');return}
+  if(stage==='privacy'){if(!acceptTerms||!acknowledgePrivacy){setMessage('Accept the terms and acknowledge the privacy policy to continue');return}setStage('password');return}
+  if(stage==='password'){
+   if(password.length<12){setMessage('Use a password with at least 12 characters');return}
    setBusy(true);
-   try{await api('/api/auth','POST',{action:'finishOtp',email:email.trim().toLowerCase(),profile:{name,handle:handle.toLowerCase().trim(),relationshipStatus,relationshipVisibility,acceptTerms,acknowledgePrivacy}});window.location.assign('/home')}
+   try{await api('/api/auth','POST',{action:'finishOtp',email:email.trim().toLowerCase(),password,...(needsProfile?{profile:{name,handle:handle.toLowerCase().trim(),relationshipStatus,relationshipVisibility,acceptTerms,acknowledgePrivacy}}:{})});window.location.assign('/home')}
    catch(e){setMessage(e instanceof Error?e.message:'Account creation failed')}finally{setBusy(false)}
   }
  }
@@ -49,12 +50,13 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
   <Link className="brand" href="/"><span className="brand-mark">CC</span><span>Campus<span className="brand-lite">Connect</span></span></Link>
   <section className="auth-card wide cc-otp-card">
    <div className="cc-otp-icon" aria-hidden="true">✦</div>
-   <h1>{stage==='email'?'Welcome to CampusConnect':stage==='otp'?'Verify your college email':'Make it yours'}</h1>
-   <p>{stage==='email'?'Your campus, your community. Verify your BVM email or approved test account.':stage==='otp'?'Enter the six-digit code sent to your institutional inbox.':'A few details to finish your verified campus profile.'}</p>
+   <h1>{stage==='email'?'Welcome to CampusConnect':stage==='otp'?'Verify your college email':stage==='password'?'Create your password':'Make it yours'}</h1>
+   <p>{stage==='email'?(mode==='login'&&!resetMode?'Sign in with your campus email and password.':'Verify your BVM email or approved test account.'):stage==='otp'?'Enter the six-digit code sent to your institutional inbox.':'A few details to finish your verified campus profile.'}</p>
    <div className="cc-otp-steps" aria-label="Registration progress"><span className="active"/><span className={stage!=='email'?'active':''}/><span className={stage==='profile'||stage==='privacy'?'active':''}/></div>
    <form className="auth-form" onSubmit={submit}>
     {stage==='email'&&<>
      <label>BVM student email or approved tester<input autoFocus required type="email" autoComplete="email" placeholder="26el309@bvmengineering.ac.in" value={email} onChange={e=>setEmail(e.target.value.toLowerCase().trim())}/></label>
+     {mode==='login'&&!resetMode&&<label>Password<input required type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your password"/></label>}
      {parsed&&<div className="cc-email-preview"><strong>Student details detected</strong><span>Enrollment: {enrollment.toLowerCase()}</span><span>Branch: {branch}</span><small>Branch mapping is provisional and must be confirmed by BVM.</small></div>}
     </>}
     {stage==='otp'&&<>
@@ -63,6 +65,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
      <button type="button" className="cc-text-action" disabled={busy||Date.now()<resendAt} onClick={requestCode}>Resend verification code (after 60 seconds)</button>
      <button type="button" className="cc-text-action" onClick={()=>{setStage('email');setCode('');setMessage('')}}>Change email address</button>
     </>}
+    {stage==='password'&&<label>Create password (12+ characters)<input autoFocus required type="password" minLength={12} maxLength={128} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Create a secure password"/></label>}
     {stage==='profile'&&<>
      <label>Full name<input autoFocus required minLength={2} maxLength={70} autoComplete="name" placeholder="Your full name" value={name} onChange={e=>setName(e.target.value)}/></label>
      <label>Username<input required pattern="[a-z][a-z0-9._]{2,29}" maxLength={30} placeholder="your.username" value={handle} onChange={e=>setHandle(e.target.value.toLowerCase())}/></label>
@@ -75,10 +78,11 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
     </>}
     {message&&<p role="status" className={message.toLowerCase().includes('failed')||message.toLowerCase().includes('invalid')||message.toLowerCase().includes('unable')?'form-error':'auth-legal'}>{message}</p>}
     {stage==='privacy'&&<button type="button" className="cc-text-action" onClick={()=>setStage('profile')}>Back</button>}
-    <button disabled={busy} type="submit" className="primary-button full">{busy?'Please wait…':stage==='email'?'Send verification code':stage==='otp'?'Verify code':stage==='profile'?'Continue':'Create account & enter CampusConnect'}</button>
+    {stage==='email'&&mode==='login'&&<button type="button" className="cc-text-action" onClick={()=>{setResetMode(v=>!v);setMessage('')}}>{resetMode?'Back to password login':'Set or reset password using email verification'}</button>}}
+    <button disabled={busy} type="submit" className="primary-button full">{busy?'Please wait…':stage==='email'?(mode==='login'&&!resetMode?'Sign in':'Send verification code'):stage==='otp'?'Verify code':stage==='profile'?'Continue':stage==='privacy'?'Continue':'Save password & enter CampusConnect'}</button>
    </form>
-   <p className="auth-foot">Already registered? <Link href="/login">Sign in with email OTP</Link></p>
-   <p className="auth-legal">BVM institutional email required, except one approved testing account. Email OTP required; no password needed.</p>
+   <p className="auth-foot">Already registered? <Link href="/login">Sign in with email and password</Link></p>
+   <p className="auth-legal">BVM institutional email required, except one approved testing account. Email verification is required to register or reset a password. Subsequent logins use email and password.</p>
   </section>
  </main>;
 }
