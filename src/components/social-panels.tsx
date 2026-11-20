@@ -36,7 +36,7 @@ export function SocialPanels({section}:{section:string}){
   {section==='reels'&&<section><h2>Reels</h2>{reels.length?reels.map(r=><article key={r.id}><strong>@{r.authorHandle}</strong><video src={'/api/media?id='+encodeURIComponent(r.mediaId)} controls playsInline preload="metadata" style={{width:'100%',maxHeight:650,display:'block',margin:'14px 0'}}/><p>{r.caption}</p></article>):<p>No video reels published yet. Upload a video post to appear here.</p>}</section>}
   {section==='chat'&&<section className="cc-messages-section"><div className="cc-chat-layout">
    <aside className={'cc-chat-people'+(peer?' cc-chat-people-selected':'')}>
-    <h2>Messages</h2>
+    <div className="cc-inbox-title"><h2>Messages</h2><span aria-hidden="true">✎</span></div><div className="cc-inbox-tabs"><span className="active">Primary</span><span>General</span><span>Requests</span></div>
     <input aria-label="Search past conversations" placeholder="Search conversations" value={search} onChange={e=>setSearch(e.target.value)}/>
     {conversations.filter(c=>(c.handle+' '+c.name).toLowerCase().includes(search.toLowerCase())).map(c=><button className={peer===c.handle?'active':''} key={c.handle} type="button" onClick={()=>{setPeer(c.handle);setMessages([]);setNotice('');window.history.replaceState(null,'','/home?section=chat&with='+encodeURIComponent(c.handle))}}>
       <span className="cc-chat-avatar">{c.name.slice(0,1).toUpperCase()}</span><span className="cc-chat-person-info"><b>@{c.handle}</b><small>{c.preview||'Open conversation'}</small></span>
@@ -47,7 +47,7 @@ export function SocialPanels({section}:{section:string}){
     {peer?<><header className="cc-chat-header"><button className="cc-chat-back" type="button" onClick={()=>{setPeer('');window.history.replaceState(null,'','/home?section=chat')}} aria-label="Back to messages">‹</button><Link href={'/profile/'+encodeURIComponent(peer)}><span className="cc-chat-avatar">{peer.slice(0,1).toUpperCase()}</span><strong>@{peer}</strong></Link></header>
     <div className="cc-chat-messages" aria-live="polite">{messages.map(m=><p key={m.id} className={m.senderUid===myUid?'mine':''}><span>{m.text}</span>{m.senderUid===myUid&&<small>{m.seen?'Seen':'Sent'}</small>}</p>)}</div>
     <p className="cc-typing" aria-live="polite">{typing?'@'+peer+' is typing…':' '}</p>
-    <form onSubmit={send}><input aria-label="Message" value={draft} maxLength={2000} onChange={e=>{setDraft(e.target.value);if(Date.now()-lastTyping.current>2000){lastTyping.current=Date.now();void post('/api/chat',{action:'typing',recipientHandle:peer,typing:Boolean(e.target.value)}).catch(()=>{})}}} placeholder="Message…"/><button disabled={!draft.trim()}>Send</button></form></>:<div className="cc-chat-placeholder">Select a conversation to view messages.</div>}
+    <form onSubmit={send}><input aria-label="Message" value={draft} maxLength={2000} onChange={e=>{setDraft(e.target.value);if(Date.now()-lastTyping.current>2000){lastTyping.current=Date.now();void post('/api/chat',{action:'typing',recipientHandle:peer,typing:Boolean(e.target.value)}).catch(()=>{})}}} placeholder="Message…"/><button disabled={!draft.trim()}>Send</button></form></>:<div className="cc-chat-placeholder"><div className="cc-chat-placeholder-icon" aria-hidden="true">➤</div><h2>Your messages</h2><p>Send a message to start a chat.</p><button type="button" onClick={()=>{const field=document.querySelector<HTMLInputElement>('input[aria-label="Search past conversations"]');field?.focus()}}>Send message</button></div>}
    </div>
   </div></section>}
  </div>;
