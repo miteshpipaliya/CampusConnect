@@ -1,5 +1,6 @@
 'use client';
 import { SocialPanels } from './social-panels';
+import { LiveStories } from './live-stories';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
@@ -136,6 +137,7 @@ export function ConnectedFeed(){
     </form>
    </section>
   </div>}
+  {(section==='home'||section==='community')&&<LiveStories/>}
   {(section==='home'||section==='community')&&(loading&&!feedCache?<p className="cc-feed-skeleton" aria-label="Loading posts"/>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
    <Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><strong>@{post.authorHandle}</strong></Link>
    {post.mediaId&&<img src={'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
