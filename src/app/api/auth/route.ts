@@ -50,7 +50,16 @@ export async function POST(request:NextRequest){
     tx.set(ref,{email,codeHash:digest(email+':'+nonce+':'+code),nonce,expires:now+600000,lastSent:now,windowStart:data&&now-data.windowStart<3600000?data.windowStart:now,sends:data&&now-data.windowStart<3600000?data.sends+1:1,attempts:0,verified:false,used:false});
    });
    const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},body:JSON.stringify({from:sender.includes('<')?sender:`CampusConnect <${sender}>`,to:[email],subject:'Your CampusConnect verification code',text:'Your CampusConnect verification code is '+code+'. It expires in 10 minutes. Do not share it.'}),cache:'no-store'});
-   if(!r.ok){await ref.delete();return errorResponse(502,'Email delivery failed. Check Resend domain verification and email logs')}
+   if(!r.ok){
+    const failure=await r.json().catch(()=>null) as {name?:unknown;statusCode?:unknown}|null;
+    const providerCode=typeof failure?.name==='string'?failure.name:'unknown';
+    console.error('Resend OTP delivery rejected',{status:r.status,providerCode});
+    await ref.delete().catch(()=>{});
+    if(r.status===401||r.status===403)return errorResponse(502,'Email provider authorization failed. Check the Resend API key and verified sending domain.');
+    if(r.status===422)return errorResponse(502,'Resend rejected the sender or recipient. Check the verified domain and RESEND_FROM_EMAIL.');
+    if(r.status===429)return errorResponse(503,'Email provider rate limit reached. Please try again later.');
+    return errorResponse(502,'Email delivery failed. Check Resend email logs and Vercel function logs.');
+   }
    return NextResponse.json({ok:true,message:'A six-digit code was sent to your BVM email.'},{headers:safeHeaders});
   }catch(e){if(e instanceof Error&&e.message==='COOLDOWN')return errorResponse(429,'Wait 60 seconds before requesting another code');if(e instanceof Error&&e.message==='LIMIT')return errorResponse(429,'Too many codes requested. Try again in one hour');return errorResponse(503,'Unable to send verification code')}
  }
