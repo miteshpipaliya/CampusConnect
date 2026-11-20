@@ -11,9 +11,9 @@ async function api<T>(path:string,method='GET',data?:object):Promise<T>{
  const result=await r.json();if(!r.ok)throw Error(result.error||'Request failed');return result as T;
 }
 export function CampusAuth({mode}:{mode:'login'|'register'}){
- const [fields,setFields]=useState({email:'',password:'',handle:'',name:'',branch:'Computer Engineering',division:'4'});
+ const [fields,setFields]=useState({email:'',password:'',handle:'',name:'',branch:'Computer Engineering',division:'4',relationshipStatus:'',relationshipVisibility:'me',acceptTerms:false,acknowledgePrivacy:false});
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
- const edit=(k:keyof typeof fields,v:string)=>setFields(f=>({...f,[k]:v}));
+ const edit=(k:keyof typeof fields,v:string|boolean)=>setFields(f=>({...f,[k]:v}));
  async function submit(event:FormEvent<HTMLFormElement>){
   event.preventDefault();setBusy(true);setMessage('');
   try{
@@ -33,8 +33,17 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
      <label>Username<input required pattern="[a-z][a-z0-9._]{2,29}" maxLength={30} placeholder="first.last" value={fields.handle} onChange={e=>edit('handle',e.target.value.toLowerCase())}/></label>
      <label>Branch<input required maxLength={70} value={fields.branch} onChange={e=>edit('branch',e.target.value)}/></label>
      <label>Division<input required maxLength={20} value={fields.division} onChange={e=>edit('division',e.target.value)}/></label>
+     <label>Relationship status (required)<select required value={fields.relationshipStatus} onChange={e=>edit('relationshipStatus',e.target.value)}>
+      <option value="">Select your status</option>
+      {['Single','In Relationship','Engaged','Married','Situationship'].map(x=><option key={x} value={x}>{x}</option>)}
+     </select></label>
+     <label>Relationship visibility<select value={fields.relationshipVisibility} onChange={e=>edit('relationshipVisibility',e.target.value)}>
+      <option value="me">Only me</option><option value="followers">Followers</option><option value="campus">Campus members</option>
+     </select></label>
+     <label><input type="checkbox" required checked={fields.acceptTerms} onChange={e=>edit('acceptTerms',e.target.checked)}/> I accept the Terms of Service</label>
+     <label><input type="checkbox" required checked={fields.acknowledgePrivacy} onChange={e=>edit('acknowledgePrivacy',e.target.checked)}/> I acknowledge the Privacy Policy</label>
     </>}
-    <label>Email<input required type="email" autoComplete="email" maxLength={254} value={fields.email} onChange={e=>edit('email',e.target.value)}/></label>
+    <label>Institutional BVM email<input required type="email" placeholder="26cp309@bvmengineering.ac.in" autoComplete="email" maxLength={254} value={fields.email} onChange={e=>edit('email',e.target.value)}/></label>
     <label>Password<input required type="password" autoComplete={mode==='login'?'current-password':'new-password'}
      minLength={mode==='register'?12:1} maxLength={128} value={fields.password} onChange={e=>edit('password',e.target.value)}/></label>
     {message&&<p role="status" className="form-error">{message}</p>}

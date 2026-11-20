@@ -27,3 +27,10 @@
 - Do not claim external credentials work until the deployed health endpoint confirms them.
 
 - GitHub Actions temporarily runs `npm install` because the new dependencies need a refreshed committed package-lock; sync the lock before enforcing `npm ci` again.
+
+## Student identity milestone
+- BVM email convention is provisional and does not establish actual enrollment. Codes require college verification.
+- Registration requires relationship status, visibility, terms and privacy acknowledgements.
+- Existing users need a migration/onboarding path before new login rules can be deployed.
+- Health endpoint catches synchronous Firebase initialization failures.
+- Keep ESLint 9 with eslint-config-next 15; do not merge ESLint 10.
