@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
 import { Heart,MessageCircle,Camera,LogOut } from 'lucide-react';
+import { degreeCourses } from '@/lib/student-email';
 
 type Post={id:string;caption:string;authorHandle:string;mediaId:string|null;likes:number;liked:boolean;comments:number};
 type Me={uid:string;email:string;profile:{handle:string;name:string;branch:string;division:string}|null};
@@ -13,9 +14,18 @@ async function api<T>(path:string,method='GET',data?:object):Promise<T>{
  if(!r.ok)throw Error(result.error||'Request failed');return result as T;
 }
 export function CampusAuth({mode}:{mode:'login'|'register'}){
- const [fields,setFields]=useState({email:'',password:'',handle:'',name:'',branch:'Computer Engineering',division:'4',relationshipStatus:'',relationshipVisibility:'me',acceptTerms:false,acknowledgePrivacy:false});
+ const [fields,setFields]=useState({email:'',password:'',handle:'',name:'',degree:'BTech',enrollmentNumber:'',branch:'',division:'',relationshipStatus:'',relationshipVisibility:'me',acceptTerms:false,acknowledgePrivacy:false});
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const [awaitingVerification,setAwaitingVerification]=useState(false);
+ const [step,setStep]=useState(0);
+ const groups=[['name','handle'],['degree','branch'],['enrollmentNumber','email'],['division','relationshipStatus'],['relationshipVisibility','password'],['acceptTerms','acknowledgePrivacy']] as const;
+ const advance=()=>{
+  const inputs=Array.from(document.querySelectorAll<HTMLInputElement|HTMLSelectElement>('.auth-form input, .auth-form select'));
+  const invalid=inputs.find(x=>!x.checkValidity());
+  if(invalid){invalid.reportValidity();return;}
+  setStep(x=>Math.min(x+1,groups.length-1));
+ };
+ const previous=()=>setStep(x=>Math.max(0,x-1));
  useEffect(()=>{
   if(mode!=='register'||!awaitingVerification)return;
   let active=true;
@@ -32,7 +42,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
  },[awaitingVerification,mode,fields.email,fields.password]);
  const edit=(k:keyof typeof fields,v:string|boolean)=>setFields(f=>({...f,[k]:v}));
  async function submit(event:FormEvent<HTMLFormElement>){
-  event.preventDefault();setBusy(true);setMessage('');
+  event.preventDefault();if(mode==='register'&&step<groups.length-1){advance();return;}setBusy(true);setMessage('');
   try{
    const result=await api<{message?:string}>('/api/auth','POST',{action:mode==='register'?'register':'login',
     ...fields,handle:fields.handle.toLowerCase().trim()});
@@ -44,28 +54,34 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
   <Link className="brand" href="/"><span className="brand-mark">CC</span><span>Campus<span className="brand-lite">Connect</span></span></Link>
   <section className="auth-card wide"><h1>{mode==='login'?'Sign in to CampusConnect':'Join CampusConnect'}</h1>
    <p>Student social network · secure server-side authentication</p>
-   {awaitingVerification?<div role="status" className="auth-form"><p>{message}</p><button type="button" className="primary-button full" disabled={busy} onClick={async()=>{setBusy(true);try{await api('/api/auth','POST',{action:'login',email:fields.email,password:fields.password});window.location.assign('/home')}catch(e){setMessage(e instanceof Error?e.message:'Verification is not complete yet. Check your college email.')}finally{setBusy(false)}}}>{busy?'Checking...':'I verified my email — Continue'}</button><p className="auth-legal">We will also check automatically every 15 seconds while this tab stays open. If you close this tab, sign in normally after verifying.</p></div>:<form className="auth-form" onSubmit={submit}>
+   {mode==='register'&&<p className="auth-legal">Step {step+1} of {groups.length} · Two details at a time</p>}
+   {awaitingVerification&&<p role="status">{message} Verification is required before access; this page will sign you in automatically afterward.</p>}
+   <form className="auth-form" onSubmit={submit}>
     {mode==='register'&&<>
-     <label>Your name<input required maxLength={70} value={fields.name} onChange={e=>edit('name',e.target.value)}/></label>
-     <label>Username<input required pattern="[a-z][a-z0-9._]{2,29}" maxLength={30} placeholder="first.last" value={fields.handle} onChange={e=>edit('handle',e.target.value.toLowerCase())}/></label>
-     <label>Branch<input required maxLength={70} value={fields.branch} onChange={e=>edit('branch',e.target.value)}/></label>
-     <label>Division<input required maxLength={20} value={fields.division} onChange={e=>edit('division',e.target.value)}/></label>
-     <label>Relationship status (required)<select required value={fields.relationshipStatus} onChange={e=>edit('relationshipStatus',e.target.value)}>
+     {step===0&&<label>Your name<input required maxLength={70} value={fields.name} onChange={e=>edit('name',e.target.value)}/></label>}
+     {step===0&&<label>Username<input required pattern="[a-z][a-z0-9._]{2,29}" maxLength={30} placeholder="first.last" value={fields.handle} onChange={e=>edit('handle',e.target.value.toLowerCase())}/></label>}
+     {step===1&&<label>Degree<select required value={fields.degree} onChange={e=>{setFields(f=>({...f,degree:e.target.value,branch:''}))}}><option value="BTech">B.Tech</option><option value="MTech">M.Tech</option></select></label>}
+     {step===1&&<label>Branch / Specialization<select required value={fields.branch} onChange={e=>edit('branch',e.target.value)}><option value="">Select your course</option>{degreeCourses[fields.degree as keyof typeof degreeCourses].map(c=><option key={c} value={c}>{c}</option>)}</select></label>}
+     {step===3&&<label>Division<input required maxLength={20} value={fields.division} onChange={e=>edit('division',e.target.value)}/></label>}
+     {step===3&&<label>Relationship status (required)<select required value={fields.relationshipStatus} onChange={e=>edit('relationshipStatus',e.target.value)}>
       <option value="">Select your status</option>
       {['Single','In Relationship','Engaged','Married','Situationship'].map(x=><option key={x} value={x}>{x}</option>)}
-     </select></label>
-     <label>Relationship visibility<select value={fields.relationshipVisibility} onChange={e=>edit('relationshipVisibility',e.target.value)}>
+     </select></label>}
+     {step===4&&<label>Relationship visibility<select value={fields.relationshipVisibility} onChange={e=>edit('relationshipVisibility',e.target.value)}>
       <option value="me">Only me</option><option value="followers">Followers</option><option value="campus">Campus members</option>
-     </select></label>
-     <label><input type="checkbox" required checked={fields.acceptTerms} onChange={e=>edit('acceptTerms',e.target.checked)}/> I accept the Terms of Service</label>
-     <label><input type="checkbox" required checked={fields.acknowledgePrivacy} onChange={e=>edit('acknowledgePrivacy',e.target.checked)}/> I acknowledge the Privacy Policy</label>
+     </select></label>}
+     {step===5&&<label><input type="checkbox" required checked={fields.acceptTerms} onChange={e=>edit('acceptTerms',e.target.checked)}/> I accept the Terms of Service</label>}
+     {step===5&&<label><input type="checkbox" required checked={fields.acknowledgePrivacy} onChange={e=>edit('acknowledgePrivacy',e.target.checked)}/> I acknowledge the Privacy Policy</label>}
     </>}
-    <label>Institutional BVM email<input required type="email" placeholder="26cp309@bvmengineering.ac.in" autoComplete="email" maxLength={254} value={fields.email} onChange={e=>edit('email',e.target.value)}/></label>
-    <label>Password<input required type="password" autoComplete={mode==='login'?'current-password':'new-password'}
-     minLength={mode==='register'?12:1} maxLength={128} value={fields.password} onChange={e=>edit('password',e.target.value)}/></label>
-    {message&&<p role="status" className="form-error">{message}</p>}
-    <button disabled={busy} type="submit" className="primary-button full">{busy?'Processing...':mode==='login'?'Sign in':'Create account'}</button>
-   </form>}
+    {mode==='login'||step===2?<label>Institutional BVM email<input required type="email" placeholder="26cp309@bvmengineering.ac.in" autoComplete="email" maxLength={254} value={fields.email} onChange={e=>edit('email',e.target.value)}/></label>:null}
+    {mode==='login'||step===4?<label>Password<input required type="password" autoComplete={mode==='login'?'current-password':'new-password'}
+     minLength={mode==='register'?12:1} maxLength={128} value={fields.password} onChange={e=>edit('password',e.target.value)}/></label>:null}
+    {mode==='register'&&step===2&&<label>Enrollment number<input required pattern="[0-9]{2}[a-zA-Z]{2}[0-9]{3,8}" placeholder="26cp309" value={fields.enrollmentNumber} onChange={e=>edit('enrollmentNumber',e.target.value.toLowerCase())}/></label>}
+    {mode==='register'&&step===2&&<p className="auth-legal">Enrollment number must exactly match the part before @ in your institutional email. Branch codes are provisional and require college confirmation.</p>}
+    {message&&!awaitingVerification&&<p role="status" className="form-error">{message}</p>}
+    {mode==='register'&&step>0&&<button type="button" onClick={previous}>Back</button>}
+    <button disabled={busy} type="submit" className="primary-button full">{busy?'Processing...':mode==='login'?'Sign in':step<groups.length-1?'Continue':'Create account'}</button>
+   </form>
    <p className="auth-foot">{mode==='login'?<Link href="/register">Create an account</Link>:<Link href="/login">Already registered? Sign in</Link>}</p>
    <p className="auth-legal">Email verification is required. Google sign-in is not yet connected; Firebase Google provider setup alone does not enable the website button.</p>
   </section>
