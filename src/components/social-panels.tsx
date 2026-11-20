@@ -14,7 +14,7 @@ export function SocialPanels({section}:{section:string}){
  const [notifications,setNotifications]=useState<Notification[]>([]);
  const [reels,setReels]=useState<Array<{id:string;caption:string;authorHandle:string;mediaId:string}>>([]);
  useEffect(()=>{if(section==='chat'){const withHandle=new URLSearchParams(window.location.search).get('with');if(withHandle)setPeer(withHandle)}if(section==='chat')get<{conversations:Conversation[]}>('/api/chat').then(d=>setConversations(d.conversations)).catch(e=>setNotice(String(e)));
- if(section==='search')get<{members:Member[]}>('/api/students').then(d=>setMembers(d.members)).catch(e=>setNotice(String(e)));
+ if(section==='search')get<{members:Member[]}>('/api/chat?directory=1').then(d=>setMembers(d.members)).catch(e=>setNotice(String(e)));
  if(section==='notifications')get<{notifications:Notification[]}>('/api/notifications').then(d=>setNotifications(d.notifications)).catch(e=>setNotice(String(e)));
  if(section==='reels')get<{reels:Array<{id:string;caption:string;authorHandle:string;mediaId:string}>}>('/api/reels').then(d=>setReels(d.reels)).catch(e=>setNotice(String(e)));},[section]);
  useEffect(()=>{if(section!=='reels'&&section!=='notifications')return;
