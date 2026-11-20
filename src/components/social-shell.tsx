@@ -9,14 +9,9 @@ import { useRouter } from 'next/navigation';
 
 type NavItem = { label: string; href: string; Icon: LucideIcon };
 const links: NavItem[] = [
-  { label: 'Home', href: '/home', Icon: Home },
-  { label: 'Search', href: '/explore', Icon: Search },
-  { label: 'Reels', href: '/reels', Icon: Clapperboard },
-  { label: 'Messages', href: '/messages', Icon: MessageCircle },
-  { label: 'Notifications', href: '/notifications', Icon: Heart },
-  { label: 'Create', href: '/home?compose=1', Icon: PlusSquare },
-  { label: 'Community', href: '/communities', Icon: UsersRound },
-  { label: 'Profile', href: '/profile/me', Icon: UserRound },
+  {label:'Home',href:'/home',Icon:Home},
+  {label:'Create',href:'/home?compose=1',Icon:PlusSquare},
+  {label:'Profile',href:'/profile/me',Icon:UserRound},
 ];
 const mobileLabels = new Set(['Home', 'Search', 'Reels', 'Create', 'Community', 'Profile']);
 function activeLink(pathname: string, item: NavItem) {
@@ -60,11 +55,11 @@ export default function SocialShell({ children }: { children: ReactNode }) {
       <Nav pathname={pathname} />
       <details className="cc-more">
         <summary><Menu size={25} strokeWidth={1.8} /><span>More</span></summary>
-        <div><Link href="/settings"><Settings size={18}/>Settings</Link><Link href="/bookmarks"><Bookmark size={18}/>Saved</Link><Link href="/connections"><Compass size={18}/>Find students</Link></div>
+        <div><Link href="/home"><Home size={18}/>Home</Link></div>
       </details>
     </aside>
     <main className="cc-main" id="main-content">
-      <header className="cc-mobile-header"><Brand compact/><div><Link href="/notifications" aria-label="Notifications"><Heart size={23}/></Link><Link href="/messages" aria-label="Messages"><MessageCircle size={23}/></Link></div></header>
+      <header className="cc-mobile-header"><Brand compact/></header>
       <div className="cc-page">{children}</div>
     </main>
     <Suggestions handle={handle}/>
