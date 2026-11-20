@@ -58,7 +58,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
     </>}
     {stage==='otp'&&<>
      <div className="cc-email-preview">Code sent to <strong>{email}</strong></div>
-     <label>Verification code<input autoFocus required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={code} onChange={e=>setCode(e.target.value.replace(/\\D/g,''))}/></label>
+     <label>Verification code<input autoFocus required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,''))}/></label>
      <button type="button" className="cc-text-action" disabled={busy||Date.now()<resendAt} onClick={requestCode}>Resend verification code (after 60 seconds)</button>
      <button type="button" className="cc-text-action" onClick={()=>{setStage('email');setCode('');setMessage('')}}>Change email address</button>
     </>}
