@@ -43,6 +43,7 @@ export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  try{
   const handle=request.nextUrl.searchParams.get('with');
+  if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){const snapshot=await db().collection('users').limit(100).get();return NextResponse.json({members:snapshot.docs.filter(d=>d.id!==user.uid).map(d=>({handle:d.data().handle,name:d.data().name})).filter(x=>x.handle)},{headers:safeHeaders})}
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.
    const result=await stream('/channels/query','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
