@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
-type Story={id:string;authorHandle:string;authorUid:string;mediaId:string;caption:string;createdAt:number;contentType?:string};
+type Story={id:string;authorHandle:string;authorUid:string;mediaId:string;caption:string;createdAt:number;contentType?:string;highlight?:boolean;isMine?:boolean};
 async function request<T>(url:string,method='GET',body?:object):Promise<T>{const r=await fetch(url,{method,credentials:'same-origin',cache:'no-store',...(body?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
 export function LiveStories(){
  const [stories,setStories]=useState<Story[]>([]),[selected,setSelected]=useState<number|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -28,6 +28,6 @@ export function LiveStories(){
   <header><Link href={'/profile/'+encodeURIComponent(story.authorHandle)}>@{story.authorHandle}</Link><button type="button" onClick={()=>setSelected(null)} aria-label="Close story">✕</button></header>
   {story.contentType?.startsWith('video/')?<video src={'/api/media?id='+encodeURIComponent(story.mediaId)} controls playsInline autoPlay/>:<img src={'/api/media?id='+encodeURIComponent(story.mediaId)} alt={'Story by '+story.authorHandle}/>} 
   {story.caption&&<p>{story.caption}</p>}
-  <footer><button type="button" onClick={()=>setSelected(i=>i===null?null:Math.max(0,i-1))} disabled={selected===0}>‹ Previous</button><button type="button" onClick={()=>setSelected(i=>i===null?null:i+1>=stories.length?null:i+1)}>Next ›</button></footer>
+  <footer>{story.isMine&&<button type="button" onClick={async()=>{try{await request('/api/stories','PATCH',{id:story.id,highlight:!story.highlight});await load()}catch(e){setError(String(e))}}}>{story.highlight?'Remove highlight':'Add to highlights'}</button>}<button type="button" onClick={()=>setSelected(i=>i===null?null:Math.max(0,i-1))} disabled={selected===0}>‹ Previous</button><button type="button" onClick={()=>setSelected(i=>i===null?null:i+1>=stories.length?null:i+1)}>Next ›</button></footer>
  </section></div>}</>;
 }
