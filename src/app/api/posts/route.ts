@@ -32,7 +32,7 @@ export async function POST(request:NextRequest){
    if(mediaId){
     const media=store.collection('media').doc(mediaId);
     const info=await transaction.get(media);
-    if(!info.exists||info.data()?.ownerUid!==user.uid||info.data()?.status!=='uploaded'||info.data()?.postId)throw Error('INVALID_MEDIA');
+    if(!info.exists||info.data()?.ownerUid!==user.uid||info.data()?.status!=='uploaded'||info.data()?.postId||info.data()?.storyId)throw Error('INVALID_MEDIA');
     transaction.update(media,{postId:newPost.id});
    }
    transaction.create(newPost,{authorUid:user.uid,authorHandle:profile.data()!.handle,
