@@ -85,12 +85,15 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
 export function ConnectedFeed(){
  const [me,setMe]=useState<Me|null>(null),[posts,setPosts]=useState<Post[]>([]);
  const [caption,setCaption]=useState(''),[file,setFile]=useState<File|null>(null);
+ const [composeOpen,setComposeOpen]=useState(false),[previewUrl,setPreviewUrl]=useState<string|null>(null),[mediaStep,setMediaStep]=useState<'preview'|'caption'>('preview');
  const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[loading,setLoading]=useState(true);
  const [opened,setOpened]=useState<string|null>(null),[comments,setComments]=useState<Record<string,Array<{id:string;handle:string;text:string}>>>({}),[reply,setReply]=useState('');
  async function refresh(){const x=await api<{posts:Post[]}>('/api/posts');setPosts(x.posts)}
  useEffect(()=>{Promise.all([api<{user:Me}>('/api/auth'),api<{posts:Post[]}>('/api/posts')])
   .then(([account,feed])=>{setMe(account.user);setPosts(feed.posts)})
   .catch(()=>setStatus('Sign in to view the live feed.')).finally(()=>setLoading(false));},[]);
+ useEffect(()=>{const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh().catch(()=>{});},10000);return()=>window.clearInterval(timer)},[]);
+ useEffect(()=>{if(!file){setPreviewUrl(null);return}const url=URL.createObjectURL(file);setPreviewUrl(url);return()=>URL.revokeObjectURL(url)},[file]);
  async function toggleLike(id:string){try{await api('/api/posts/'+id+'/likes','POST',{});await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Like failed')}}
  async function openComments(id:string){if(opened===id){setOpened(null);return}try{const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));setOpened(id)}catch(e){setStatus(e instanceof Error?e.message:'Comments unavailable')}}
  async function sendComment(event:FormEvent<HTMLFormElement>,id:string){event.preventDefault();try{await api('/api/posts/'+id+'/comments','POST',{text:reply});setReply('');const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Comment failed')}}
@@ -105,7 +108,7 @@ export function ConnectedFeed(){
     await api('/api/media','POST',{action:'confirm',id:reservation.id});mediaId=reservation.id;
    }
    await api('/api/posts','POST',{caption,...(mediaId?{mediaId}:{})});
-   setCaption('');setFile(null);setStatus('Post published');await refresh();
+   setCaption('');setFile(null);setComposeOpen(false);setMediaStep('preview');setStatus('Post published');await refresh();
   }catch(e){setStatus(e instanceof Error?e.message:'Unable to publish')}finally{setBusy(false)}
  }
  return <section className="cc-connected-feed"><SocialPanels/>
@@ -113,12 +116,20 @@ export function ConnectedFeed(){
    {me?<div><span>{me.profile?.handle||me.email}</span><button type="button" onClick={async()=>{await api('/api/auth','POST',{action:'logout'});window.location.assign('/login')}} aria-label="Log out"><LogOut size={19}/></button></div>:<Link href="/login">Sign in</Link>}
   </header>
   {!me&&!loading?<div className="cc-live-empty"><h2>Sign in to CampusConnect</h2><Link href="/login">Sign in</Link></div>:<>
-  <form className="cc-compose-live" onSubmit={publish}>
-   <h2>Share a campus moment</h2><textarea placeholder="What happened on campus?" required maxLength={2200} value={caption} onChange={e=>setCaption(e.target.value)}/>
-   <div><label><Camera size={18}/> Add image or video<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={e=>setFile(e.target.files?.[0]||null)}/></label>
-    {file&&<small>{file.name}</small>}<button disabled={busy||!caption.trim()}>{busy?'Uploading...':'Share post'}</button></div>
-   {status&&<p role="status">{status}</p>}
-  </form>
+  <div className="cc-compose-live"><h2>Share a campus moment</h2><button type="button" onClick={()=>{setComposeOpen(true);setMediaStep('preview')}}>Create a post or reel +</button>{status&&<p role="status">{status}</p>}</div>
+  {composeOpen&&<div className="cc-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setComposeOpen(false)}}>
+   <section className="cc-dialog" role="dialog" aria-modal="true" aria-label="Create a campus post">
+    <header><h2>{mediaStep==='preview'?'Preview your post':'Caption and hashtags'}</h2><button type="button" aria-label="Close" disabled={busy} onClick={()=>setComposeOpen(false)}>✕</button></header>
+    <form onSubmit={e=>{if(mediaStep==='preview'){e.preventDefault();setMediaStep('caption')}else void publish(e)}}>
+    {mediaStep==='preview'?<><label>Select a photo or video<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={e=>setFile(e.target.files?.[0]||null)}/></label>
+     {previewUrl&&(file?.type.startsWith('video/')?<video src={previewUrl} controls playsInline style={{maxWidth:'100%',maxHeight:380}}/>:<img className="cc-dialog-preview" src={previewUrl} alt="Preview of selected upload" style={{maxHeight:380,objectFit:'contain'}}/>)}
+     <p className="cc-dialog-note">Review your selected media before continuing. You can also publish a text-only post.</p><button type="submit" className="cc-primary">Next: Caption</button></>:
+     <><label>Caption and hashtags<textarea required maxLength={2200} placeholder="Write a caption and add #hashtags" value={caption} onChange={e=>setCaption(e.target.value)}/></label>
+     {previewUrl&&(file?.type.startsWith('video/')?<video src={previewUrl} controls playsInline style={{maxWidth:'100%',maxHeight:230}}/>:<img className="cc-dialog-preview" src={previewUrl} alt="Your selected post media"/>)}
+     <div style={{display:'flex',justifyContent:'space-between',gap:12}}><button type="button" disabled={busy} onClick={()=>setMediaStep('preview')}>Back</button><button className="cc-primary" type="submit" disabled={busy||!caption.trim()}>{busy?'Publishing…':'Confirm & Share'}</button></div></>}
+    </form>
+   </section>
+  </div>}
   {loading?<p>Loading posts...</p>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
    <Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><strong>@{post.authorHandle}</strong></Link>
    {post.mediaId&&<img src={'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
