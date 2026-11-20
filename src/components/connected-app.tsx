@@ -8,7 +8,17 @@ type Me={uid:string;email:string;profile:{handle:string;name:string;branch:strin
 async function api<T>(path:string,method='GET',data?:object):Promise<T>{
  const r=await fetch(path,{method,cache:'no-store',credentials:'same-origin',
   ...(data?{headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{})});
- const result=await r.json();if(!r.ok)throw Error(result.error||'Request failed');return result as T;
+ const contentType=r.headers.get('content-type')||'';
+ if(!contentType.toLowerCase().includes('application/json')){
+  throw Error(r.redirected||r.status===401||r.status===403
+   ?'The server redirected or blocked this request. Check your deployment access and sign-in settings.'
+   :r.status>=500?'The server is temporarily unavailable. Please try again shortly.'
+   :'The server returned a page instead of API data. Please refresh and try again.');
+ }
+ const result:unknown=await r.json().catch(()=>null);
+ if(!result||typeof result!=='object')throw Error('The server returned an invalid response. Please try again.');
+ if(!r.ok)throw Error('error' in result&&typeof result.error==='string'?result.error:'Request failed ('+r.status+')');
+ return result as T;
 }
 export function CampusAuth({mode}:{mode:'login'|'register'}){
  const [fields,setFields]=useState({email:'',password:'',handle:'',name:'',branch:'Computer Engineering',division:'4'});
