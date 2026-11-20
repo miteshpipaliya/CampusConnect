@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, Menu, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
@@ -40,23 +40,23 @@ function Nav({ pathname, section, mobile = false }: { pathname: string; section:
     {links.filter((item) => !mobile || mobileLabels.has(item.label)).map((item) => {
       const active = activeLink(pathname, item, section);
       const Icon = item.Icon;
-      return <a key={item.label} href={item.href} className={'cc-nav-item' + (active ? ' is-active' : '')}
+      return <Link key={item.label} href={item.href} scroll={false} className={'cc-nav-item' + (active ? ' is-active' : '')}
         aria-current={active ? 'page' : undefined} aria-label={item.label} title={item.label}>
         <Icon size={mobile ? 23 : 25} strokeWidth={active ? 2.8 : 1.8} fill={active && item.label === 'Home' ? 'currentColor' : 'none'} aria-hidden="true" />
         <span>{item.label}</span>
-      </a>;
+      </Link>;
     })}
   </nav>;
 }
 function Suggestions({handle}:{handle:string}){return <aside className="cc-suggestions"><div className="cc-me"><span className="cc-person-avatar you">CC</span><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your real campus account</small></div><Link href="/profile/me">View</Link></div><div className="cc-suggestion-heading">Campus members</div><p style={{fontSize:12,color:'#aaa'}}>Student suggestions will appear when the real follow system is ready.</p></aside>}
 
 export default function SocialShell({ children }: { children: ReactNode }) {
-  const pathname=usePathname(),router=useRouter();
+  const pathname=usePathname(),params=useSearchParams(),router=useRouter();
   const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
-  useEffect(()=>{setSection(new URLSearchParams(window.location.search).get('section')||'home')},[pathname]);
+  useEffect(()=>{setSection(params.get('section')||'home')},[params]);
   useEffect(()=>{let live=true;fetch('/api/auth',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(x=>{
    if(!live)return;setChecked(true);if(x?.user?.profile?.handle)setHandle(x.user.profile.handle);else router.replace('/login');
-  }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[pathname,router]);
+  }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router]);
   if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
   return <div className="cc-app">
     <aside className="cc-sidebar" aria-label="Site navigation">
