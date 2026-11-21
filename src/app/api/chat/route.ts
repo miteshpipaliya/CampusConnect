@@ -44,6 +44,7 @@ export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  try{
   const handle=request.nextUrl.searchParams.get('with');
+  if(request.nextUrl.searchParams.get('token')==='1'){const {key,secret}=config();const own=await db().collection('users').doc(user.uid).get();await stream('/users','POST',{users:{[user.uid]:{id:user.uid,name:own.data()?.name||own.data()?.handle||'Student'}}});return NextResponse.json({apiKey:key,userId:user.uid,token:jwt(secret,{user_id:user.uid,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600})},{headers:safeHeaders})}
   if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){const snapshot=await db().collection('users').limit(100).get();return NextResponse.json({members:snapshot.docs.filter(d=>d.id!==user.uid).map(d=>({handle:d.data().handle,name:d.data().name})).filter(x=>x.handle)},{headers:safeHeaders})}
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.
@@ -58,9 +59,9 @@ export async function GET(request:NextRequest){
   const other=await peer(handle);if(!other||other.id===user.uid)return errorResponse(404,'Member unavailable');
   const {id,result}=await ensureChannel(user.uid,other.id,handle,other.data().name);
   const messages=(result.messages||[]).map((m:{id:string;text?:string;user?:{id:string};created_at?:string})=>({id:m.id,text:m.text||'',senderUid:m.user?.id||'',createdAt:m.created_at||null,seen:Boolean((result.read||[]).find((x:{user?:{id:string};last_read?:string})=>x.user?.id===other.id&&x.last_read&&m.created_at&&x.last_read>=m.created_at))}));
-  const users=await stream('/users/query','POST',{filter_conditions:{id:{$in:[other.id]}},limit:1});
-  const remote=(users.users||[])[0]||{};
-  const peerTyping=remote.typingIn===id&&typeof remote.typingAt==='number'&&Date.now()-remote.typingAt<6500;
+  // Typing state is delivered by Stream's realtime events, not a users/query lookup.
+  // Avoid rejecting the entire message history when optional presence metadata is unavailable.
+  const peerTyping=false;
   return NextResponse.json({messages,peerTyping,myUid:user.uid},{headers:safeHeaders});
  }catch(error){console.error('CampusConnect chat GET failed',{operation:request.nextUrl.searchParams.has('with')?'conversation':'inbox',error:error instanceof Error?error.message:'unknown'});return errorResponse(503,'Stream chat unavailable. Check Stream credentials and service logs.')}
 }
