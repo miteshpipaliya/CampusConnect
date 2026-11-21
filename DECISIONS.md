@@ -9,3 +9,9 @@
 - The local working environment cannot resolve `github.com` for a clone, so no local dependency install, typecheck, lint, test or production build can currently be asserted. GitHub file API commits do not substitute for verification.
 - The original prompt directs pushes to `main`, but the user's newer explicit instruction overrides that: commit only to `codewithclaude`.
 - External actions (Firebase index deployment, R2 CORS, Stream console settings, production environment variables) remain blocked until executed and verified in their respective services.
+
+## 2026-11-21 — Executable preflight established
+- Vercel sandbox under the existing campusconnect-github project was able to clone codewithclaude and run the project checks, unlike the local container.
+- npm ci initially failed because the lockfile was out of sync. The lockfile was regenerated, and npm ci/typecheck/lint/tests/build then passed.
+- Do not mark the 12-phase feature implementation complete from this baseline validation.
+- Keep the upgrade on codewithclaude until each phase is implemented and independently verified; promote only a green phase to production.
