@@ -83,7 +83,7 @@ export async function POST(request:NextRequest){
    const message=(result.messages||[]).find((m:{id:string})=>m.id===input.messageId);
    if(!message)return errorResponse(404,'Message not found in conversation');
    if(input.action==='unsend'){
-    if(message.user?.id!==user.uid)return errorResponse(403,'You can only unsend your own messages');
+    if((message.user?.id||message.user_id)!==user.uid)return errorResponse(403,'You can only unsend your own messages');
     await stream('/messages/'+encodeURIComponent(input.messageId),'DELETE');
    }else{
     await db().collection('users').doc(user.uid).collection('hiddenChatMessages').doc(input.messageId).set({channelId:id,hiddenAt:new Date().toISOString()});
