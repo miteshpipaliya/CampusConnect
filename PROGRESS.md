@@ -4,7 +4,7 @@ Status values: TODO | DOING | DONE | BLOCKED. DONE requires successful validatio
 
 ## Phase 1: Foundation
 
-- [ ] **TODO** — 1.1 Typed Firestore models and composite indexes
+- [ ] **DOING** — 1.1 Typed Firestore models and composite indexes
 - [ ] **TODO** — 1.2 Eliminate N+1 queries, batch hydration, cursor pagination, session cache
 - [ ] **TODO** — 1.3 R2 media pipeline validation, compression, progress and retry
 - [ ] **TODO** — 1.4 Batched presigned media URLs and privacy checks
