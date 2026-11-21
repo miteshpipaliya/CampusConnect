@@ -2,6 +2,17 @@
 
 Status values: TODO | DOING | DONE | BLOCKED. DONE requires successful validation evidence. Production is not certified by this checklist.
 
+## Preflight verification (2026-11-21)
+
+- Initial `npm ci`: FAILED — tracked package-lock.json lacked the Firebase Admin and AWS SDK dependency tree declared in package.json.
+- Regenerated package-lock.json with `npm install --package-lock-only --no-audit --no-fund`.
+- `npm ci --no-audit --no-fund`: PASSED after regenerating lockfile.
+- `npm run typecheck`: PASSED.
+- `npm run lint`: PASSED with existing warnings.
+- `npm test`: PASSED.
+- `npm run build`: PASSED in sandbox with Node 24 (project Vercel uses Node 22); production integration and live backend are not verified.
+- No other items marked DONE; no untested upgrade functionality claimed.
+
 ## Phase 1: Foundation
 
 - [ ] **DOING** — 1.1 Typed Firestore models and composite indexes
