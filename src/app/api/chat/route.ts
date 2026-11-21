@@ -57,7 +57,7 @@ export async function GET(request:NextRequest){
    return NextResponse.json({conversations},{headers:safeHeaders});
   }
   const other=await peer(handle);if(!other||other.id===user.uid)return errorResponse(404,'Member unavailable');
-  const {id,result}=await ensureChannel(user.uid,other.id,handle,other.data().name);
+  const {result}=await ensureChannel(user.uid,other.id,handle,other.data().name);
   const messages=(result.messages||[]).map((m:{id:string;text?:string;user?:{id:string};created_at?:string})=>({id:m.id,text:m.text||'',senderUid:m.user?.id||'',createdAt:m.created_at||null,seen:Boolean((result.read||[]).find((x:{user?:{id:string};last_read?:string})=>x.user?.id===other.id&&x.last_read&&m.created_at&&x.last_read>=m.created_at))}));
   // Typing state is delivered by Stream's realtime events, not a users/query lookup.
   // Avoid rejecting the entire message history when optional presence metadata is unavailable.
