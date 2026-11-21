@@ -281,3 +281,15 @@
 .social-shell:has(.cc-messages-section) .cc-chat-people:not(.cc-chat-people-selected)+.cc-chat-thread{display:none!important}
 .social-shell:has(.cc-messages-section) .cc-chat-back{display:inline-flex!important}
 }
+
+/* Message actions: accessible click-to-open controls, aligned with each bubble. */
+.cc-chat-messages .cc-message-item{display:flex;flex-direction:column;align-items:flex-start;max-width:100%;margin:9px 0}
+.cc-chat-messages .cc-message-item.mine{align-items:flex-end}
+.cc-chat-messages .cc-message-bubble{display:flex;flex-direction:column;align-items:flex-start;gap:4px;border:0;border-radius:20px;padding:11px 14px;background:#262830;color:#fff;text-align:left;max-width:min(75%,440px);white-space:pre-wrap;overflow-wrap:anywhere;cursor:pointer;font:inherit}
+.cc-chat-messages .cc-message-item.mine .cc-message-bubble{background:#5548ef}
+.cc-chat-messages .cc-message-bubble small{align-self:flex-end;font-size:10px;opacity:.78}
+.cc-chat-messages .cc-message-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;padding:8px;border:1px solid #3c3c47;border-radius:12px;background:#202128;color:#ddd;font-size:12px}
+.cc-chat-messages .cc-message-actions button{border:1px solid #525260;border-radius:8px;padding:7px 9px;background:#30313b;color:#fff;cursor:pointer}
+.cc-chat-messages .cc-message-actions button:hover{background:#444050}
+.cc-chat-messages .cc-message-actions time{padding:0 6px}
+.cc-chat-messages .cc-message-bubble:focus-visible,.cc-chat-messages .cc-message-actions button:focus-visible{outline:2px solid #a39bff;outline-offset:2px}
