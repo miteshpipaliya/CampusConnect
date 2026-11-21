@@ -14,7 +14,7 @@ export async function session(request:NextRequest){
  try{
   const verified=await auth().verifySessionCookie(cookie,true);
   const record=await auth().getUser(verified.uid);
-  return record.emailVerified&&!record.disabled&&(record.email?.toLowerCase().endsWith('@bvmengineering.ac.in')||record.email?.toLowerCase()==='taushalquery@gmail.com')?{uid:record.uid,email:record.email}:null;
+  return record.emailVerified&&!record.disabled&&(record.email?.toLowerCase().endsWith('@bvmengineering.ac.in')||(process.env.APPROVED_TEST_EMAILS||'').split(',').map(email=>email.trim().toLowerCase()).filter(Boolean).includes(record.email?.toLowerCase()||''))?{uid:record.uid,email:record.email}:null;
  }catch{return null}
 }
 export function setSession(response:NextResponse,value:string){
