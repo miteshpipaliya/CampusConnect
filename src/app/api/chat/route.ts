@@ -29,7 +29,9 @@ async function stream(path:string,method='POST',data?:object){
 const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('send'),recipientHandle:z.string().min(3).max(30),text:z.string().trim().min(1).max(2000)}),
  z.object({action:z.literal('read'),recipientHandle:z.string().min(3).max(30)}),
- z.object({action:z.literal('typing'),recipientHandle:z.string().min(3).max(30),typing:z.boolean()})
+ z.object({action:z.literal('typing'),recipientHandle:z.string().min(3).max(30),typing:z.boolean()}),
+ z.object({action:z.literal('deleteForMe'),recipientHandle:z.string().min(3).max(30),messageId:z.string().min(1).max(200)}),
+ z.object({action:z.literal('unsend'),recipientHandle:z.string().min(3).max(30),messageId:z.string().min(1).max(200)})
 ]);
 async function peer(handle:string){const snap=await db().collection('users').where('handle','==',handle.toLowerCase()).limit(1).get();return snap.docs[0]??null}
 function channelId(a:string,b:string){return createHmac('sha256',config().secret).update([a,b].sort().join(':')).digest('hex').slice(0,40)}
@@ -59,7 +61,9 @@ export async function GET(request:NextRequest){
   }
   const other=await peer(handle);if(!other||other.id===user.uid)return errorResponse(404,'Member unavailable');
   const {result}=await ensureChannel(user.uid,other.id,handle,other.data().name);
-  const messages=(result.messages||[]).map((m:{id:string;text?:string;user?:{id:string};created_at?:string})=>({id:m.id,text:m.text||'',senderUid:m.user?.id||'',createdAt:m.created_at||null,seen:Boolean((result.read||[]).find((x:{user?:{id:string};last_read?:string})=>x.user?.id===other.id&&x.last_read&&m.created_at&&x.last_read>=m.created_at))}));
+  const hidden=await db().collection('users').doc(user.uid).collection('hiddenChatMessages').where('channelId','==',channelId(user.uid,other.id)).limit(500).get();
+  const hiddenIds=new Set(hidden.docs.map(d=>d.id));
+  const messages=(result.messages||[]).filter((m:{id:string;type?:string})=>!hiddenIds.has(m.id)&&m.type!=='deleted').map((m:{id:string;text?:string;user?:{id:string};created_at?:string})=>({id:m.id,text:m.text||'',senderUid:m.user?.id||'',createdAt:m.created_at||null,seen:Boolean((result.read||[]).find((x:{user?:{id:string};last_read?:string})=>x.user?.id===other.id&&x.last_read&&m.created_at&&x.last_read>=m.created_at))}));
   // Typing state is delivered by Stream's realtime events, not a users/query lookup.
   // Avoid rejecting the entire message history when optional presence metadata is unavailable.
   const peerTyping=false;
@@ -73,9 +77,18 @@ export async function POST(request:NextRequest){
  try{
   const input=parsed.data,other=await peer(input.recipientHandle);
   if(!other||other.id===user.uid)return errorResponse(404,'Member unavailable');
-  const {id}=await ensureChannel(user.uid,other.id,input.recipientHandle,other.data().name);
+  const {id,result}=await ensureChannel(user.uid,other.id,input.recipientHandle,other.data().name);
   const path='/channels/messaging/'+id;
-  if(input.action==='typing'){
+  if(input.action==='deleteForMe'||input.action==='unsend'){
+   const message=(result.messages||[]).find((m:{id:string})=>m.id===input.messageId);
+   if(!message)return errorResponse(404,'Message not found in conversation');
+   if(input.action==='unsend'){
+    if(message.user?.id!==user.uid)return errorResponse(403,'You can only unsend your own messages');
+    await stream('/messages/'+encodeURIComponent(input.messageId),'DELETE');
+   }else{
+    await db().collection('users').doc(user.uid).collection('hiddenChatMessages').doc(input.messageId).set({channelId:id,hiddenAt:new Date().toISOString()});
+   }
+  }else if(input.action==='typing'){
    await stream('/users','POST',{users:{[user.uid]:{id:user.uid,typingIn:input.typing?id:'',typingAt:input.typing?Date.now():0}}});
    await stream(path+'/event','POST',{event:{type:input.typing?'typing.start':'typing.stop',user_id:user.uid}});
   }else if(input.action==='read'){
