@@ -18,7 +18,8 @@ function jwt(secret:string,claims:object){
 }
 async function stream(path:string,method='POST',data?:object){
  const {key,secret}=config();
- const url=new URL('https://chat.stream-io-api.com/api/v2/chat'+path);
+ const base=path==='/users'||path.startsWith('/users/')?'/api/v2':'/api/v2/chat';
+ const url=new URL('https://chat.stream-io-api.com'+base+path);
  url.searchParams.set('api_key',key);
  const response=await fetch(url.toString(),{method,headers:{'Content-Type':'application/json','Authorization':jwt(secret,{server:true}),'stream-auth-type':'jwt'},...(data?{body:JSON.stringify(data)}:{}),cache:'no-store'});
  const body=await response.json().catch(()=>({}));
