@@ -1,0 +1,30 @@
+name: Release lockfile generator (temporary)
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  regenerate:
+    if: github.head_ref == 'fix/campusconnect-release-readiness'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Regenerate lockfile from exact release dependencies
+        run: npm install --package-lock-only --ignore-scripts --no-audit
+      - name: Emit lockfile for authenticated reconstruction
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const lines=fs.readFileSync('package-lock.json','utf8').split('\n');
+          console.log('CC_LOCKFILE_BEGIN');
+          for (const line of lines) console.log('CC_LOCKFILE_LINE:'+line);
+          console.log('CC_LOCKFILE_END');
+          NODE
