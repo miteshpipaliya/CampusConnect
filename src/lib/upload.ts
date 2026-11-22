@@ -8,7 +8,7 @@ export async function uploadFile({file,purpose,onProgress,signal,maxRetries=2}:{
    if(!data||typeof data!=='object'||!('id' in data)||!('uploadUrl' in data)||typeof data.id!=='string'||typeof data.uploadUrl!=='string')throw Error('Invalid reservation');
    const id=data.id as string, uploadUrl=data.uploadUrl as string;
    await new Promise<void>((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open('PUT',uploadUrl);xhr.setRequestHeader('Content-Type',file.type);xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress?.(e.loaded/e.total)};xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve():reject(Error('Upload failed'));xhr.onerror=()=>reject(Error('Network error'));xhr.onabort=()=>reject(Error('Upload aborted'));signal?.addEventListener('abort',()=>xhr.abort(),{once:true});xhr.send(file)});
-   const confirmed=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'confirm',id}),signal});
+   const confirmed=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'confirm',id}),...(signal?{signal}:{})});
    if(!confirmed.ok)throw Error('Upload confirmation failed');
    return id;
   }catch(error){if(signal?.aborted||attempt===maxRetries)throw error;await new Promise(resolve=>setTimeout(resolve,250*2**attempt))}
