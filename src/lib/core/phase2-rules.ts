@@ -12,3 +12,6 @@ export function cropRect(imgWidth:number,imgHeight:number,size:number,zoom:numbe
  const y=(size-h)/2+Math.max(-1,Math.min(1,panY))*Math.max(0,h-size)/2;
  return {x,y,w,h};
 }
+
+export const RESERVED_HANDLES=new Set(['admin','administrator','support','campusconnect','moderator','security','help','staff','official','system','root']);
+export function isReservedHandle(handle:string):boolean{return RESERVED_HANDLES.has(handle.toLowerCase())}

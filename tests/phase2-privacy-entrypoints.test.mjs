@@ -16,7 +16,7 @@ const endpoints=[
 ];
 test('all principal content APIs consult server-side author visibility',()=>{
  for(const endpoint of endpoints){
-  assert.match(load(endpoint),/canViewAuthor/,endpoint+' must check the authenticated viewer');
+  assert.match(load(endpoint),/canViewAuthor|canViewMany/,endpoint+' must check the authenticated viewer');
  }
 });
 test('direct Stream tokens require explicit owner opt-in',()=>{

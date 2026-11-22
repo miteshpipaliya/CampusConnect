@@ -4,6 +4,7 @@ import {z} from 'zod';
 import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
+import {checkRateLimit} from '@/lib/server/rate-limit';
 import {syncStreamUser} from '@/lib/server/stream-user';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
@@ -40,10 +41,9 @@ const schema=z.discriminatedUnion('action',[
 async function peer(handle:string){const snap=await db().collection('users').where('handle','==',handle.toLowerCase()).limit(1).get();return snap.docs[0]??null}
 function channelId(a:string,b:string){return createHmac('sha256',config().secret).update([a,b].sort().join(':')).digest('hex').slice(0,40)}
 async function ensureChannel(uid:string,otherUid:string,handle:string,otherName:string){
- const own=await db().collection('users').doc(uid).get();
+ void handle;void otherName;
  if(await isBlockedEitherWay(uid,otherUid))throw Error('CHAT_BLOCKED');
- const users:Record<string,object>={[uid]:{id:uid,name:own.data()?.name||own.data()?.handle||'Student'},[otherUid]:{id:otherUid,name:otherName||handle}};
- await stream('/users','POST',{users});
+ await Promise.all([syncStreamUser(uid),syncStreamUser(otherUid)]);
  const id=channelId(uid,otherUid);
  const result=await stream('/channels/messaging/'+id+'/query','POST',{data:{members:[uid,otherUid],created_by_id:uid},state:true,watch:false,messages:{limit:50}});
  return {id,result};
@@ -84,12 +84,15 @@ export async function GET(request:NextRequest){
  }catch(error){console.error('CampusConnect chat GET failed',{operation:request.nextUrl.searchParams.has('with')?'conversation':'inbox',error:error instanceof Error?error.message:'unknown'});return errorResponse(503,'Stream chat unavailable. Check Stream credentials and service logs.')}
 }
 export async function POST(request:NextRequest){
- const checked=await guard(request,{write:true,schema,invalidMessage:'Invalid chat request'});if(!checked.ok)return checked.response;
+ const checked=await guard(request,{write:true,schema,invalidMessage:'Invalid chat request',rateLimit:{key:'chat:{uid}',limit:180,windowSec:60}});if(!checked.ok)return checked.response;
  const user=checked.user;
  const parsed=schema.safeParse(checked.input);if(!parsed.success)return errorResponse(400,'Invalid chat request');
  try{
   const input=parsed.data,other=await peer(input.recipientHandle);
-  if(!other||other.id===user.uid)return errorResponse(404,'Member unavailable');
+  if(!other||other.id===user.uid||other.data().deletedAt)return errorResponse(404,'Member unavailable');
+  const quota=await checkRateLimit({key:'chat:'+input.action+':'+user.uid,limit:input.action==='typing'?120:input.action==='send'?30:60,windowSec:60});
+  if(!quota.allowed)return errorResponse(429,'Too many chat requests');
+  if(await isBlockedEitherWay(user.uid,other.id))return errorResponse(403,'CHAT_BLOCKED');
   const {id,result}=await ensureChannel(user.uid,other.id,input.recipientHandle,other.data().name);
   const path='/channels/messaging/'+id;
   if(input.action==='deleteForMe'||input.action==='unsend'){
@@ -102,7 +105,6 @@ export async function POST(request:NextRequest){
     await db().collection('users').doc(user.uid).collection('hiddenChatMessages').doc(input.messageId).set({channelId:id,hiddenAt:new Date().toISOString()});
    }
   }else if(input.action==='typing'){
-   await stream('/users','POST',{users:{[user.uid]:{id:user.uid,typingIn:input.typing?id:'',typingAt:input.typing?Date.now():0}}});
    await stream(path+'/event','POST',{event:{type:input.typing?'typing.start':'typing.stop',user_id:user.uid}});
   }else if(input.action==='read'){
    await stream(path+'/read','POST',{user_id:user.uid});

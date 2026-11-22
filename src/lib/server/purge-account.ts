@@ -28,7 +28,7 @@ export async function purgeAccountBatch(uid:string,now=Date.now()):Promise<{stag
   {name:'stories',field:'authorUid',value:uid,recursive:true},
   {name:'reposts',field:'ownerUid',value:uid},
   {name:'follows_out',field:'followerUid',value:uid},
-  {name:'follows_in',field:'followeeUid',value:uid},
+  {name:'follows_in',field:'followingUid',value:uid},
   {name:'blocks_out',field:'ownerUid',value:uid},
   {name:'blocks_in',field:'targetUid',value:uid},
   {name:'mutes_out',field:'ownerUid',value:uid},

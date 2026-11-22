@@ -11,8 +11,6 @@ const schema=z.object({
  name:z.string().trim().min(2).max(70),
  bio:z.string().trim().max(150),
  website:z.union([z.literal(''),z.string().trim().url().max(200).refine(value=>/^https:\/\//i.test(value))]),
- branch:z.string().trim().max(80),
- division:z.string().trim().max(30),
  relationshipStatus:z.union([z.literal(''),z.enum(relationshipStatuses)]),
  relationshipVisibility:z.enum(relationshipVisibilities),
  privacy:z.enum(['campus','private'])
@@ -30,7 +28,7 @@ export async function PATCH(request:NextRequest){
  const parsed=schema.safeParse(checked.input);if(!parsed.success)return errorResponse(400,'Invalid profile settings');
  try{
   const ref=db().collection('users').doc(checked.user.uid);
-  await ref.update({...parsed.data,updatedAt:FieldValue.serverTimestamp()});
+  await ref.update({...parsed.data,isPrivate:parsed.data.privacy==='private','settings.isPrivate':parsed.data.privacy==='private',updatedAt:FieldValue.serverTimestamp()});
   const result=await syncStreamUser(checked.user.uid).catch(()=>({synced:false}));
   return NextResponse.json({ok:true,streamSynced:result.synced},{headers:safeHeaders});
  }catch{return errorResponse(503,'Unable to save profile settings')}

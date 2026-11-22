@@ -5,7 +5,7 @@ import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {RATE_LIMITS} from '@/lib/server/rate-limit';
-import {canViewAuthor} from '@/lib/server/privacy';
+import {canViewMany} from '@/lib/server/privacy';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {mintUrls} from '@/lib/server/media-urls';
 export const runtime='nodejs';
@@ -15,7 +15,8 @@ export async function GET(request:NextRequest){
  try{
   const now=Timestamp.now();
   const snapshot=await db().collection('stories').where('expiresAt','>',now).limit(100).get();
-  const visibility=await Promise.all(snapshot.docs.map(d=>canViewAuthor(user.uid,String(d.data().authorUid||''))));
+  const visibilityMap=await canViewMany(user.uid,snapshot.docs.map(d=>String(d.data().authorUid||'')));
+  const visibility=snapshot.docs.map(d=>visibilityMap.get(String(d.data().authorUid||''))??false);
   const closeAuthors=[...new Set(snapshot.docs.filter(d=>d.data().audience==='close').map(d=>String(d.data().authorUid||'')))];
   const friendChecks=await Promise.all(closeAuthors.map(uid=>uid===user.uid?Promise.resolve(true):db().collection('closeFriends').doc(uid+'_'+user.uid).get().then(s=>s.exists)));
   const closeAccess=new Map(closeAuthors.map((uid,i)=>[uid,friendChecks[i]]));
