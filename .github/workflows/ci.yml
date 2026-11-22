@@ -28,7 +28,7 @@ jobs:
           node-version: 24
           cache: npm
       - name: Install locked dependencies
-        run: npm install --no-audit
+        run: npm ci --no-audit
         # LOCKFILE DEBT: package-lock.json predates firebase-admin/R2 deps.\n        # npm ci must be restored after regenerating and committing the lockfile.
       - name: Lint
         run: npm run lint
