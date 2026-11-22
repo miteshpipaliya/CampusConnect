@@ -39,3 +39,9 @@ NEXT: Read latest GitHub Actions quality results and Vercel preview for PR #20, 
 - DONE: WebM duration fixture and bounded unknown-size EBML segment support.
 - PENDING: current-head CI and preview; production unchanged.
 NEXT: Verify GitHub Actions quality and Vercel preview for head 71fffe3463f2193d919d320e606992e47fe3ce92; repair any failures. Implement remaining Batches 0-7, API tests and production smoke checks before merge.
+
+## Media URL authorization checkpoint
+- DONE: replace per-media Firestore fetches with getAll batches for post, story, avatar, block and close-friend checks; canViewMany called once for authors; pure maySignMedia decides access; fail closed on signing failures.
+- IMPORTANT: verify preview behavior for private avatars, close-friends stories, archived posts and blocked users. Newest commit is not yet verified.
+- CI: prior GitHub Actions run 45021491746 succeeded for old commit 47c97868 only. Do not infer current head is green.
+NEXT: Verify CI quality and Vercel preview for commit 99aafa6a1d1a197aa29f6dab194762b03a2c5576; fix errors and security regressions; implement tooling, composer, rendering, lifecycle, social graph, identity, and API tests before any main merge.
