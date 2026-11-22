@@ -1,7 +1,8 @@
-# Phase 1 architecture decisions
-- Session: positive results cached for up to 60 seconds per server instance, SHA-256 cookie keys, max 500. Revocation may take up to 60 seconds to propagate.
-- Rate limiting: transactional Firestore windows per user and IP; fail open when Firestore is unavailable to preserve existing functionality.
-- Cron: once daily for Vercel Hobby compatibility, missing CRON_SECRET fails closed, deletion opt-in only after reviewing dry-run output.
-- Legacy counters: lazy backfill on feed reads; likes/comments subcollections remain source of truth.
-- TanStack Query: deferred because npm is required to update the lockfile.
-- Phase 1C: guarded writes, media validation and presigned URLs wired to routes. Existing media ID fallback retained.
+# Phase 1 decisions
+- SHA-256 cookie-keyed positive session cache: TTL 60 seconds, max 500 entries per instance; revocation may be delayed up to 60 seconds.
+- Rate limits: Firestore transactions, fail open if Firestore is unavailable.
+- Cron: daily at 03:00 UTC, missing CRON_SECRET returns 503, deletion disabled until CRON_DELETE_ENABLED=true.
+- Legacy counters: subcollections are source of truth; lazy feed backfill for missing/partial counters.
+- Media: signed URLs are authorized per media access rules; story URLs capped to story expiry.
+- TanStack Query deferred: lockfile requires npm.
+- Migration defaults to dry-run; never executed by the assistant.

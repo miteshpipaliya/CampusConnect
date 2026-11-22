@@ -1,0 +1,1 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {normalizeCounters} from '../src/lib/core/counters.ts';test('partial legacy counters are marked for backfill',()=>{assert.equal(normalizeCounters({comments:1}).isLegacy,true);assert.equal(normalizeCounters({likes:1,comments:2}).isLegacy,false);});
