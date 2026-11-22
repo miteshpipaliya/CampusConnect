@@ -104,7 +104,6 @@ export async function POST(request:NextRequest){
   }catch{return errorResponse(400,'Invalid media or unable to publish')}
   const {hashtags:tags,mentions}=parseCaption(input.caption);
   if(tags.length){const batch=store.batch();for(const tag of tags)batch.set(store.collection('hashtags').doc(tag),{tag,count:FieldValue.increment(1),updatedAt:FieldValue.serverTimestamp()},{merge:true});await batch.commit().catch(()=>{})}
-  const mentions=[...new Set((input.caption.match(/(?:^|\\s)@[a-z][a-z0-9._]{2,29}/gi)||[]).map(x=>x.trim().slice(1).toLowerCase()))].slice(0,15);
   for(const handle of mentions){
    try{const person=await store.collection('users').where('handle','==',handle).limit(1).get();const target=person.docs[0];if(!target||target.id===user.uid||target.data().deletedAt||await isBlockedEitherWay(user.uid,target.id))continue;
     await store.collection('users').doc(target.id).collection('notifications').add({type:'mention',actorUid:user.uid,actorHandle:String(profile.data()?.handle||''),postId:newPost.id,read:false,createdAt:FieldValue.serverTimestamp()});
