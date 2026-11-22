@@ -1,4 +1,7 @@
 import 'server-only';
+import {createHash} from 'node:crypto';
+import {createTtlCache} from '../core/session-cache';
+const cache=createTtlCache<{uid:string;email:string|undefined}>({ttlMs:60000,max:500});
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from './services';
 
@@ -11,10 +14,14 @@ export function sameOrigin(request:NextRequest){
 export async function session(request:NextRequest){
  const cookie=request.cookies.get('cc_session')?.value;
  if(!cookie)return null;
+ const key=createHash('sha256').update(cookie).digest('hex');
+ const cached=cache.get(key);if(cached)return cached;
  try{
   const verified=await auth().verifySessionCookie(cookie,true);
   const record=await auth().getUser(verified.uid);
-  return record.emailVerified&&!record.disabled&&(record.email?.toLowerCase().endsWith('@bvmengineering.ac.in')||(process.env.APPROVED_TEST_EMAILS||'').split(',').map(email=>email.trim().toLowerCase()).filter(Boolean).includes(record.email?.toLowerCase()||''))?{uid:record.uid,email:record.email}:null;
+  const result=record.emailVerified&&!record.disabled&&(record.email?.toLowerCase().endsWith('@bvmengineering.ac.in')||(process.env.APPROVED_TEST_EMAILS||'').split(',').map(email=>email.trim().toLowerCase()).filter(Boolean).includes(record.email?.toLowerCase()||''))?{uid:record.uid,email:record.email}:null;
+  if(result)cache.set(key,result);
+  return result;
  }catch{return null}
 }
 export function setSession(response:NextResponse,value:string){
