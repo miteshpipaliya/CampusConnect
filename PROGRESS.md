@@ -33,3 +33,9 @@ NEXT: Inspect CI quality logs and Vercel preview for content branch; fix any fai
 - NOTE: MP4 files whose moov atom is beyond the first 64KB will fail closed. WebM with unknown-size segments may fail closed. These formats need expanded fixture tests before production merge.
 - PENDING: full CI and Vercel preview checks for newest code; not production verified.
 NEXT: Read latest GitHub Actions quality results and Vercel preview for PR #20, fix TypeScript/test/build failures, then complete media-access batching and Batches 0-7 before any merge to main.
+
+## Checkpoint: WebM regression verification
+- Verified: GitHub Actions run 45021491746 for commit 47c97868 passed quality and secret-scan; Vercel preview for an earlier commit was Ready. This does not verify the current head.
+- DONE: WebM duration fixture and bounded unknown-size EBML segment support.
+- PENDING: current-head CI and preview; production unchanged.
+NEXT: Verify GitHub Actions quality and Vercel preview for head 71fffe3463f2193d919d320e606992e47fe3ce92; repair any failures. Implement remaining Batches 0-7, API tests and production smoke checks before merge.
