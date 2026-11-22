@@ -32,7 +32,7 @@ export async function GET(request:NextRequest){
   const ownLikes=likeRefs.length?await store.getAll(...likeRefs):[];
   const ids=selected.map(d=>d.data().mediaId).filter((x):x is string=>typeof x==='string'&&x.length>0);
   const mediaSnaps=ids.length?await store.getAll(...ids.map(id=>store.collection('media').doc(id))):[];
-  const mediaUrls=await mintUrls(mediaSnaps.filter(x=>x.exists).map(x=>({id:x.id,...x.data()})),{viewerUid:user.uid});
+  const mediaUrls=await mintUrls(mediaSnaps.filter(x=>x.exists).map(x=>({id:x.id,...(x.data()??{})})),{viewerUid:user.uid});
   const posts=await Promise.all(selected.map(async(d,i)=>{
    const data=d.data(),normalized=normalizeCounters(data.counters);
    let counters=normalized;
