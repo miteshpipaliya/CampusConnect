@@ -12,7 +12,7 @@ export function ChatInbox(){
   <label htmlFor="cc-chat-search">Search conversations</label><input id="cc-chat-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search people" style={{width:'100%',padding:12,borderRadius:12}}/>
   {loading?<p role="status">Loading conversations…</p>:error?<p role="alert">{error}</p>:visible.length===0?<p>{query?'No matching conversations.':'No conversations yet. Find a campus member to start chatting.'}</p>:
    <ul style={{listStyle:'none',padding:0}}>{visible.map(c=><li key={c.handle}><Link href={'/messages/'+encodeURIComponent(c.handle)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 4px',borderBottom:'1px solid var(--cc-border,#7773)',textDecoration:'none',color:'inherit'}}>
-   <Avatar user={{name:c.name,handle:c.handle,avatarMediaId:c.avatarMediaId,avatarUrl:c.avatarUrl}} size={44}/>
+   <Avatar user={{name:c.name,handle:c.handle,avatarMediaId:c.avatarMediaId??null,avatarUrl:c.avatarUrl??null}} size={44}/>
    <span style={{minWidth:0,flex:1}}><strong>{c.name||c.handle}</strong><small style={{display:'block',opacity:.75}}>@{c.handle}</small><span style={{display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.preview||'Start a conversation'}</span></span>
    {c.updatedAt&&<time dateTime={c.updatedAt} style={{fontSize:12,opacity:.7}}>{new Date(c.updatedAt).toLocaleDateString()}</time>}
    </Link></li>)}</ul>}
