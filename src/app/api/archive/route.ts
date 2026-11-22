@@ -7,7 +7,7 @@ export const runtime='nodejs';
 export async function GET(req:NextRequest){
  const user=await session(req);if(!user)return errorResponse(401,'Sign in required');
  try{
-  const now=Date.now(),store=db(),snap=await store.collection('stories').where('authorUid','==',user.uid).limit(100).get();
+  const now=Date.now(),store=db(),snap=await store.collection('stories').where('authorUid','==',user.uid).orderBy('createdAt','desc').limit(100).get();
   const archive=snap.docs.filter(d=>{const end=d.data().expiresAt;const expiry=end instanceof Timestamp?end.toMillis():end?.toMillis?.()??0;return expiry<=now&&d.data().archived!==false});
   const mediaIds=archive.map(d=>d.data().mediaId).filter((x):x is string=>typeof x==='string');
   const media=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];

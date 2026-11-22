@@ -14,7 +14,7 @@ export async function DELETE(req:NextRequest){
   if(!profile.exists||String(profile.data()?.handle||'').toLowerCase()!==parsed.data.confirmHandle.toLowerCase())return errorResponse(400,'Type your exact username to confirm');
   await ref.update({deletedAt:FieldValue.serverTimestamp(),deletionRequestedAt:FieldValue.serverTimestamp(),privacy:'private',isPrivate:true});
   await auth().revokeRefreshTokens(checked.user.uid);
-  await auth().updateUser(checked.user.uid,{disabled:true});
+  // Keep the Firebase identity enabled during the 30-day restoration window.
   const response=NextResponse.json({ok:true,softDeleted:true},{headers:safeHeaders});clearSession(response);return response;
  }catch{return errorResponse(503,'Account deletion unavailable')}
 }
