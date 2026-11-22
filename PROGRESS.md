@@ -13,3 +13,5 @@ Updated 2026-11-22. Source of truth: code and CI checks, not previous phase clai
 
 ## Known constraints
 The existing lockfile may be out of sync. Do not switch CI to npm ci until the regenerated lockfile is committed and npm ci passes. Phase 1-3 audit PR #19 was merged; its remaining work is not automatically complete. No new functionality is considered production verified until preview smoke tests and CI gates pass.
+
+NEXT: Verify CI quality and Vercel preview for commit c510a1288dfea462b01f8e0a36ba172b62c9ecf8, fix any failures, then complete Batch 0 tooling and remaining Batches 1-7 via reviewed PRs.
