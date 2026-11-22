@@ -47,8 +47,8 @@ export async function DELETE(request:NextRequest){
 }
 
 export async function PATCH(request:NextRequest){
- if(!sameOrigin(request))return errorResponse(403,'Untrusted request origin');
- const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
+ const checked=await guard(request,{write:true});if(!checked.ok)return checked.response;
+ const user=checked.user;
  const input=z.object({id:z.string().min(10).max(40),highlight:z.boolean()}).safeParse(await request.json().catch(()=>null));
  if(!input.success)return errorResponse(400,'Invalid highlight request');
  try{const ref=db().collection('stories').doc(input.data.id),doc=await ref.get();
