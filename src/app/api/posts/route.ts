@@ -50,6 +50,7 @@ export async function GET(request:NextRequest){
   const authors=new Map(users.filter(d=>d.exists).map(d=>[d.id,d.data()]));
   const mediaIds=[...new Set([
    ...selected.map(d=>d.data().mediaId),
+   ...selected.flatMap(d=>Array.isArray(d.data().media)?d.data().media.map((m:{mediaId?:string})=>m.mediaId):[]),
    ...users.map(d=>d.data()?.avatarMediaId)
   ].filter((id):id is string=>typeof id==='string'&&id.length>0))];
   const mediaSnaps=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];
@@ -65,7 +66,7 @@ export async function GET(request:NextRequest){
    const mediaId=typeof data.mediaId==='string'?data.mediaId:null;
    const author=authors.get(String(data.authorUid||''));
    const avatarMediaId=typeof author?.avatarMediaId==='string'?author.avatarMediaId:null;
-   return {id:d.id,media:Array.isArray(data.media)?data.media:[],type:data.type||'post',caption:data.caption,authorHandle:data.authorHandle,authorUid:data.authorUid,mediaId,likes:counters.likes,comments:counters.comments,reposts:counters.reposts,liked:ownLikes[i]?.exists??false,saved:ownSaves[i]?.exists??false,avatarMediaId,avatarUrl:avatarMediaId?mediaUrls[avatarMediaId]?.url??null:null,mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null};
+   return {id:d.id,media:Array.isArray(data.media)?data.media.map((m:{mediaId:string;alt?:string})=>({...m,url:mediaUrls[m.mediaId]?.url??null})):[],type:data.type||'post',caption:data.caption,authorHandle:data.authorHandle,authorUid:data.authorUid,mediaId,likes:counters.likes,comments:counters.comments,reposts:counters.reposts,liked:ownLikes[i]?.exists??false,saved:ownSaves[i]?.exists??false,avatarMediaId,avatarUrl:avatarMediaId?mediaUrls[avatarMediaId]?.url??null:null,mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null};
   }));
   const last=selected.at(-1);
   const lastMs=last?.data().createdAt?.toMillis?.();

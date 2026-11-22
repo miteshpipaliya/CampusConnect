@@ -19,11 +19,13 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
    hydrateAvatars([authorUid],user.uid)
   ]);
   const mediaId=typeof d.mediaId==='string'?d.mediaId:null,media=mediaId?await store.collection('media').doc(mediaId).get():null;
-  const mediaUrls=media?.exists?await mintUrls([{id:media.id,...(media.data()??{})}],{viewerUid:user.uid}):{};
+  const allMedia=Array.isArray(d.media)?d.media as Array<{mediaId:string;alt?:string}>:[];
+  const mediaDocs=allMedia.length?await store.getAll(...allMedia.map(m=>store.collection('media').doc(m.mediaId))):[];
+  const mediaUrls=await mintUrls([...(media?.exists?[{id:media.id,...(media.data()??{})}]:[]),...mediaDocs.filter(d=>d.exists).map(d=>({id:d.id,...(d.data()??{})}))],{viewerUid:user.uid});
   return NextResponse.json({post:{
    id:post.id,authorUid,caption:String(d.caption||''),authorHandle:String(d.authorHandle||avatars[authorUid]?.handle||'student'),
    authorName:avatars[authorUid]?.name||'',avatarMediaId:avatars[authorUid]?.avatarMediaId??null,avatarUrl:avatars[authorUid]?.avatarUrl??null,
-   mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null,
+   mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null,media:allMedia.map(m=>({...m,url:mediaUrls[m.mediaId]?.url??null})),
    mediaContentType:media?.data()?.contentType??null,likes:Number(d.counters?.likes||0),comments:Number(d.counters?.comments||0),
    liked:liked.exists,saved:saved.exists
   }},{headers:safeHeaders});

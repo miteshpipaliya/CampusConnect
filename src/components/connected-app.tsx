@@ -3,6 +3,7 @@ import { SocialPanels } from './social-panels';
 import {Avatar} from './avatar';
 import {PostActions} from './post-actions';
 import {CreateComposer} from './create-composer';
+import {MediaCarousel,type CarouselMedia} from './media-carousel';
 import { isAllowedEmail } from '@/lib/student-email';
 import { LiveStories } from './live-stories';
 import { useSearchParams } from 'next/navigation';
@@ -10,7 +11,7 @@ import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
 import { Heart,MessageCircle,Repeat2,Bookmark } from 'lucide-react';
 
-type Post={id:string;caption:string;authorUid?:string;authorHandle:string;mediaId:string|null;mediaUrl?:string|null;avatarMediaId?:string|null;avatarUrl?:string|null;likes:number;liked:boolean;saved?:boolean;comments:number};
+type Post={id:string;caption:string;media?:CarouselMedia[];authorUid?:string;authorHandle:string;mediaId:string|null;mediaUrl?:string|null;avatarMediaId?:string|null;avatarUrl?:string|null;likes:number;liked:boolean;saved?:boolean;comments:number};
 type Me={uid:string;email:string;profile:{handle:string;name:string;branch:string;division:string}|null};
 async function api<T>(path:string,method='GET',data?:object):Promise<T>{
  const r=await fetch(path,{method,cache:'no-store',credentials:'same-origin',
@@ -134,7 +135,7 @@ export function ConnectedFeed(){
   {(section==='home'||section==='community')&&<LiveStories/>}
   {(section==='home'||section==='community')&&(loading&&!feedCache?<p className="cc-feed-skeleton" aria-label="Loading posts"/>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
    <Link href={'/profile/'+encodeURIComponent(post.authorHandle)} style={{display:'flex',alignItems:'center',gap:8}}><Avatar user={{handle:post.authorHandle,avatarMediaId:post.avatarMediaId??null,avatarUrl:post.avatarUrl??null}} size={32}/><strong>@{post.authorHandle}</strong></Link>
-   {post.mediaId&&<img src={post.mediaUrl||'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
+   {post.media?.length?<MediaCarousel items={post.media}/>:post.mediaId&&<img src={post.mediaUrl||'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
    <p>{post.caption}</p><PostActions id={post.id} caption={post.caption} authorUid={post.authorUid} onChanged={()=>void refresh()}/>
    <div><button type="button" onClick={()=>toggleLike(post.id)}><Heart size={20} fill={post.liked?'currentColor':'none'}/> {post.likes||0}</button>
    <button type="button" onClick={()=>openComments(post.id)}><MessageCircle size={20}/> {post.comments||0}</button><button type="button" onClick={()=>repost(post.id)} aria-label="Toggle repost"><Repeat2 size={20}/> Repost</button><button type="button" aria-label={post.saved?'Remove saved post':'Save post'} onClick={()=>void toggleSave(post.id,Boolean(post.saved))}><Bookmark size={20} fill={post.saved?'currentColor':'none'}/> {post.saved?'Saved':'Save'}</button></div>
