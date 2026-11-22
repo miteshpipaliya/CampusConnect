@@ -13,6 +13,10 @@ Status values: TODO | DOING | DONE | BLOCKED. DONE requires successful validatio
 - `npm run build`: PASSED in sandbox with Node 24 (project Vercel uses Node 22); production integration and live backend are not verified.
 - No other items marked DONE; no untested upgrade functionality claimed.
 
+## Phase 1A GitHub connector execution
+- Batch A foundation modules and tests added on branch phase-1a. CI/preview verification pending; not marked DONE until checks are green.
+- NEXT: Open and verify Phase 1A pull request; address CI feedback before merging.
+
 ## Phase 1: Foundation
 
 - [ ] **DOING** — 1.1 Typed Firestore models and composite indexes
