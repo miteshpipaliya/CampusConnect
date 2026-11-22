@@ -11,6 +11,7 @@ import {canViewAuthor} from '@/lib/server/privacy';
 import {mintUrls} from '@/lib/server/media-urls';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
 import {parseCaption} from '@/lib/core/content-rules';
+import {claimMedia} from '@/lib/server/media-service';
 export const runtime='nodejs';
 const schema=z.object({caption:z.string().trim().min(1).max(2200),type:z.enum(['post','reel']).default('post'),mediaId:z.string().uuid().optional(),media:z.array(z.object({mediaId:z.string().uuid(),alt:z.string().max(250).default('')})).max(10).optional(),cropRatio:z.enum(['1 / 1','4 / 5','16 / 9']).optional(),filter:z.enum(['none','grayscale','sepia','contrast','saturate','brightness']).optional(),commentsOff:z.boolean().optional(),hideLikeCount:z.boolean().optional()});
 export async function GET(request:NextRequest){
@@ -93,12 +94,7 @@ export async function POST(request:NextRequest){
   const newPost=store.collection('posts').doc(),mediaRefs=media.map(m=>store.collection('media').doc(m.mediaId));
   try{
    await store.runTransaction(async transaction=>{
-    const snapshots=mediaRefs.length?await transaction.getAll(...mediaRefs):[];
-    for(const info of snapshots){
-     if(!info.exists||info.data()?.ownerUid!==user.uid||info.data()?.status!=='uploaded'||!['post','reel'].includes(String(info.data()?.purpose||''))||info.data()?.postId||info.data()?.storyId)throw Error('INVALID_MEDIA');
-     if(input.type==='reel'&&(info.data()?.purpose!=='reel'||!String(info.data()?.contentType||'').startsWith('video/')))throw Error('REEL_REQUIRES_VIDEO');
-    }
-    for(const ref of mediaRefs)transaction.update(ref,{postId:newPost.id});
+    await claimMedia(transaction,{uid:user.uid,mediaRefs,kind:input.type,attachmentId:newPost.id});
     transaction.create(newPost,{authorUid:user.uid,authorHandle:profile.data()!.handle,caption:input.caption,mediaId:media[0]?.mediaId||null,media:media.map(m=>({...m})),type:input.type,cropRatio:input.cropRatio||'1 / 1',filter:input.filter||'none',commentsOff:input.commentsOff||false,hideLikeCount:input.hideLikeCount||false,visibility:profile.data()!.privacy==='private'?'private':'campus',createdAt:FieldValue.serverTimestamp(),deletedAt:null,archived:false,counters:{likes:0,comments:0,reposts:0,saves:0,shares:0,views:0}});
    });
   }catch{return errorResponse(400,'Invalid media or unable to publish')}
