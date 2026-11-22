@@ -28,6 +28,9 @@ export async function mintUrls(mediaDocs:MediaDoc[],opts:{viewerUid:string;story
  const postDocs=new Map(posts.map((id,i)=>[id,docs[avatars.length+stories.length+i]]));
  const authors=[...new Set([...stories.map(id=>String(storyDocs.get(id)?.data()?.authorUid||'')),...posts.map(id=>String(postDocs.get(id)?.data()?.authorUid||''))].filter(Boolean))];
  const visibility=await canViewMany(opts.viewerUid,[...authors,...avatars]);
+ const blockRefs=avatars.filter(uid=>uid!==opts.viewerUid).flatMap(uid=>[store.collection('blocks').doc(opts.viewerUid+'_'+uid),store.collection('blocks').doc(uid+'_'+opts.viewerUid)]);
+ const blockDocs:Doc[]=[];for(const part of chunks(blockRefs,100))blockDocs.push(...await store.getAll(...part));
+ const blockedAvatars=new Set(avatars.filter((uid,i)=>uid!==opts.viewerUid&&(blockDocs[avatars.filter(x=>x!==opts.viewerUid).indexOf(uid)*2]?.exists||blockDocs[avatars.filter(x=>x!==opts.viewerUid).indexOf(uid)*2+1]?.exists)));
  const closeAuthors=[...new Set(stories.map(id=>storyDocs.get(id)?.data()).filter(d=>d?.audience==='close'&&d.authorUid!==opts.viewerUid).map(d=>String(d?.authorUid||'')))];
  const closeRefs=closeAuthors.map(uid=>store.collection('closeFriends').doc(uid+'_'+opts.viewerUid));
  const closeDocs:Doc[]=[];for(const part of chunks(closeRefs,100))closeDocs.push(...await store.getAll(...part));
@@ -41,7 +44,7 @@ export async function mintUrls(mediaDocs:MediaDoc[],opts:{viewerUid:string;story
    const storyAuthor=String(storyData?.authorUid||''),postAuthor=String(postData?.authorUid||'');
    const allowed=maySignMedia({
     owner:media.ownerUid===opts.viewerUid,status:media.status||'',hasKey:Boolean(media.key),
-    ...(avatar?{avatar:{active:avatar.exists&&!avatar.data()?.deletedAt&&avatar.data()?.avatarMediaId===media.id,blocked:!(visibility.get(media.avatarOwnerUid||'')??false)}}:{}),
+    ...(avatar?{avatar:{active:avatar.exists&&!avatar.data()?.deletedAt&&avatar.data()?.avatarMediaId===media.id,blocked:blockedAvatars.has(media.avatarOwnerUid||'')}}:{}),
     ...(story?{story:{active:Boolean(story.exists&&(storyData?.highlight||storyData?.expiresAt?.toMillis?.()>Date.now())),visible:visibility.get(storyAuthor)??false,closeFriendsOnly:storyData?.audience==='close'&&storyAuthor!==opts.viewerUid,closeFriend:closeFriends.has(storyAuthor)}}:{}),
     ...(post?{post:{exists:post.exists,deleted:Boolean(postData?.deletedAt),archived:Boolean(postData?.archived),author:postAuthor===opts.viewerUid,visible:visibility.get(postAuthor)??false}}:{})
    });
