@@ -22,3 +22,8 @@ NEXT: Verify CI quality and Vercel preview for commit c510a1288dfea462b01f8e0a36
 - PENDING: latest CI quality + Vercel preview verification.
 - TODO: Batch 0 dependency lockfile and React Query provider, Batches 2-7 remaining scope, live two-account smoke tests.
 NEXT: Check GitHub Actions and Vercel preview for commit 4609b60718880c111b43579822f50f3e541cc4fc, fix errors, then implement media header duration validation and the rest of the uploaded spec; do not merge until all batches verified.
+
+## Checkpoint: media security continuation
+- DONE: central claimMedia with transaction-safe snapshot reuse; caption tags/mentions/location persisted; batch feed visibility; cleanup of unattached uploaded media; bounded MP4 duration parser with pure tests.
+- TODO: wire duration parser into confirmation (including WebM), finish tooling and React Query, client composer, rendering, social graph, identity, API integration tests, index deployment and smoke tests.
+NEXT: Inspect CI quality logs and Vercel preview for content branch; fix any failures. Wire MP4/WebM duration validation at confirm. Complete Batches 0-7 in separate verified PRs; merge only after green CI and preview.
