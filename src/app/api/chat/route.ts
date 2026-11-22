@@ -137,9 +137,11 @@ export async function POST(request:NextRequest){
    if(!message)return errorResponse(404,'Message not found in this conversation');
    if(input.action==='unsend'){
     if((message.user?.id||message.user_id)!==user.uid)return errorResponse(403,'You can only unsend your own messages');
-    await stream('/messages/'+encodeURIComponent(input.messageId),'DELETE');
+    // Revoke any private attachment first: if Stream deletion fails, the media
+    // stays inaccessible instead of surviving a successfully unsent message.
     const attached=message.campusMediaId??message.custom?.campusMediaId;
     if(attached)await revokeChatMedia(attached,input.messageId);
+    await stream('/messages/'+encodeURIComponent(input.messageId),'DELETE');
    }else if(input.action==='deleteForMe'){
     await db().collection('users').doc(user.uid).collection('hiddenChatMessages').doc(input.messageId).set({channelId:id,hiddenAt:new Date().toISOString()});
    }else{
