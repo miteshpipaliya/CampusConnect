@@ -55,3 +55,10 @@ NEXT: Verify GitHub Actions quality and Vercel preview for head 71fffe3463f2193d
 - IMPORTANT: verify preview behavior for private avatars, close-friends stories, archived posts and blocked users. Newest commit is not yet verified.
 - CI: prior GitHub Actions run 45021491746 succeeded for old commit 47c97868 only. Do not infer current head is green.
 NEXT: Verify CI quality and Vercel preview for commit 99aafa6a1d1a197aa29f6dab194762b03a2c5576; fix errors and security regressions; implement tooling, composer, rendering, lifecycle, social graph, identity, and API tests before any main merge.
+
+## Release-readiness integration (2026-11-22; current)
+- PR #22 on `fix/campusconnect-release-readiness` preserves content-pipeline and messaging work without modifying `main`.
+- IMPLEMENTED IN SOURCE: Stream Chat SDK 10.2.0 client provider, authenticated token endpoint behind `STREAM_CLIENT_TOKENS_ENABLED`, real-time message/presence/typing/reactions listeners, server-backed sends, replies, private R2 chat media, post/Reel reference shares, bounded history pagination, inbox and notifications. These are NOT two-account verified.
+- CHECKED: regenerated lockfile is installed using `npm ci` in CI; previous runs completed typecheck, lint, tests, build and secret scan. Check the exact current commit before merging.
+- CORRECTED: Stream user-management REST paths, opt-in activity status, server partial update of Stream invisible status, older-message pagination and stale remote typing expiration.
+- OPEN: final commit CI and exact-SHA Vercel preview, full Stream permission review, dev Firestore indexes, authorized two-account E2E, unresolved main content/composer/social graph milestones. `main` must remain unchanged until approved.

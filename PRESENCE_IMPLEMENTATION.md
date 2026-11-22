@@ -51,3 +51,9 @@ NEXT: Inspect latest Vercel preview build and GitHub Actions quality results for
 - PR #21 was retargeted to main so its combined PR #20 + PR #21 tree is checked by the GitHub Actions pull_request workflow.
 - Vercel API refused a new deployment with HTTP 402 api-deployments-free-per-day; no green Vercel preview can be claimed until quota resets.
 - Do not merge while CI and Vercel checks are unverified or while feature acceptance is incomplete.
+
+## Current code update (2026-11-22; supersedes old checkpoint notes)
+- `stream-chat@10.2.0` is installed in the regenerated lockfile and the shared `StreamConnectionProvider` authenticates with `/api/chat/token`, guarded by an optional default-off feature flag.
+- Inbox and thread subscribe to Stream live events, request privacy authorization from `/api/chat/presence`, and render a shared green presence dot only when both connection and permission are true. The thread also expires stale typing indicators after inactivity.
+- Stream common user REST routes were corrected and a partial `invisible` update was added for account activity-status changes; accounts without explicit status now default to opt-in/off.
+- NOT VERIFIED: two-device presence, expired sessions, online/offline in real Stream test accounts, Stream dashboard permissions, block synchronization and actual private R2 transfers. The old 'no SDK client' notes below are historical, not current status.

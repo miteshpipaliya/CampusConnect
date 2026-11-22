@@ -21,3 +21,8 @@ CampusConnect is a **public demo with fictional content**, not an authenticated 
 - Keep Dependabot security alerts enabled in GitHub Settings → Security & analysis. Version-update automation was removed to honor the one-branch request; check for security updates manually.
 
 **Audit status:** CI passing is necessary but does not prove a full penetration test or a production-ready secure social network.
+
+## Release-readiness branch — current scope (2026-11-22)
+The earlier 'frontend-only demo' paragraphs document the original prototype and are NOT an accurate description of PR #22. The current code authenticates with Firebase Admin session cookies, authorizes server routes, stores app data in Firestore, uses signed private R2 media, and integrates Stream Chat. **Do not treat the branch as production security verified.**
+
+For chat: Stream tokens are minted only by the session-protected POST `/api/chat/token` route and gated by `STREAM_CLIENT_TOKENS_ENABLED`. No Stream secret belongs in the browser. Server checks bilateral blocks and message ownership; private chat media is associated with sender, peer and message before access. Activity presence requires an opt-in and server-side visibility gate; Stream user visibility uses a partial update. Validate Stream application permissions for client users in a non-production Stream environment, including member-only channel access and two-way blocking, before enabling tokens. Current unit tests and CI are not a substitute for two-account authorization tests.

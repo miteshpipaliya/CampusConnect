@@ -35,3 +35,11 @@
 3. No test credentials or secrets in GitHub, PR comments or commit history.
 4. If Vercel daily quota is reached, stop deployment attempts; do not claim the older preview validates newer code or change the plan/billing without approval.
 5. Merge and production deployment require explicit separate authorization after all required gates pass.
+
+## Updated integration verification (2026-11-22)
+- Stream user-management endpoints were audited against official Stream API docs: users are managed at `/api/v2/users`; presence changes use `PATCH /api/v2/users` with partial `invisible` field updates to avoid removing other user fields.
+- Activity status defaults to opt-in for accounts without an explicit setting, and authorized changes attempt to update Stream visibility when client tokens are enabled.
+- Added older message history retrieval, deduplication, and remote typing inactivity cleanup. These need two-account acceptance before launch.
+- Client token flag remains disabled unless explicitly enabled by the operator after Stream role/block and privacy verification.
+- README/early demo security docs contain historical assertions; current application has Firebase Auth, Firestore, R2 and Stream server integration and must not be treated as a local-only demo.
+- Do not interpret a passing TypeScript/build job as proof that Stream credentials, permissions, notifications, R2 signed uploads, or two-account behavior work.
