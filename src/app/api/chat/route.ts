@@ -61,7 +61,7 @@ export async function GET(request:NextRequest){
    const allowed=await Promise.all(snapshot.docs.map(d=>isBlockedEitherWay(user.uid,d.id)));
    const visible=snapshot.docs.filter((d,i)=>d.id!==user.uid&&!allowed[i]&&!d.data().deletedAt);
    const avatars=await hydrateAvatars(visible.map(d=>d.id),user.uid);
-   return NextResponse.json({members:visible.map(d=>({handle:d.data().handle,name:d.data().name,avatarMediaId:avatars[d.id]?.avatarMediaId??null,avatarUrl:avatars[d.id]?.avatarUrl??null})).filter(x=>x.handle)},{headers:safeHeaders})}
+   return NextResponse.json({members:visible.map(d=>({uid:d.id,handle:d.data().handle,name:d.data().name,avatarMediaId:avatars[d.id]?.avatarMediaId??null,avatarUrl:avatars[d.id]?.avatarUrl??null})).filter(x=>x.handle)},{headers:safeHeaders})}
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.
    const result=await stream('/channels','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
@@ -73,7 +73,7 @@ export async function GET(request:NextRequest){
    }));
    const byId=new Map(profiles.map(p=>[p.id,p]));
    const avatars=await hydrateAvatars(profiles.map(p=>p.id),user.uid);
-   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{handle:profile.handle,name:profile.name||profile.handle,preview:c.messages?.at(-1)?.text||'',updatedAt:c.messages?.at(-1)?.created_at||'',avatarMediaId:avatars[id!]?.avatarMediaId??null,avatarUrl:avatars[id!]?.avatarUrl??null}]});
+   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{peerUid:id!,channelId:c.channel?.id||'',handle:profile.handle,name:profile.name||profile.handle,unreadCount:0,preview:c.messages?.at(-1)?.text||'',updatedAt:c.messages?.at(-1)?.created_at||'',avatarMediaId:avatars[id!]?.avatarMediaId??null,avatarUrl:avatars[id!]?.avatarUrl??null}]});
    return NextResponse.json({conversations},{headers:safeHeaders});
   }
   const other=await peer(handle);if(!other||other.id===user.uid||other.data().deletedAt||await isBlockedEitherWay(user.uid,other.id))return errorResponse(404,'Member unavailable');
@@ -84,7 +84,7 @@ export async function GET(request:NextRequest){
   // Typing state is delivered by Stream's realtime events, not a users/query lookup.
   // Avoid rejecting the entire message history when optional presence metadata is unavailable.
   const peerTyping=false;
-  return NextResponse.json({messages,peerTyping,myUid:user.uid},{headers:safeHeaders});
+  return NextResponse.json({messages,peerTyping,myUid:user.uid,peerUid:other.id,channelId:channelId(user.uid,other.id),peerName:String(other.data()?.name||handle)},{headers:safeHeaders});
  }catch(error){console.error('CampusConnect chat GET failed',{operation:request.nextUrl.searchParams.has('with')?'conversation':'inbox',error:error instanceof Error?error.message:'unknown'});return errorResponse(503,'Stream chat unavailable. Check Stream credentials and service logs.')}
 }
 export async function POST(request:NextRequest){
