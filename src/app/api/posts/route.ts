@@ -30,7 +30,7 @@ export async function GET(request:NextRequest){
     let allowed=authorCache.get(uid);if(!allowed){allowed=canViewAuthor(user.uid,uid);authorCache.set(uid,allowed)}
     return allowed;
    }));
-   for(let i=0;i<snap.docs.length;i++){const doc=snap.docs[i]!;if(visible[i]&&!doc.data().deletedAt){selected.push(doc);if(selected.length===limit)break}}
+   for(let i=0;i<snap.docs.length;i++){const doc=snap.docs[i]!;if(visible[i]&&!doc.data().deletedAt&&(!doc.data().archived||doc.data().authorUid===user.uid)){selected.push(doc);if(selected.length===limit)break}}
    if(snap.docs.length<50)break;
    const last=snap.docs.at(-1);if(!last)break;
    query=query.startAfter(last);

@@ -2,8 +2,9 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import Link from 'next/link';
 import {Avatar} from './avatar';
+import {PostActions} from './post-actions';
 import {Bookmark,Heart,MessageCircle,Repeat2} from 'lucide-react';
-type Post={id:string;caption:string;authorHandle:string;authorName:string;avatarMediaId:string|null;avatarUrl:string|null;mediaUrl:string|null;mediaContentType:string|null;likes:number;comments:number;liked:boolean;saved:boolean};
+type Post={id:string;caption:string;authorUid?:string;authorHandle:string;authorName:string;avatarMediaId:string|null;avatarUrl:string|null;mediaUrl:string|null;mediaContentType:string|null;likes:number;comments:number;liked:boolean;saved:boolean};
 type Comment={id:string;handle:string;text:string};
 export function LivePostDetail({id}:{id:string}){
  const [post,setPost]=useState<Post|null>(null),[comments,setComments]=useState<Comment[]>([]),[reply,setReply]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
@@ -24,7 +25,7 @@ export function LivePostDetail({id}:{id:string}){
  return <article className="cc-live-entry" style={{maxWidth:720,margin:'0 auto',padding:24}}>
   <header style={{display:'flex',alignItems:'center',gap:10}}><Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><Avatar user={{name:post.authorName,handle:post.authorHandle,avatarMediaId:post.avatarMediaId,avatarUrl:post.avatarUrl}} size={44}/></Link><Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><b>@{post.authorHandle}</b><small style={{display:'block'}}>{post.authorName}</small></Link></header>
   {post.mediaUrl&&(post.mediaContentType?.startsWith('video/')?<video controls playsInline src={post.mediaUrl} style={{maxWidth:'100%',maxHeight:650}}/>:<img src={post.mediaUrl} loading="lazy" alt={post.caption||'Campus post'} style={{width:'100%',objectFit:'contain'}}/>)}
-  <p>{post.caption}</p>
+  <p>{post.caption}</p><PostActions id={post.id} caption={post.caption} authorUid={post.authorUid} onChanged={()=>void load()}/>
   <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
    <button disabled={busy} onClick={()=>void action('like')}><Heart size={20} fill={post.liked?'currentColor':'none'}/> {post.likes}</button>
    <button disabled={busy} onClick={()=>void action('save')}><Bookmark size={20} fill={post.saved?'currentColor':'none'}/> {post.saved?'Saved':'Save'}</button>
