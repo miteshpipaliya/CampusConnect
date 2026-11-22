@@ -24,6 +24,7 @@ export function RealProfile({username}:{username:string}){
   {error&&<p role="alert" className="form-error">{error}</p>}
   <header className="cc-profile-hero"><div className="cc-profile-avatar" style={{width:160,height:160,flex:'0 0 160px',borderRadius:'50%',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar user={profile} size={150}/></div>
    <div className="cc-profile-details"><div className="cc-profile-name"><h1>{profile.handle}</h1>{self?<Link href="/settings/edit-profile" className="cc-profile-action">Edit profile</Link>:<Link href={'/home?section=chat&with='+encodeURIComponent(profile.handle)} className="cc-profile-action">Message</Link>}{!self&&<button className="cc-profile-action" type="button" disabled={followBusy} onClick={()=>void toggleFollow()}>{followStatus==='active'?'Following':followStatus==='pending'?'Requested':'Follow'}</button>}</div>
+    <p><Link href={'/connections?handle='+encodeURIComponent(profile.handle)}>View followers, following and suggestions</Link></p>
     <div className="cc-profile-counts"><span><b>{posts.length}</b> posts</span><span><b>{reposts.length}</b> reposts</span><span><b>{highlights.length}</b> highlights</span></div>
     <strong>{profile.name}</strong><p>{profile.bio||'No bio added yet.'}</p><p>{profile.branch}{profile.division?' · Division '+profile.division:''}</p>
     {profile.relationshipStatus&&<p>Relationship: {profile.relationshipStatus}</p>}
