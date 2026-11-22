@@ -55,13 +55,25 @@ export async function GET(request:NextRequest){
   if(handle&&!/^[a-zA-Z0-9_.]{3,30}$/.test(handle))return errorResponse(400,'Invalid member handle');
 
   if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){
-   const limit=await checkRateLimit({key:'chat:directory:'+user.uid,limit:12,windowSec:60});
-   if(!limit.allowed)return errorResponse(429,'Too many directory requests');
-   const snapshot=await db().collection('users').limit(100).get();
-   const allowed=await Promise.all(snapshot.docs.map(d=>isBlockedEitherWay(user.uid,d.id)));
-   const visible=snapshot.docs.filter((d,i)=>d.id!==user.uid&&!allowed[i]&&!d.data().deletedAt);
-   const avatars=await hydrateAvatars(visible.map(d=>d.id),user.uid);
-   return NextResponse.json({members:visible.map(d=>({uid:d.id,handle:d.data().handle,name:d.data().name,avatarMediaId:avatars[d.id]?.avatarMediaId??null,avatarUrl:avatars[d.id]?.avatarUrl??null})).filter(x=>x.handle)},{headers:safeHeaders})}
+   const quota=await checkRateLimit({key:'chat:directory:'+user.uid,limit:12,windowSec:60});
+   if(!quota.allowed)return errorResponse(429,'Too many directory requests');
+   const query=(request.nextUrl.searchParams.get('q')||'').trim();
+   if(query.length>30||(query.length>0&&query.length<2)||!(/^[a-zA-Z0-9 _.'-]*$/).test(query))return errorResponse(400,'Invalid member search');
+   const store=db(),users=store.collection('users');
+   const candidates=query?(
+    await Promise.all([
+     users.orderBy('handle').startAt(query.toLowerCase()).endAt(query.toLowerCase()+'\\uf8ff').limit(20).get(),
+     users.orderBy('name').startAt(query).endAt(query+'\\uf8ff').limit(20).get(),
+     users.orderBy('name').startAt(query[0]!.toUpperCase()+query.slice(1)).endAt(query[0]!.toUpperCase()+query.slice(1)+'\\uf8ff').limit(20).get()
+    ])
+   ).flatMap(result=>result.docs):(await users.limit(20).get()).docs;
+   const unique=[...new Map(candidates.map(doc=>[doc.id,doc])).values()].slice(0,30);
+   const blocks=unique.flatMap(doc=>[store.collection('blocks').doc(user.uid+'_'+doc.id),store.collection('blocks').doc(doc.id+'_'+user.uid)]);
+   const blockDocs=blocks.length?await store.getAll(...blocks):[];
+   const visible=unique.filter((doc,i)=>doc.id!==user.uid&&!doc.data().deletedAt&&!blockDocs[2*i]?.exists&&!blockDocs[2*i+1]?.exists);
+   const avatars=await hydrateAvatars(visible.map(doc=>doc.id),user.uid);
+   return NextResponse.json({members:visible.map(doc=>({uid:doc.id,handle:doc.data().handle,name:doc.data().name,avatarMediaId:avatars[doc.id]?.avatarMediaId??null,avatarUrl:avatars[doc.id]?.avatarUrl??null})).filter(member=>member.handle)},{headers:safeHeaders});
+  }
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.
    const result=await stream('/channels','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
