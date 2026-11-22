@@ -1,0 +1,1 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';test('Firestore indexes file parses',()=>{const data=JSON.parse(readFileSync(new URL('../firestore.indexes.json',import.meta.url),'utf8'));assert.ok(Array.isArray(data.indexes));});
