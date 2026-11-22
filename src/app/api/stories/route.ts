@@ -6,6 +6,7 @@ import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {RATE_LIMITS} from '@/lib/server/rate-limit';
 import {canViewAuthor} from '@/lib/server/privacy';
+import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {mintUrls} from '@/lib/server/media-urls';
 export const runtime='nodejs';
 const schema=z.object({mediaId:z.string().uuid(),caption:z.string().trim().max(250).default('')});
@@ -16,11 +17,12 @@ export async function GET(request:NextRequest){
   const snapshot=await db().collection('stories').where('expiresAt','>',now).limit(100).get();
   const visibility=await Promise.all(snapshot.docs.map(d=>canViewAuthor(user.uid,String(d.data().authorUid||''))));
   const stories=snapshot.docs.filter((d,i)=>visibility[i]).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',highlight:Boolean(d.data().highlight),isMine:d.data().authorUid===user.uid,createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
+  const authors=await hydrateAvatars(stories.map(story=>story.authorUid),user.uid);
   const mediaIds=stories.map(story=>story.mediaId).filter((id):id is string=>typeof id==='string');
   const media=mediaIds.length?await db().getAll(...mediaIds.map(id=>db().collection('media').doc(id))):[];
   const expiresByMedia=new Map(snapshot.docs.map(doc=>[doc.data().mediaId,doc.data().expiresAt?.toMillis?.()]));
   const urls=await mintUrls(media.filter(doc=>doc.exists).map(doc=>{const expiry=expiresByMedia.get(doc.id);return {id:doc.id,...(doc.data()??{}),...(typeof expiry==='number'?{storyExpiresAt:expiry}:{})}}),{viewerUid:user.uid});
-  return NextResponse.json({stories:stories.map(story=>({...story,mediaUrl:urls[story.mediaId]?.url??null}))},{headers:safeHeaders});
+  return NextResponse.json({stories:stories.map(story=>({...story,avatarMediaId:authors[story.authorUid]?.avatarMediaId??null,avatarUrl:authors[story.authorUid]?.avatarUrl??null,mediaUrl:urls[story.mediaId]?.url??null}))},{headers:safeHeaders});
  }catch{return errorResponse(503,'Stories unavailable')}
 }
 export async function POST(request:NextRequest){
