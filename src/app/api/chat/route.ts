@@ -52,8 +52,12 @@ export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  try{
   const handle=request.nextUrl.searchParams.get('with');
+  if(handle&&!/^[a-zA-Z0-9_.]{3,30}$/.test(handle))return errorResponse(400,'Invalid member handle');
 
-  if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){const snapshot=await db().collection('users').limit(100).get();
+  if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){
+   const limit=await checkRateLimit({key:'chat:directory:'+user.uid,limit:12,windowSec:60});
+   if(!limit.allowed)return errorResponse(429,'Too many directory requests');
+   const snapshot=await db().collection('users').limit(100).get();
    const allowed=await Promise.all(snapshot.docs.map(d=>isBlockedEitherWay(user.uid,d.id)));
    const visible=snapshot.docs.filter((d,i)=>d.id!==user.uid&&!allowed[i]&&!d.data().deletedAt);
    const avatars=await hydrateAvatars(visible.map(d=>d.id),user.uid);
