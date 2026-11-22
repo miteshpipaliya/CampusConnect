@@ -9,6 +9,7 @@ import {clampLimit,decodeCursor,encodeCursor} from '@/lib/core/cursor';
 import {normalizeCounters} from '@/lib/core/counters';
 import {canViewAuthor} from '@/lib/server/privacy';
 import {mintUrls} from '@/lib/server/media-urls';
+import {isBlockedEitherWay} from '@/lib/server/privacy';
 export const runtime='nodejs';
 const schema=z.object({caption:z.string().trim().min(1).max(2200),type:z.enum(['post','reel']).default('post'),mediaId:z.string().uuid().optional(),media:z.array(z.object({mediaId:z.string().uuid(),alt:z.string().max(250).default('')})).max(10).optional(),cropRatio:z.enum(['1 / 1','4 / 5','16 / 9']).optional(),filter:z.enum(['none','grayscale','sepia','contrast','saturate','brightness']).optional(),commentsOff:z.boolean().optional(),hideLikeCount:z.boolean().optional()});
 export async function GET(request:NextRequest){
@@ -102,6 +103,12 @@ export async function POST(request:NextRequest){
   }catch{return errorResponse(400,'Invalid media or unable to publish')}
   const tags=[...new Set((input.caption.match(/#[a-zA-Z][a-zA-Z0-9_]{0,49}/g)||[]).map(x=>x.slice(1).toLowerCase()))].slice(0,20);
   if(tags.length){const batch=store.batch();for(const tag of tags)batch.set(store.collection('hashtags').doc(tag),{tag,count:FieldValue.increment(1),updatedAt:FieldValue.serverTimestamp()},{merge:true});await batch.commit().catch(()=>{})}
+  const mentions=[...new Set((input.caption.match(/(?:^|\\s)@[a-z][a-z0-9._]{2,29}/gi)||[]).map(x=>x.trim().slice(1).toLowerCase()))].slice(0,15);
+  for(const handle of mentions){
+   try{const person=await store.collection('users').where('handle','==',handle).limit(1).get();const target=person.docs[0];if(!target||target.id===user.uid||target.data().deletedAt||await isBlockedEitherWay(user.uid,target.id))continue;
+    await store.collection('users').doc(target.id).collection('notifications').add({type:'mention',actorUid:user.uid,actorHandle:String(profile.data()?.handle||''),postId:newPost.id,read:false,createdAt:FieldValue.serverTimestamp()});
+   }catch{}
+  }
   const followers=await store.collection('follows').where('followingUid','==',user.uid).limit(500).get().catch(()=>null);
   if(followers){const active=followers.docs.filter(d=>d.data().status==='active');for(let i=0;i<active.length;i+=400){const batch=store.batch();for(const f of active.slice(i,i+400))batch.set(store.collection('users').doc(String(f.data().followerUid)).collection('feedItems').doc(newPost.id),{postId:newPost.id,authorUid:user.uid,createdAt:FieldValue.serverTimestamp()});await batch.commit().catch(()=>{})}}
   await store.collection('users').doc(user.uid).set({counters:{posts:FieldValue.increment(1)}},{merge:true}).catch(()=>{});
