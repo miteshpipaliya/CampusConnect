@@ -52,7 +52,7 @@ export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  try{
   const handle=request.nextUrl.searchParams.get('with');
-  if(request.nextUrl.searchParams.get('token')==='1'){if(process.env.STREAM_CLIENT_TOKENS_ENABLED!=='true')return errorResponse(403,'Direct Stream client tokens are disabled');const {key,secret}=config();await syncStreamUser(user.uid);return NextResponse.json({apiKey:key,userId:user.uid,token:jwt(secret,{user_id:user.uid,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600})},{headers:safeHeaders})}
+
   if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){const snapshot=await db().collection('users').limit(100).get();
    const allowed=await Promise.all(snapshot.docs.map(d=>isBlockedEitherWay(user.uid,d.id)));
    const visible=snapshot.docs.filter((d,i)=>d.id!==user.uid&&!allowed[i]&&!d.data().deletedAt);
