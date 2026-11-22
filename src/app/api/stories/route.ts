@@ -42,7 +42,7 @@ export async function POST(request:NextRequest){
   const mediaRef=store.collection('media').doc(parsed.data.mediaId),storyRef=store.collection('stories').doc();
   await store.runTransaction(async t=>{
    const media=await t.get(mediaRef);
-   if(!media.exists||media.data()?.ownerUid!==user.uid||media.data()?.status!=='uploaded'||media.data()?.postId||media.data()?.storyId)throw Error('Media unavailable');
+   if(!media.exists||media.data()?.ownerUid!==user.uid||media.data()?.status!=='uploaded'||!['story','post'].includes(String(media.data()?.purpose||''))||media.data()?.postId||media.data()?.storyId)throw Error('Media unavailable');
    t.create(storyRef,{authorUid:user.uid,authorHandle:profile.data()?.handle,mediaId:parsed.data.mediaId,contentType:media.data()?.contentType||'image/jpeg',caption:parsed.data.caption,overlay:parsed.data.overlay||null,poll:parsed.data.poll||null,audience:parsed.data.audience,visibility:profile.data()?.privacy==='private'?'private':'campus',archived:true,createdAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
    t.update(mediaRef,{storyId:storyRef.id});
   });

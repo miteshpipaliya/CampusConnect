@@ -95,8 +95,8 @@ export async function POST(request:NextRequest){
    await store.runTransaction(async transaction=>{
     const snapshots=mediaRefs.length?await transaction.getAll(...mediaRefs):[];
     for(const info of snapshots){
-     if(!info.exists||info.data()?.ownerUid!==user.uid||info.data()?.status!=='uploaded'||info.data()?.postId||info.data()?.storyId)throw Error('INVALID_MEDIA');
-     if(input.type==='reel'&&!String(info.data()?.contentType||'').startsWith('video/'))throw Error('REEL_REQUIRES_VIDEO');
+     if(!info.exists||info.data()?.ownerUid!==user.uid||info.data()?.status!=='uploaded'||!['post','reel'].includes(String(info.data()?.purpose||''))||info.data()?.postId||info.data()?.storyId)throw Error('INVALID_MEDIA');
+     if(input.type==='reel'&&(info.data()?.purpose!=='reel'||!String(info.data()?.contentType||'').startsWith('video/')))throw Error('REEL_REQUIRES_VIDEO');
     }
     for(const ref of mediaRefs)transaction.update(ref,{postId:newPost.id});
     transaction.create(newPost,{authorUid:user.uid,authorHandle:profile.data()!.handle,caption:input.caption,mediaId:media[0]?.mediaId||null,media:media.map(m=>({...m})),type:input.type,cropRatio:input.cropRatio||'1 / 1',filter:input.filter||'none',commentsOff:input.commentsOff||false,hideLikeCount:input.hideLikeCount||false,visibility:profile.data()!.privacy==='private'?'private':'campus',createdAt:FieldValue.serverTimestamp(),deletedAt:null,archived:false,counters:{likes:0,comments:0,reposts:0,saves:0,shares:0,views:0}});

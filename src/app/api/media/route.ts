@@ -60,7 +60,7 @@ export async function POST(request:NextRequest){
    await client.send(new DeleteObjectCommand({Bucket,Key:data.key}));await ref.update({status:'rejected'});
    return errorResponse(400,'Uploaded content does not match expected metadata');
   }
-  await ref.update({status:'uploaded'});
+  await ref.update({status:'uploaded',confirmedAt:FieldValue.serverTimestamp()});
   return NextResponse.json({id,status:'uploaded'},{headers:safeHeaders});
  }catch{return errorResponse(503,'Media service unavailable')}
 }
