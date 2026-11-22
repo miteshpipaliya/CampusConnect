@@ -5,6 +5,7 @@ import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {RATE_LIMITS} from '@/lib/server/rate-limit';
+import {canViewAuthor} from '@/lib/server/privacy';
 import {mintUrls} from '@/lib/server/media-urls';
 export const runtime='nodejs';
 const schema=z.object({mediaId:z.string().uuid(),caption:z.string().trim().max(250).default('')});
@@ -13,7 +14,8 @@ export async function GET(request:NextRequest){
  try{
   const now=Timestamp.now();
   const snapshot=await db().collection('stories').where('expiresAt','>',now).limit(100).get();
-  const stories=snapshot.docs.filter(d=>d.data().visibility==='campus'||d.data().authorUid===user.uid).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',highlight:Boolean(d.data().highlight),isMine:d.data().authorUid===user.uid,createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
+  const visibility=await Promise.all(snapshot.docs.map(d=>canViewAuthor(user.uid,String(d.data().authorUid||''))));
+  const stories=snapshot.docs.filter((d,i)=>visibility[i]).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',highlight:Boolean(d.data().highlight),isMine:d.data().authorUid===user.uid,createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
   const mediaIds=stories.map(story=>story.mediaId).filter((id):id is string=>typeof id==='string');
   const media=mediaIds.length?await db().getAll(...mediaIds.map(id=>db().collection('media').doc(id))):[];
   const expiresByMedia=new Map(snapshot.docs.map(doc=>[doc.data().mediaId,doc.data().expiresAt?.toMillis?.()]));

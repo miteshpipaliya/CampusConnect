@@ -7,6 +7,7 @@ import {guard} from '@/lib/server/guard';
 import {RATE_LIMITS} from '@/lib/server/rate-limit';
 import {clampLimit,decodeCursor,encodeCursor} from '@/lib/core/cursor';
 import {normalizeCounters} from '@/lib/core/counters';
+import {canViewAuthor} from '@/lib/server/privacy';
 import {mintUrls} from '@/lib/server/media-urls';
 export const runtime='nodejs';
 const schema=z.object({caption:z.string().trim().min(1).max(2200),mediaId:z.string().uuid().optional()});
@@ -23,7 +24,7 @@ export async function GET(request:NextRequest){
   if(cursor)query=query.startAfter(Timestamp.fromMillis(cursor.millis),cursor.id);
   for(let page=0;page<4&&selected.length<limit;page++){
    const snap=await query.limit(50).get();
-   for(const doc of snap.docs){if(doc.data().visibility==='campus'||doc.data().authorUid===user.uid){selected.push(doc);if(selected.length===limit)break}}
+   for(const doc of snap.docs){if(await canViewAuthor(user.uid,String(doc.data().authorUid||''))){selected.push(doc);if(selected.length===limit)break}}
    if(snap.docs.length<50)break;
    const last=snap.docs.at(-1);if(!last)break;
    query=query.startAfter(last);
