@@ -16,7 +16,7 @@ export async function mintUrls(mediaDocs:Array<{id:string;ownerUid?:string;key?:
      const friend=await db().collection('closeFriends').doc(String(data.authorUid||'')+'_'+opts.viewerUid).get();
      allowed=friend.exists;
     }}
-   if(!allowed&&media.postId){const doc=await db().collection('posts').doc(media.postId).get();allowed=Boolean(doc.exists&&await canViewAuthor(opts.viewerUid,String(doc.data()?.authorUid||'')))}
+   if(!allowed&&media.postId){const doc=await db().collection('posts').doc(media.postId).get();allowed=Boolean(doc.exists&&!doc.data()?.deletedAt&&await canViewAuthor(opts.viewerUid,String(doc.data()?.authorUid||'')))}
    if(!allowed)return;
    const expiresAt=media.storyExpiresAt??opts.storyExpiresAt;
    const seconds=expiresAt===undefined?3600:Math.max(1,Math.min(3600,Math.floor((expiresAt-Date.now())/1000)));

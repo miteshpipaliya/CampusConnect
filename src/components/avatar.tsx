@@ -7,6 +7,6 @@ export function Avatar({user,handle,size=44,ring='none',className=''}:Props){
  const initials=useMemo(()=>display.trim().split(/\s+/).slice(0,2).map(word=>word[0]?.toUpperCase()||'').join('')||'?', [display]);
  const src=user?.avatarUrl||(user?.avatarMediaId?'/api/media?id='+encodeURIComponent(user.avatarMediaId):null);
  const ringStyle=ring==='unseen'?'2px solid #a855f7':ring==='close'?'2px solid #22c55e':ring==='seen'?'2px solid #777':'2px solid transparent';
- return <span className={className} aria-label={display+' avatar'} style={{display:'inline-flex',width:size,height:size,flexShrink:0,alignItems:'center',justifyContent:'center',borderRadius:'50%',border:ringStyle,overflow:'hidden',background:'#302a47',color:'#fff',fontWeight:700,fontSize:Math.max(11,Math.floor(size/3)),lineHeight:1}}>
- {src?<img src={src} loading="lazy" alt={display+' avatar'} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:initials}</span>;
+ return <span className={className} aria-label={display+' avatar'} style={{display:'inline-flex',width:size,height:size,flexShrink:0,alignItems:'center',justifyContent:'center',borderRadius:'50%',border:ringStyle,boxSizing:'border-box',overflow:'hidden',background:'#302a47',color:'#fff',fontWeight:700,fontSize:Math.max(11,Math.floor(size/3)),lineHeight:1}}>
+ {src?<img src={src} loading="lazy" alt={display+' avatar'} width={size} height={size} style={{display:'block',width:'100%',height:'100%',minWidth:0,minHeight:0,objectFit:'cover',objectPosition:'center',borderRadius:'50%',flexShrink:0}}/>:initials}</span>;
 }

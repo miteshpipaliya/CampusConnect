@@ -35,6 +35,10 @@ export async function GET(request:NextRequest){
    const last=snap.docs.at(-1);if(!last)break;
    query=query.startAfter(last);
   }
+  const muteSnaps=await store.collection('mutes').where('ownerUid','==',user.uid).limit(200).get();
+  const muted=new Set(muteSnaps.docs.filter(d=>d.data().posts!==false).map(d=>String(d.data().targetUid||'')));
+  const filtered=selected.filter(d=>!muted.has(String(d.data().authorUid||'')));
+  selected.splice(0,selected.length,...filtered);
   const likeRefs=selected.map(d=>d.ref.collection('likes').doc(user.uid));
   const saveRefs=selected.map(d=>store.collection('users').doc(user.uid).collection('saves').doc(d.id));
   const [ownLikes,ownSaves]=await Promise.all([
