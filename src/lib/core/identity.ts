@@ -1,5 +1,5 @@
 /** Normalized profile-field validation, shared by browser and server. */
-import {isAllowedEmail as allowedEmail} from '../student-email';
+import {isAllowedEmail as allowedEmail} from '../student-email.ts';
 export const HANDLE_PATTERN=/^[a-z][a-z0-9._]{2,29}$/;
 export function normalizeHandle(value:string){return value.trim().toLowerCase()}
 export function validateHandle(value:string){const handle=normalizeHandle(value);return HANDLE_PATTERN.test(handle)&&!handle.includes('..')}
