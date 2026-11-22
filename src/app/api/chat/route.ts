@@ -7,7 +7,7 @@ import {guard} from '@/lib/server/guard';
 import {checkRateLimit} from '@/lib/server/rate-limit';
 import {syncStreamUser} from '@/lib/server/stream-user';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
-import {isBlockedEitherWay} from '@/lib/server/privacy';
+import {isBlockedEitherWay,canViewMany} from '@/lib/server/privacy';
 import {claimChatMedia,finishChatMedia,releaseChatMedia,revokeChatMedia} from '@/lib/server/chat-media';
 export const runtime='nodejs';
 
@@ -35,6 +35,7 @@ async function stream(path:string,method='POST',data?:object){
 const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('send'),recipientHandle:z.string().min(3).max(30),text:z.string().trim().min(1).max(2000),quotedMessageId:z.string().min(1).max(200).optional()}),
  z.object({action:z.literal('sendMedia'),recipientHandle:z.string().min(3).max(30),mediaId:z.string().uuid(),text:z.string().trim().max(2000).default('')}),
+ z.object({action:z.literal('shareContent'),recipientHandle:z.string().min(3).max(30),postId:z.string().regex(/^[A-Za-z0-9_-]{10,100}$/),text:z.string().trim().max(2000).default('')}),
  z.object({action:z.literal('read'),recipientHandle:z.string().min(3).max(30)}),
  z.object({action:z.literal('typing'),recipientHandle:z.string().min(3).max(30),typing:z.boolean()}),
  z.object({action:z.literal('deleteForMe'),recipientHandle:z.string().min(3).max(30),messageId:z.string().min(1).max(200)}),
@@ -100,9 +101,10 @@ export async function GET(request:NextRequest){
   const {result}=await ensureChannel(user.uid,other.id,handle,other.data().name);
   const hidden=await db().collection('users').doc(user.uid).collection('hiddenChatMessages').where('channelId','==',channelId(user.uid,other.id)).limit(500).get();
   const hiddenIds=new Set(hidden.docs.map(d=>d.id));
-  const messages=(result.messages||[]).filter((m:{id:string;type?:string})=>!hiddenIds.has(m.id)&&m.type!=='deleted').map((m:{id:string;text?:string;user?:{id:string};created_at?:string;quoted_message_id?:string;reaction_counts?:Record<string,number>;latest_reactions?:Array<{user_id?:string;type?:string}>;campusMediaId?:string;campusMediaType?:string;custom?:{campusMediaId?:string;campusMediaType?:string}})=>({
+  const messages=(result.messages||[]).filter((m:{id:string;type?:string})=>!hiddenIds.has(m.id)&&m.type!=='deleted').map((m:{id:string;text?:string;user?:{id:string};created_at?:string;quoted_message_id?:string;reaction_counts?:Record<string,number>;latest_reactions?:Array<{user_id?:string;type?:string}>;campusMediaId?:string;campusMediaType?:string;custom?:{campusMediaId?:string;campusMediaType?:string;campusContentId?:string;campusContentType?:string};campusContentId?:string;campusContentType?:string})=>({
    id:m.id,text:m.text||'',senderUid:m.user?.id||'',createdAt:m.created_at||null,
    mediaId:m.campusMediaId??m.custom?.campusMediaId??null,mediaType:m.campusMediaType??m.custom?.campusMediaType??null,
+   contentId:m.campusContentId??m.custom?.campusContentId??null,contentType:m.campusContentType??m.custom?.campusContentType??null,
    quotedMessageId:m.quoted_message_id??null,reactionCounts:m.reaction_counts??{},
    ownReactions:(m.latest_reactions||[]).filter(reaction=>reaction.user_id===user.uid).map(reaction=>reaction.type||'').filter(Boolean),
    seen:Boolean((result.read||[]).find((x:{user?:{id:string};last_read?:string})=>x.user?.id===other.id&&x.last_read&&m.created_at&&x.last_read>=m.created_at))
@@ -120,7 +122,7 @@ export async function POST(request:NextRequest){
  try{
   const input=parsed.data,other=await peer(input.recipientHandle);
   if(!other||other.id===user.uid||other.data().deletedAt)return errorResponse(404,'Member unavailable');
-  const quota=await checkRateLimit({key:'chat:'+input.action+':'+user.uid,limit:input.action==='typing'?120:(input.action==='send'||input.action==='sendMedia')?30:60,windowSec:60});
+  const quota=await checkRateLimit({key:'chat:'+input.action+':'+user.uid,limit:input.action==='typing'?120:(input.action==='send'||input.action==='sendMedia'||input.action==='shareContent')?30:60,windowSec:60});
   if(!quota.allowed)return errorResponse(429,'Too many chat requests');
   if(await isBlockedEitherWay(user.uid,other.id))return errorResponse(403,'CHAT_BLOCKED');
   const {id,result}=await ensureChannel(user.uid,other.id,input.recipientHandle,other.data().name);
@@ -154,6 +156,15 @@ export async function POST(request:NextRequest){
     await releaseChatMedia(input.mediaId,id).catch(()=>{});
     throw error;
    }
+  }else if(input.action==='shareContent'){
+   const post=await db().collection('posts').doc(input.postId).get();
+   const details=post.data(),authorUid=String(details?.authorUid||'');
+   if(!post.exists||!authorUid||details?.deletedAt||details?.archived)return errorResponse(404,'Content unavailable');
+   const allowed=await canViewMany(user.uid,[authorUid]);
+   const recipientAllowed=await canViewMany(other.id,[authorUid]);
+   if(!allowed.get(authorUid)||!recipientAllowed.get(authorUid))return errorResponse(403,'Recipient cannot view this content');
+   const kind=details?.type==='reel'?'reel':'post';
+   await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,campusContentId:input.postId,campusContentType:kind}});
   }else if(input.action==='typing'){
    await stream(path+'/event','POST',{event:{type:input.typing?'typing.start':'typing.stop',user_id:user.uid}});
   }else if(input.action==='read'){
