@@ -4,14 +4,17 @@ import {db} from '@/lib/server/services';
 import {errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {RATE_LIMITS} from '@/lib/server/rate-limit';
+import {canViewAuthor} from '@/lib/server/privacy';
 export const runtime='nodejs';
 export async function POST(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  const checked=await guard(request,{write:true,rateLimit:{key:'likes:{uid}',...RATE_LIMITS.likes}});
  if(!checked.ok)return checked.response;
  const user=checked.user,{id}=await params;
  try{const store=db(),post=store.collection('posts').doc(id),like=post.collection('likes').doc(user.uid);
+  const source=await post.get();
+  if(!source.exists||source.data()?.deletedAt||!(await canViewAuthor(user.uid,String(source.data()?.authorUid||''))))return errorResponse(404,'Post unavailable');
   const liked=await store.runTransaction(async t=>{const p=await t.get(post);
-   if(!p.exists||!(p.data()?.visibility==='campus'||p.data()?.authorUid===user.uid))throw Error('NOT_FOUND');
+   if(!p.exists||p.data()?.deletedAt)throw Error('NOT_FOUND');
    const old=await t.get(like);
    if(old.exists)t.delete(like);else t.create(like,{uid:user.uid,createdAt:new Date()});
    const count=Number(p.data()?.counters?.likes);

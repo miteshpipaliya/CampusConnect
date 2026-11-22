@@ -5,6 +5,7 @@ import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {syncStreamUser} from '@/lib/server/stream-user';
+import {isBlockedEitherWay} from '@/lib/server/privacy';
 export const runtime='nodejs';
 
 /** Stream owns chat messages, receipts, and typing metadata. Firestore is used only to resolve campus identities. */
@@ -39,6 +40,7 @@ async function peer(handle:string){const snap=await db().collection('users').whe
 function channelId(a:string,b:string){return createHmac('sha256',config().secret).update([a,b].sort().join(':')).digest('hex').slice(0,40)}
 async function ensureChannel(uid:string,otherUid:string,handle:string,otherName:string){
  const own=await db().collection('users').doc(uid).get();
+ if(await isBlockedEitherWay(uid,otherUid))throw Error('CHAT_BLOCKED');
  const users:Record<string,object>={[uid]:{id:uid,name:own.data()?.name||own.data()?.handle||'Student'},[otherUid]:{id:otherUid,name:otherName||handle}};
  await stream('/users','POST',{users});
  const id=channelId(uid,otherUid);
@@ -50,18 +52,23 @@ export async function GET(request:NextRequest){
  try{
   const handle=request.nextUrl.searchParams.get('with');
   if(request.nextUrl.searchParams.get('token')==='1'){const {key,secret}=config();await syncStreamUser(user.uid);return NextResponse.json({apiKey:key,userId:user.uid,token:jwt(secret,{user_id:user.uid,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600})},{headers:safeHeaders})}
-  if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){const snapshot=await db().collection('users').limit(100).get();return NextResponse.json({members:snapshot.docs.filter(d=>d.id!==user.uid).map(d=>({handle:d.data().handle,name:d.data().name})).filter(x=>x.handle)},{headers:safeHeaders})}
+  if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){const snapshot=await db().collection('users').limit(100).get();
+   const allowed=await Promise.all(snapshot.docs.map(d=>isBlockedEitherWay(user.uid,d.id)));
+   return NextResponse.json({members:snapshot.docs.filter((d,i)=>d.id!==user.uid&&!allowed[i]&&!d.data().deletedAt).map(d=>({handle:d.data().handle,name:d.data().name})).filter(x=>x.handle)},{headers:safeHeaders})}
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.
    const result=await stream('/channels','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
    const channels=(result.channels||[]) as Array<{channel?:{id?:string;members?:Array<{user_id?:string;user?:{id?:string}}>};members?:Array<{user_id?:string;user?:{id?:string}}>;messages?:Array<{text?:string;created_at?:string}>}>;
    const peerIds=[...new Set(channels.flatMap(c=>(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').filter(id=>id&&id!==user.uid)))];
-   const profiles=await Promise.all(peerIds.map(async id=>{const doc=await db().collection('users').doc(id).get();return {id,handle:doc.data()?.handle as string|undefined,name:doc.data()?.name as string|undefined}}));
+   const profiles=await Promise.all(peerIds.map(async id=>{
+    const [doc,blocked]=await Promise.all([db().collection('users').doc(id).get(),isBlockedEitherWay(user.uid,id)]);
+    return {id,handle:blocked||doc.data()?.deletedAt?undefined:doc.data()?.handle as string|undefined,name:doc.data()?.name as string|undefined};
+   }));
    const byId=new Map(profiles.map(p=>[p.id,p]));
    const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{handle:profile.handle,name:profile.name||profile.handle,preview:c.messages?.at(-1)?.text||'',updatedAt:c.messages?.at(-1)?.created_at||''}]});
    return NextResponse.json({conversations},{headers:safeHeaders});
   }
-  const other=await peer(handle);if(!other||other.id===user.uid)return errorResponse(404,'Member unavailable');
+  const other=await peer(handle);if(!other||other.id===user.uid||other.data().deletedAt||await isBlockedEitherWay(user.uid,other.id))return errorResponse(404,'Member unavailable');
   const {result}=await ensureChannel(user.uid,other.id,handle,other.data().name);
   const hidden=await db().collection('users').doc(user.uid).collection('hiddenChatMessages').where('channelId','==',channelId(user.uid,other.id)).limit(500).get();
   const hiddenIds=new Set(hidden.docs.map(d=>d.id));

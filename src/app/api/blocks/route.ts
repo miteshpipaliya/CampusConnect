@@ -12,7 +12,15 @@ async function change(req:NextRequest,remove:boolean){
  const input=schema.safeParse(checked.input);if(!input.success)return errorResponse(400,'Invalid handle');
  try{const store=db(),h=await store.collection('handles').doc(input.data.handle).get();if(!h.exists)return errorResponse(404,'User not found');const target=h.data()?.uid;if(typeof target!=='string'||target===checked.user.uid)return errorResponse(400,'Invalid user');
  const ref=store.collection('blocks').doc(checked.user.uid+'_'+target);
- if(remove)await ref.delete();else await ref.set({ownerUid:checked.user.uid,targetUid:target,handle:input.data.handle,createdAt:FieldValue.serverTimestamp()});
+ if(remove)await ref.delete();
+ else await store.runTransaction(async tx=>{
+  const forward=store.collection('follows').doc(checked.user.uid+'_'+target);
+  const reverse=store.collection('follows').doc(target+'_'+checked.user.uid);
+  const [a,b]=await Promise.all([tx.get(forward),tx.get(reverse)]);
+  tx.set(ref,{ownerUid:checked.user.uid,targetUid:target,handle:input.data.handle,createdAt:FieldValue.serverTimestamp()});
+  if(a.exists)tx.delete(forward);
+  if(b.exists)tx.delete(reverse);
+ });
  return NextResponse.json({ok:true},{headers:safeHeaders})}catch{return errorResponse(503,'Block update unavailable')}
 }
 export async function POST(req:NextRequest){return change(req,false)}

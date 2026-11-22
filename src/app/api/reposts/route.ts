@@ -5,6 +5,7 @@ import {db} from '@/lib/server/services';
 import {errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {RATE_LIMITS} from '@/lib/server/rate-limit';
+import {canViewAuthor} from '@/lib/server/privacy';
 export const runtime='nodejs';
 const schema=z.object({postId:z.string().min(10).max(100)});
 export async function POST(request:NextRequest){
@@ -14,8 +15,10 @@ export async function POST(request:NextRequest){
  if(!input.success)return errorResponse(400,'Invalid post');
  try{
   const store=db(),post=store.collection('posts').doc(input.data.postId),ref=store.collection('reposts').doc(user.uid+'_'+input.data.postId);
+  const source=await post.get();
+  if(!source.exists||source.data()?.deletedAt||!(await canViewAuthor(user.uid,String(source.data()?.authorUid||''))))return errorResponse(404,'Post unavailable');
   const reposted=await store.runTransaction(async t=>{
-   const original=await t.get(post);if(!original.exists||original.data()?.visibility!=='campus')throw Error('NOT_FOUND');
+   const original=await t.get(post);if(!original.exists||original.data()?.deletedAt)throw Error('NOT_FOUND');
    const existing=await t.get(ref);
    if(existing.exists)t.delete(ref);else t.create(ref,{ownerUid:user.uid,postId:input.data.postId,createdAt:FieldValue.serverTimestamp()});
    const count=Number(original.data()?.counters?.reposts);
