@@ -22,9 +22,9 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{username
   ]);
   const showRelationship=self||relationshipVisibility==='campus'||(relationshipVisibility==='followers'&&follower.data()?.status==='active');
   const [posts,reposts,stories]=await Promise.all([store.collection('posts').where('authorUid','==',target.id).limit(50).get(),store.collection('reposts').where('ownerUid','==',target.id).limit(50).get(),store.collection('stories').where('authorUid','==',target.id).limit(30).get()]);
-  const visiblePosts=posts.docs.filter(p=>self||allowed);
+  const visiblePosts=posts.docs.filter(p=>!p.data().deletedAt&&!p.data().archived&&(self||allowed));
   const detailedPosts=await Promise.all(visiblePosts.map(async p=>{const id=p.data().mediaId||null;const media=id?await store.collection('media').doc(id).get():null;return {id:p.id,caption:p.data().caption,mediaId:id,contentType:media?.data()?.contentType||null}}));
-  const visibleReposts=await Promise.all(reposts.docs.map(async d=>{const original=await store.collection('posts').doc(d.data().postId).get();return original.exists&&await canViewAuthor(user.uid,String(original.data()?.authorUid||''))?{id:d.id,postId:original.id,caption:original.data()?.caption||'',mediaId:original.data()?.mediaId||null,authorHandle:original.data()?.authorHandle||''}:null}));
+  const visibleReposts=await Promise.all(reposts.docs.map(async d=>{const original=await store.collection('posts').doc(d.data().postId).get();return original.exists&&!original.data()?.deletedAt&&!original.data()?.archived&&await canViewAuthor(user.uid,String(original.data()?.authorUid||''))?{id:d.id,postId:original.id,caption:original.data()?.caption||'',mediaId:original.data()?.mediaId||null,authorHandle:original.data()?.authorHandle||''}:null}));
   return NextResponse.json({self,profile:{handle,name,branch,division,bio,avatarMediaId,avatarUrl,relationshipStatus:showRelationship?relationshipStatus:undefined},
    posts:detailedPosts,reposts:visibleReposts.filter(Boolean),highlights:stories.docs.filter(d=>d.data().highlight&&(self||allowed)&&(d.data().audience!=='close'||self||closeFriend.exists)).map(d=>({id:d.id,mediaId:d.data().mediaId,caption:d.data().caption||'',active:(d.data().expiresAt?.toMillis?.()||0)>Date.now()}))},{headers:safeHeaders});
  }catch{return errorResponse(503,'Profile unavailable')}
