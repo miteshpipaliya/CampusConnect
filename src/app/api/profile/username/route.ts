@@ -3,7 +3,7 @@ import {FieldValue} from 'firebase-admin/firestore';
 import {z} from 'zod';
 import {db} from '@/lib/server/services';
 import {guard} from '@/lib/server/guard';
-import {handleChangesAllowed} from '@/lib/core/phase2-rules';
+import {handleChangesAllowed,isReservedHandle} from '@/lib/core/phase2-rules';
 import {syncStreamUser} from '@/lib/server/stream-user';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 export const runtime='nodejs';
@@ -15,7 +15,7 @@ export async function GET(request:NextRequest){
  if(!parsed.success)return errorResponse(400,'Invalid username');
  try{
   const store=db(),[reserved,profile]=await Promise.all([store.collection('handles').doc(parsed.data).get(),store.collection('users').doc(user.uid).get()]);
-  const available=!reserved.exists||reserved.data()?.uid===user.uid;
+  const available=!isReservedHandle(parsed.data)&&(!reserved.exists||reserved.data()?.uid===user.uid);
   return NextResponse.json({available,own:profile.data()?.handle===parsed.data},{headers:safeHeaders});
  }catch{return errorResponse(503,'Username check unavailable')}
 }
@@ -24,6 +24,7 @@ export async function PATCH(request:NextRequest){
  if(!checked.ok)return checked.response;
  const parsed=schema.safeParse(checked.input);if(!parsed.success)return errorResponse(400,'Invalid username');
  const handle=parsed.data.handle;
+ if(isReservedHandle(handle))return errorResponse(409,'This username is reserved');
  try{
   const store=db(),profile=store.collection('users').doc(checked.user.uid),reservation=store.collection('handles').doc(handle);
   const result=await store.runTransaction(async transaction=>{
@@ -40,9 +41,15 @@ export async function PATCH(request:NextRequest){
    if(taken.exists)transaction.set(reservation,{uid:checked.user.uid,changedAt:FieldValue.serverTimestamp()},{merge:true});
    else transaction.create(reservation,{uid:checked.user.uid,changedAt:FieldValue.serverTimestamp()});
    transaction.update(profile,{handle,handleLower:handle,handleChangeTimes:[...history,now],updatedAt:FieldValue.serverTimestamp()});
-   if(oldRef&&oldSnap?.exists&&oldSnap.data()?.uid===checked.user.uid)transaction.delete(oldRef)
+   if(oldRef&&oldSnap?.exists&&oldSnap.data()?.uid===checked.user.uid)transaction.set(oldRef,{uid:checked.user.uid,aliasTo:handle,changedAt:FieldValue.serverTimestamp()},{merge:true})
    return 'updated';
   });
+  if(result==='updated'){
+   for(const [collection,field] of [['posts','authorHandle'],['stories','authorHandle']] as const){
+    const docs=await store.collection(collection).where('authorUid','==',checked.user.uid).limit(400).get();
+    for(let i=0;i<docs.docs.length;i+=350){const batch=store.batch();for(const d of docs.docs.slice(i,i+350))batch.update(d.ref,{[field]:handle});await batch.commit()}
+   }
+  }
   const sync=await syncStreamUser(checked.user.uid).catch(()=>({synced:false}));
   return NextResponse.json({ok:true,result,handle,streamSynced:sync.synced},{headers:safeHeaders});
  }catch(error){if(error instanceof Error&&error.message==='TAKEN')return errorResponse(409,'Username is already taken');if(error instanceof Error&&error.message==='CHANGE_LIMIT')return errorResponse(429,'You can change your username twice every 14 days');return errorResponse(503,'Unable to update username')}
