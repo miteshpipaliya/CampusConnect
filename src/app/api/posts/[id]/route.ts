@@ -25,7 +25,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
   return NextResponse.json({post:{
    id:post.id,authorUid,caption:String(d.caption||''),authorHandle:String(d.authorHandle||avatars[authorUid]?.handle||'student'),
    authorName:avatars[authorUid]?.name||'',avatarMediaId:avatars[authorUid]?.avatarMediaId??null,avatarUrl:avatars[authorUid]?.avatarUrl??null,
-   mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null,media:allMedia.map(m=>({...m,url:mediaUrls[m.mediaId]?.url??null})),
+   mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null,media:allMedia.map(m=>({...m,contentType:mediaDocs.find(d=>d.id===m.mediaId)?.data()?.contentType||'',url:mediaUrls[m.mediaId]?.url??null})),
    mediaContentType:media?.data()?.contentType??null,likes:Number(d.counters?.likes||0),comments:Number(d.counters?.comments||0),
    liked:liked.exists,saved:saved.exists
   }},{headers:safeHeaders});

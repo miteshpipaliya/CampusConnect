@@ -84,7 +84,7 @@ export async function GET(request:NextRequest){
    }else{
     if(!data.postId)return errorResponse(403,'Private media');
     const post=await db().collection('posts').doc(data.postId).get();
-    if(!post.exists||post.data()?.deletedAt||!(await canViewAuthor(user.uid,String(post.data()?.authorUid||''))))return errorResponse(403,'Private media');
+    if(!post.exists||post.data()?.deletedAt||(post.data()?.archived&&post.data()?.authorUid!==user.uid)||!(await canViewAuthor(user.uid,String(post.data()?.authorUid||''))))return errorResponse(403,'Private media');
    }
   }
   const {client,Bucket}=storage();
