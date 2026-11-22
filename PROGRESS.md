@@ -27,3 +27,9 @@ NEXT: Check GitHub Actions and Vercel preview for commit 4609b60718880c111b43579
 - DONE: central claimMedia with transaction-safe snapshot reuse; caption tags/mentions/location persisted; batch feed visibility; cleanup of unattached uploaded media; bounded MP4 duration parser with pure tests.
 - TODO: wire duration parser into confirmation (including WebM), finish tooling and React Query, client composer, rendering, social graph, identity, API integration tests, index deployment and smoke tests.
 NEXT: Inspect CI quality logs and Vercel preview for content branch; fix any failures. Wire MP4/WebM duration validation at confirm. Complete Batches 0-7 in separate verified PRs; merge only after green CI and preview.
+
+## 2026-11-22 duration confirmation integration
+- DONE: MP4/WebM bounded header duration parsing wired into media confirmation; mismatched or unreadable story/reel videos rejected; 409 for unfinished uploads.
+- NOTE: MP4 files whose moov atom is beyond the first 64KB will fail closed. WebM with unknown-size segments may fail closed. These formats need expanded fixture tests before production merge.
+- PENDING: full CI and Vercel preview checks for newest code; not production verified.
+NEXT: Read latest GitHub Actions quality results and Vercel preview for PR #20, fix TypeScript/test/build failures, then complete media-access batching and Batches 0-7 before any merge to main.
