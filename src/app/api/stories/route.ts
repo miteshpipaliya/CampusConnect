@@ -44,8 +44,8 @@ export async function POST(request:NextRequest){
   await store.runTransaction(async t=>{
    const media=await t.get(mediaRef);
    if(!media.exists)throw Error('Media unavailable');
-   t.create(storyRef,{authorUid:user.uid,authorHandle:profile.data()?.handle,mediaId:parsed.data.mediaId,contentType:media.data()?.contentType||'image/jpeg',caption:parsed.data.caption,overlay:parsed.data.overlay||null,poll:parsed.data.poll||null,audience:parsed.data.audience,visibility:profile.data()?.privacy==='private'?'private':'campus',archived:true,createdAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
    await claimMedia(t,{uid:user.uid,mediaRefs:[mediaRef],kind:'story',attachmentId:storyRef.id});
+   t.create(storyRef,{authorUid:user.uid,authorHandle:profile.data()?.handle,mediaId:parsed.data.mediaId,contentType:media.data()?.contentType||'image/jpeg',caption:parsed.data.caption,overlay:parsed.data.overlay||null,poll:parsed.data.poll||null,audience:parsed.data.audience,visibility:profile.data()?.privacy==='private'?'private':'campus',archived:true,createdAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
   });
   return NextResponse.json({id:storyRef.id},{status:201,headers:safeHeaders});
  }catch{return errorResponse(400,'Unable to publish story')}
