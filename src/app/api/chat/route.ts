@@ -4,6 +4,7 @@ import {z} from 'zod';
 import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
+import {syncStreamUser} from '@/lib/server/stream-user';
 export const runtime='nodejs';
 
 /** Stream owns chat messages, receipts, and typing metadata. Firestore is used only to resolve campus identities. */
@@ -48,7 +49,7 @@ export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  try{
   const handle=request.nextUrl.searchParams.get('with');
-  if(request.nextUrl.searchParams.get('token')==='1'){const {key,secret}=config();const own=await db().collection('users').doc(user.uid).get();await stream('/users','POST',{users:{[user.uid]:{id:user.uid,name:own.data()?.name||own.data()?.handle||'Student'}}});return NextResponse.json({apiKey:key,userId:user.uid,token:jwt(secret,{user_id:user.uid,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600})},{headers:safeHeaders})}
+  if(request.nextUrl.searchParams.get('token')==='1'){const {key,secret}=config();await syncStreamUser(user.uid);return NextResponse.json({apiKey:key,userId:user.uid,token:jwt(secret,{user_id:user.uid,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600})},{headers:safeHeaders})}
   if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){const snapshot=await db().collection('users').limit(100).get();return NextResponse.json({members:snapshot.docs.filter(d=>d.id!==user.uid).map(d=>({handle:d.data().handle,name:d.data().name})).filter(x=>x.handle)},{headers:safeHeaders})}
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.

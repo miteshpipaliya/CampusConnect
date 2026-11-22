@@ -3,6 +3,7 @@ import {FieldValue} from 'firebase-admin/firestore';
 import {z} from 'zod';
 import {db} from '@/lib/server/services';
 import {guard} from '@/lib/server/guard';
+import {syncStreamUser} from '@/lib/server/stream-user';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {relationshipStatuses,relationshipVisibilities} from '@/lib/student-email';
 export const runtime='nodejs';
@@ -30,6 +31,7 @@ export async function PATCH(request:NextRequest){
  try{
   const ref=db().collection('users').doc(checked.user.uid);
   await ref.update({...parsed.data,updatedAt:FieldValue.serverTimestamp()});
-  return NextResponse.json({ok:true},{headers:safeHeaders});
+  const result=await syncStreamUser(checked.user.uid).catch(()=>({synced:false}));
+  return NextResponse.json({ok:true,streamSynced:result.synced},{headers:safeHeaders});
  }catch{return errorResponse(503,'Unable to save profile settings')}
 }

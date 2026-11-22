@@ -3,6 +3,7 @@ import {FieldValue} from 'firebase-admin/firestore';
 import {z} from 'zod';
 import {db} from '@/lib/server/services';
 import {guard} from '@/lib/server/guard';
+import {syncStreamUser} from '@/lib/server/stream-user';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 export const runtime='nodejs';
 const handleSchema=z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/);
@@ -41,6 +42,7 @@ export async function PATCH(request:NextRequest){
    if(oldRef&&oldSnap?.exists&&oldSnap.data()?.uid===checked.user.uid)transaction.delete(oldRef)
    return 'updated';
   });
-  return NextResponse.json({ok:true,result,handle},{headers:safeHeaders});
+  const sync=await syncStreamUser(checked.user.uid).catch(()=>({synced:false}));
+  return NextResponse.json({ok:true,result,handle,streamSynced:sync.synced},{headers:safeHeaders});
  }catch(error){if(error instanceof Error&&error.message==='TAKEN')return errorResponse(409,'Username is already taken');if(error instanceof Error&&error.message==='CHANGE_LIMIT')return errorResponse(429,'You can change your username twice every 14 days');return errorResponse(503,'Unable to update username')}
 }

@@ -7,6 +7,7 @@ import {errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {RATE_LIMITS} from '@/lib/server/rate-limit';
 import {signatureMatches} from '@/lib/core/media-signature';
+import {syncStreamUser} from '@/lib/server/stream-user';
 export const runtime='nodejs';
 const schema=z.object({mediaId:z.string().uuid()});
 export async function POST(request:NextRequest){
@@ -28,7 +29,8 @@ export async function POST(request:NextRequest){
    transaction.update(profile,{avatarMediaId:parsed.data.mediaId,updatedAt:FieldValue.serverTimestamp()});
    transaction.update(ref,{avatarOwnerUid:checked.user.uid});
   });
-  return NextResponse.json({ok:true,mediaId:parsed.data.mediaId},{headers:safeHeaders});
+  const result=await syncStreamUser(checked.user.uid).catch(()=>({synced:false}));
+  return NextResponse.json({ok:true,mediaId:parsed.data.mediaId,streamSynced:result.synced},{headers:safeHeaders});
  }catch{return errorResponse(503,'Avatar update unavailable')}
 }
 export async function DELETE(request:NextRequest){
@@ -37,6 +39,7 @@ export async function DELETE(request:NextRequest){
  try{
   const profile=db().collection('users').doc(checked.user.uid);
   await profile.update({avatarMediaId:null,updatedAt:FieldValue.serverTimestamp()});
-  return NextResponse.json({ok:true,mediaId:null},{headers:safeHeaders});
+  const result=await syncStreamUser(checked.user.uid).catch(()=>({synced:false}));
+  return NextResponse.json({ok:true,mediaId:null,streamSynced:result.synced},{headers:safeHeaders});
  }catch{return errorResponse(503,'Unable to remove avatar')}
 }
