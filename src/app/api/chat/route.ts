@@ -5,6 +5,7 @@ import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {syncStreamUser} from '@/lib/server/stream-user';
+import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
 export const runtime='nodejs';
 
@@ -54,7 +55,9 @@ export async function GET(request:NextRequest){
   if(request.nextUrl.searchParams.get('token')==='1'){const {key,secret}=config();await syncStreamUser(user.uid);return NextResponse.json({apiKey:key,userId:user.uid,token:jwt(secret,{user_id:user.uid,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600})},{headers:safeHeaders})}
   if(!handle&&request.nextUrl.searchParams.get('directory')==='1'){const snapshot=await db().collection('users').limit(100).get();
    const allowed=await Promise.all(snapshot.docs.map(d=>isBlockedEitherWay(user.uid,d.id)));
-   return NextResponse.json({members:snapshot.docs.filter((d,i)=>d.id!==user.uid&&!allowed[i]&&!d.data().deletedAt).map(d=>({handle:d.data().handle,name:d.data().name})).filter(x=>x.handle)},{headers:safeHeaders})}
+   const visible=snapshot.docs.filter((d,i)=>d.id!==user.uid&&!allowed[i]&&!d.data().deletedAt);
+   const avatars=await hydrateAvatars(visible.map(d=>d.id),user.uid);
+   return NextResponse.json({members:visible.map(d=>({handle:d.data().handle,name:d.data().name,avatarMediaId:avatars[d.id]?.avatarMediaId??null,avatarUrl:avatars[d.id]?.avatarUrl??null})).filter(x=>x.handle)},{headers:safeHeaders})}
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.
    const result=await stream('/channels','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
@@ -65,7 +68,8 @@ export async function GET(request:NextRequest){
     return {id,handle:blocked||doc.data()?.deletedAt?undefined:doc.data()?.handle as string|undefined,name:doc.data()?.name as string|undefined};
    }));
    const byId=new Map(profiles.map(p=>[p.id,p]));
-   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{handle:profile.handle,name:profile.name||profile.handle,preview:c.messages?.at(-1)?.text||'',updatedAt:c.messages?.at(-1)?.created_at||''}]});
+   const avatars=await hydrateAvatars(profiles.map(p=>p.id),user.uid);
+   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{handle:profile.handle,name:profile.name||profile.handle,preview:c.messages?.at(-1)?.text||'',updatedAt:c.messages?.at(-1)?.created_at||'',avatarMediaId:avatars[id!]?.avatarMediaId??null,avatarUrl:avatars[id!]?.avatarUrl??null}]});
    return NextResponse.json({conversations},{headers:safeHeaders});
   }
   const other=await peer(handle);if(!other||other.id===user.uid||other.data().deletedAt||await isBlockedEitherWay(user.uid,other.id))return errorResponse(404,'Member unavailable');

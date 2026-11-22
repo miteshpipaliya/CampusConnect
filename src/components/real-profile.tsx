@@ -4,7 +4,7 @@ import {useEffect,useRef,useState} from 'react';
 import {Grid3X3,Clapperboard,Repeat2,Plus} from 'lucide-react';
 import {Avatar} from './avatar';
 import {AvatarCrop} from './avatar-crop';
-type Profile={handle:string;name:string;branch:string;division:string;bio?:string;relationshipStatus?:string;avatarMediaId?:string|null};
+type Profile={handle:string;name:string;branch:string;division:string;bio?:string;relationshipStatus?:string;avatarMediaId?:string|null;avatarUrl?:string|null};
 type Post={id:string;caption:string;mediaId:string|null;contentType?:string|null;authorHandle?:string;postId?:string};
 type Highlight={id:string;mediaId:string;caption:string;active:boolean};
 type Data={self:boolean;profile:Profile;posts:Post[];reposts:Post[];highlights:Highlight[]};
