@@ -21,6 +21,9 @@ export async function GET(request:NextRequest){
  if(cursorValue&&!cursor)return errorResponse(400,'Invalid cursor');
  try{
   const store=db();const selected:FirebaseFirestore.QueryDocumentSnapshot[]=[];
+  const muteSnaps=await store.collection('mutes').where('ownerUid','==',user.uid).limit(200).get();
+  const muted=new Set(muteSnaps.docs.filter(d=>d.data().posts!==false).map(d=>String(d.data().targetUid||'')));
+  let lastScanned:FirebaseFirestore.QueryDocumentSnapshot|undefined;
   let query=store.collection('posts').orderBy('createdAt','desc').orderBy(FieldPath.documentId(),'desc');
   if(cursor)query=query.startAfter(Timestamp.fromMillis(cursor.millis),cursor.id);
   for(let page=0;page<4&&selected.length<limit;page++){
@@ -31,15 +34,12 @@ export async function GET(request:NextRequest){
     let allowed=authorCache.get(uid);if(!allowed){allowed=canViewAuthor(user.uid,uid);authorCache.set(uid,allowed)}
     return allowed;
    }));
-   for(let i=0;i<snap.docs.length;i++){const doc=snap.docs[i]!;if(visible[i]&&!doc.data().deletedAt&&!doc.data().archived){selected.push(doc);if(selected.length===limit)break}}
+   for(let i=0;i<snap.docs.length;i++){const doc=snap.docs[i]!;if(visible[i]&&!muted.has(String(doc.data().authorUid||''))&&!doc.data().deletedAt&&!doc.data().archived){selected.push(doc);if(selected.length===limit)break}}
+   lastScanned=snap.docs.at(-1);
    if(snap.docs.length<50)break;
    const last=snap.docs.at(-1);if(!last)break;
    query=query.startAfter(last);
   }
-  const muteSnaps=await store.collection('mutes').where('ownerUid','==',user.uid).limit(200).get();
-  const muted=new Set(muteSnaps.docs.filter(d=>d.data().posts!==false).map(d=>String(d.data().targetUid||'')));
-  const filtered=selected.filter(d=>!muted.has(String(d.data().authorUid||'')));
-  selected.splice(0,selected.length,...filtered);
   const likeRefs=selected.map(d=>d.ref.collection('likes').doc(user.uid));
   const saveRefs=selected.map(d=>store.collection('users').doc(user.uid).collection('saves').doc(d.id));
   const [ownLikes,ownSaves]=await Promise.all([
@@ -63,14 +63,14 @@ export async function GET(request:NextRequest){
    if(normalized.isLegacy){
     const [likes,comments]=await Promise.all([d.ref.collection('likes').count().get(),d.ref.collection('comments').count().get()]);
     counters={...normalized,likes:likes.data().count,comments:comments.data().count};
-    void d.ref.set({counters:{likes:counters.likes,comments:counters.comments,reposts:counters.reposts,saves:0,shares:0,views:0}},{merge:true}).catch(()=>{});
+    void d.ref.set({counters:{likes:counters.likes,comments:counters.comments}},{merge:true}).catch(()=>{});
    }
    const mediaId=typeof data.mediaId==='string'?data.mediaId:null;
    const author=authors.get(String(data.authorUid||''));
    const avatarMediaId=typeof author?.avatarMediaId==='string'?author.avatarMediaId:null;
    return {id:d.id,media:Array.isArray(data.media)?data.media.map((m:{mediaId:string;alt?:string})=>({...m,contentType:mediaTypes.get(m.mediaId)||'',url:mediaUrls[m.mediaId]?.url??null})):[],type:data.type||'post',caption:data.caption,authorHandle:data.authorHandle,authorUid:data.authorUid,mediaId,likes:counters.likes,comments:counters.comments,reposts:counters.reposts,liked:ownLikes[i]?.exists??false,saved:ownSaves[i]?.exists??false,avatarMediaId,avatarUrl:avatarMediaId?mediaUrls[avatarMediaId]?.url??null:null,mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null};
   }));
-  const last=selected.at(-1);
+  const last=lastScanned;
   const lastMs=last?.data().createdAt?.toMillis?.();
   const nextCursor=last&&typeof lastMs==='number'?encodeCursor(lastMs,last.id):null;
   return NextResponse.json({posts,nextCursor},{headers:safeHeaders});
