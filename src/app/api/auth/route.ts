@@ -113,8 +113,8 @@ export async function POST(request:NextRequest){
    const existingProfile=user?await db().collection('users').doc(user.uid).get():null;
    if(!existingProfile?.exists){
     if(!parsed.data.profile)return errorResponse(400,'Complete your profile first');
-    const p=parsed.data.profile,parts=emailPattern.exec(email);
-    if(!parts&&email!==testEmail)return errorResponse(403,'Unsupported email address');
+    const p=parsed.data.profile,parts=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/.exec(email);
+    if(!parts&&!allowedEmail(email))return errorResponse(403,'Unsupported email address');
     const branch=parts?branchFor(parts[2] as keyof typeof proposedCodes):'';
     if(!user)user=await auth().createUser({email,emailVerified:true,disabled:false,password:parsed.data.password});
     else await auth().updateUser(user.uid,{emailVerified:true,password:parsed.data.password});
