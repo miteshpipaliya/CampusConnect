@@ -4,7 +4,8 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {Avatar} from '@/components/avatar';
 import {useStreamConnection} from './stream-connection';
 import {ChatMediaUpload} from './chat-media-upload';
-type Message={id:string;text:string;senderUid:string;createdAt:string|null;seen:boolean;quotedMessageId?:string|null;reactionCounts?:Record<string,number>;ownReactions?:string[];mediaId?:string|null;mediaType?:string|null};
+import {ChatSharedContentCard} from './chat-shared-content-card';
+type Message={id:string;text:string;senderUid:string;createdAt:string|null;seen:boolean;quotedMessageId?:string|null;reactionCounts?:Record<string,number>;ownReactions?:string[];mediaId?:string|null;mediaType?:string|null;contentId?:string|null;contentType?:string|null};
 type Emoji='love'|'laugh'|'wow'|'like'|'fire';
 export function ChatThread({handle}:{handle:string}){
  const [messages,setMessages]=useState<Message[]>([]),[uid,setUid]=useState(''),[draft,setDraft]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
@@ -42,7 +43,7 @@ export function ChatThread({handle}:{handle:string}){
  {loading?<p>Loading messages…</p>:messages.length===0?<p>No messages yet.</p>:messages.map(m=><div key={m.id} id={'cc-msg-'+m.id} style={{alignSelf:m.senderUid===uid?'flex-end':'flex-start',maxWidth:'82%',padding:'10px 14px',borderRadius:16,background:m.senderUid===uid?'#6240a9':'var(--cc-surface,#5553)',color:m.senderUid===uid?'white':'inherit',overflowWrap:'anywhere'}}>
  {m.quotedMessageId&&<a href={'#cc-msg-'+m.quotedMessageId} style={{display:'block',fontSize:12,marginBottom:8,padding:7,background:'#7773',borderRadius:8,color:'inherit'}}>↪ {messages.find(item=>item.id===m.quotedMessageId)?.text.slice(0,100)||'Message unavailable'}</a>}
  {m.mediaId&&(m.mediaType==='video'?<video controls playsInline preload="metadata" src={'/api/media?id='+encodeURIComponent(m.mediaId)} style={{display:'block',maxWidth:'100%',maxHeight:340,borderRadius:10}}/>:<a href={'/api/media?id='+encodeURIComponent(m.mediaId)} target="_blank" rel="noopener noreferrer" aria-label="Open chat image"><img loading="lazy" src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Chat attachment" style={{display:'block',maxWidth:'100%',maxHeight:340,objectFit:'contain',borderRadius:10}}/></a>)}
- <p style={{whiteSpace:'pre-wrap',margin:0}}>{m.text}</p><small style={{display:'block',opacity:.75,marginTop:4}}>{m.createdAt?new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):''}{m.senderUid===uid?(m.seen?' · Seen':' · Sent'):''}</small>
+ {m.contentId&&<ChatSharedContentCard postId={m.contentId} kind={m.contentType==='reel'?'reel':'post'}/>}<p style={{whiteSpace:'pre-wrap',margin:0}}>{m.text}</p><small style={{display:'block',opacity:.75,marginTop:4}}>{m.createdAt?new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):''}{m.senderUid===uid?(m.seen?' · Seen':' · Sent'):''}</small>
  <div style={{display:'flex',gap:7,marginTop:7,flexWrap:'wrap',alignItems:'center'}}>
  <button type="button" onClick={()=>setReplyTo(m)}>Reply</button>
  {m.text&&<button type="button" onClick={()=>navigator.clipboard.writeText(m.text).then(()=>setNotice('Copied')).catch(()=>setError('Copy failed'))}>Copy</button>}
