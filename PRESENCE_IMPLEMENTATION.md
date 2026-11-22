@@ -28,3 +28,10 @@ Status: **IN PROGRESS — NOT PRODUCTION READY**
 
 ## Deployment
 **Do not merge or enable `STREAM_CLIENT_TOKENS_ENABLED` yet.** The SDK client and full security verification are not implemented.
+
+## 2026-11-22 implementation checkpoint
+- Implemented REST-backed `/messages` inbox and `/messages/[id]` conversation views using existing session-protected `/api/chat`, plus navigation links. Supports text send, copy, own-message unsend and per-user removal through existing endpoints. This is **not realtime**; there is no client Stream SDK connection or event subscription yet.
+- New presence visibility endpoint and shared green indicator are implemented but **not wired to Stream events or avatars**. No false online state is rendered.
+- Container cannot resolve github.com for cloning, so local `npm ci`, TypeScript, lint, tests and build could not be run. GitHub Actions runs were not available for this branch at checkpoint; Vercel preview build was in progress, not verified.
+- Missing: compatible SDK dependency and lockfile, real-time messages/presence/typing/receipts, pagination, replies/reactions, secure media and content sharing, notifications, two-account acceptance tests. Do not enable Stream client tokens or merge to production.
+NEXT: Inspect latest Vercel preview build and GitHub Actions quality results for branch upgrade/stream-dm-presence; fix errors, regenerate lockfile, integrate official Stream SDK and complete remaining DM requirements before production merge.
