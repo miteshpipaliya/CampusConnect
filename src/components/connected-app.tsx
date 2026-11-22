@@ -143,7 +143,7 @@ export function ConnectedFeed(){
   </div>}
   {(section==='home'||section==='community')&&<LiveStories/>}
   {(section==='home'||section==='community')&&(loading&&!feedCache?<p className="cc-feed-skeleton" aria-label="Loading posts"/>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
-   <Link href={'/profile/'+encodeURIComponent(post.authorHandle)} style={{display:'flex',alignItems:'center',gap:8}}><Avatar user={{handle:post.authorHandle,avatarMediaId:post.avatarMediaId,avatarUrl:post.avatarUrl}} size={32}/><strong>@{post.authorHandle}</strong></Link>
+   <Link href={'/profile/'+encodeURIComponent(post.authorHandle)} style={{display:'flex',alignItems:'center',gap:8}}><Avatar user={{handle:post.authorHandle,avatarMediaId:post.avatarMediaId??null,avatarUrl:post.avatarUrl??null}} size={32}/><strong>@{post.authorHandle}</strong></Link>
    {post.mediaId&&<img src={post.mediaUrl||'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
    <p>{post.caption}</p>
    <div><button type="button" onClick={()=>toggleLike(post.id)}><Heart size={20} fill={post.liked?'currentColor':'none'}/> {post.likes||0}</button>
