@@ -3,13 +3,13 @@ import {createHmac} from 'node:crypto';
 import {db} from './services';
 import {presignGet} from './storage';
 /** Stream users receive a signed R2 avatar URL; token creation refreshes expiring URLs. */
-export async function syncStreamUser(uid:string):Promise<{synced:boolean;user:{id:string;name:string;username:string;image:string}}>{
+export async function syncStreamUser(uid:string):Promise<{synced:boolean;user:{id:string;name:string;username:string;image:string;invisible:boolean}}>{
  const apiKey=process.env.STREAM_API_KEY?.trim(),secret=process.env.STREAM_API_SECRET?.trim();
- if(!apiKey||!secret)return {synced:false,user:{id:uid,name:'Student',username:'',image:''}};
+ if(!apiKey||!secret)return {synced:false,user:{id:uid,name:'Student',username:'',image:'',invisible:true}};
  const snap=await db().collection('users').doc(uid).get();
- if(!snap.exists||snap.data()?.deletedAt)return {synced:false,user:{id:uid,name:'Student',username:'',image:''}};
+ if(!snap.exists||snap.data()?.deletedAt)return {synced:false,user:{id:uid,name:'Student',username:'',image:'',invisible:true}};
  const d=snap.data()!,name=String(d.name||d.handle||'Student');
- const user={id:uid,name,username:String(d.handle||''),image:''};
+ const user={id:uid,name,username:String(d.handle||''),image:'',invisible:d.settings?.activityStatus!==true};
  if(typeof d.avatarMediaId==='string'){
   const media=await db().collection('media').doc(d.avatarMediaId).get();
   if(media.exists&&media.data()?.status==='uploaded'&&media.data()?.ownerUid===uid&&typeof media.data()?.key==='string'){

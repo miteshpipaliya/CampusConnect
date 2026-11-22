@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
+import {StreamConnectionProvider} from './chat/stream-connection';
 import type { LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -72,7 +73,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    if(!live)return;setChecked(true);if(x?.user?.profile?.handle)setHandle(x.user.profile.handle);else router.replace('/login');
   }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router]);
   if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
-  return <div className={'cc-app'+(pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <StreamConnectionProvider><div className={'cc-app'+(pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} />
@@ -84,5 +85,5 @@ export default function SocialShell({ children }: { children: ReactNode }) {
     </main>
     {!pathname.startsWith('/profile')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle}/>}
     <Nav pathname={pathname} section={section} mobile />
-  </div>;
+  </div></StreamConnectionProvider>;
 }
