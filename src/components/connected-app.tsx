@@ -109,7 +109,7 @@ export function ConnectedFeed(){
   .catch(()=>setStatus('Sign in to view the live feed.')).finally(()=>setLoading(false));},[]);
  useEffect(()=>{const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh().catch(()=>{});},10000);return()=>window.clearInterval(timer)},[]);
  useEffect(()=>{if(!file){setPreviewUrl(null);return}const url=URL.createObjectURL(file);setPreviewUrl(url);return()=>URL.revokeObjectURL(url)},[file]);
- useEffect(()=>{const selected=params.get('section')||'home';setSection(['home','reels','chat','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[params]);
+ useEffect(()=>{const selected=params.get('section')||'home';if(selected==='chat'){window.location.replace('/messages'+(params.get('with')?'/'+encodeURIComponent(params.get('with')!):''));return}setSection(['home','reels','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[params]);
  async function toggleLike(id:string){try{await api('/api/posts/'+id+'/likes','POST',{});await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Like failed')}}
  async function toggleSave(id:string,saved:boolean){try{await api('/api/saves',saved?'DELETE':'POST',{postId:id});await refresh();setStatus(saved?'Removed from saved posts':'Saved privately')}catch(e){setStatus(e instanceof Error?e.message:'Save failed')}}
  async function repost(id:string){try{const result=await api<{reposted:boolean}>('/api/reposts','POST',{postId:id});setStatus(result.reposted?'Added to your reposts':'Removed from reposts')}catch(e){setStatus(e instanceof Error?e.message:'Repost failed')}}
@@ -129,7 +129,7 @@ export function ConnectedFeed(){
    setCaption('');setFile(null);setComposeOpen(false);setMediaStep('preview');setStatus('Post published');await refresh();
   }catch(e){setStatus(e instanceof Error?e.message:'Unable to publish')}finally{setBusy(false)}
  }
- return <section className={'cc-connected-feed'+(section==='chat'?' cc-chat-view':'')}><SocialPanels section={section}/>
+ return <section className={'cc-connected-feed'+(section==='chat'?' cc-chat-view':'')}>{section!=='chat'&&<SocialPanels section={section}/>}
   {status&&<p role="status">{status}</p>}
   {composeOpen&&<CreateComposer onClose={()=>setComposeOpen(false)} onPublished={()=>{setStatus('Content published');void refresh()}}/>}
   {(section==='home'||section==='community')&&<LiveStories/>}

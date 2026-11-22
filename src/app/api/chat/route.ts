@@ -87,7 +87,7 @@ export async function GET(request:NextRequest){
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.
    const result=await stream('/channels','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
-   const channels=(result.channels||[]) as Array<{channel?:{id?:string;members?:Array<{user_id?:string;user?:{id?:string}}>};members?:Array<{user_id?:string;user?:{id?:string}}>;messages?:Array<{text?:string;created_at?:string}>}>;
+   const channels=(result.channels||[]) as Array<{channel?:{id?:string;members?:Array<{user_id?:string;user?:{id?:string}}>};members?:Array<{user_id?:string;user?:{id?:string}}>;messages?:Array<{text?:string;created_at?:string}>;unread_count?:number}>;
    const peerIds=[...new Set(channels.flatMap(c=>(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').filter(id=>id&&id!==user.uid)))];
    const profiles=await Promise.all(peerIds.map(async id=>{
     const [doc,blocked]=await Promise.all([db().collection('users').doc(id).get(),isBlockedEitherWay(user.uid,id)]);
@@ -95,7 +95,7 @@ export async function GET(request:NextRequest){
    }));
    const byId=new Map(profiles.map(p=>[p.id,p]));
    const avatars=await hydrateAvatars(profiles.map(p=>p.id),user.uid);
-   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{peerUid:id!,channelId:c.channel?.id||'',handle:profile.handle,name:profile.name||profile.handle,unreadCount:0,preview:c.messages?.at(-1)?.text||'',updatedAt:c.messages?.at(-1)?.created_at||'',avatarMediaId:avatars[id!]?.avatarMediaId??null,avatarUrl:avatars[id!]?.avatarUrl??null}]});
+   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{peerUid:id!,channelId:c.channel?.id||'',handle:profile.handle,name:profile.name||profile.handle,unreadCount:Math.max(0,Number(c.unread_count||0)),preview:c.messages?.at(-1)?.text||'',updatedAt:c.messages?.at(-1)?.created_at||'',avatarMediaId:avatars[id!]?.avatarMediaId??null,avatarUrl:avatars[id!]?.avatarUrl??null}]});
    return NextResponse.json({conversations},{headers:safeHeaders});
   }
   const other=await peer(handle);if(!other||other.id===user.uid||other.data().deletedAt||await isBlockedEitherWay(user.uid,other.id))return errorResponse(404,'Member unavailable');
@@ -152,7 +152,7 @@ export async function POST(request:NextRequest){
     sentId=String(result.message?.id||'');
     if(!sentId)throw Error('STREAM_MESSAGE_ID_MISSING');
     await finishChatMedia(input.mediaId,id,sentId);
-    void notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sentId}).catch(()=>{});
+    await notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sentId}).catch(()=>{});
    }catch(error){
     if(sentId)await stream('/messages/'+encodeURIComponent(sentId),'DELETE').catch(()=>{});
     await releaseChatMedia(input.mediaId,id).catch(()=>{});
@@ -167,7 +167,7 @@ export async function POST(request:NextRequest){
    if(!allowed.get(authorUid)||!recipientAllowed.get(authorUid))return errorResponse(403,'Recipient cannot view this content');
    const kind=details?.type==='reel'?'reel':'post';
    const shared=await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,campusContentId:input.postId,campusContentType:kind}});
-   if(typeof shared.message?.id==='string')void notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:shared.message.id}).catch(()=>{});
+   if(typeof shared.message?.id==='string')await notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:shared.message.id}).catch(()=>{});
   }else if(input.action==='typing'){
    await stream(path+'/event','POST',{event:{type:input.typing?'typing.start':'typing.stop',user_id:user.uid}});
   }else if(input.action==='read'){
@@ -175,7 +175,7 @@ export async function POST(request:NextRequest){
   }else{
    if(input.quotedMessageId&&!(await messageInChannel(input.quotedMessageId,id)))return errorResponse(404,'Quoted message is unavailable');
    const sent=await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,...(input.quotedMessageId?{quoted_message_id:input.quotedMessageId}:{})}});
-   if(typeof sent.message?.id==='string')void notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sent.message.id}).catch(()=>{});
+   if(typeof sent.message?.id==='string')await notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sent.message.id}).catch(()=>{});
   }
   return NextResponse.json({ok:true},{headers:safeHeaders});
  }catch(error){console.error('CampusConnect chat POST failed',{error:error instanceof Error?error.message:'unknown'});return errorResponse(503,'Stream chat operation failed')}

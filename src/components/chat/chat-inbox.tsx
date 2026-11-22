@@ -4,7 +4,7 @@ import {useCallback,useEffect,useMemo,useState} from 'react';
 import {Avatar} from '@/components/avatar';
 import {useStreamConnection} from './stream-connection';
 
-type Conversation={handle:string;name:string;preview:string;updatedAt:string;peerUid?:string;channelId?:string;avatarMediaId?:string|null;avatarUrl?:string|null};
+type Conversation={handle:string;name:string;preview:string;updatedAt:string;peerUid?:string;channelId?:string;unreadCount?:number;avatarMediaId?:string|null;avatarUrl?:string|null};
 type Member={uid:string;handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null};
 
 export function ChatInbox(){
@@ -84,7 +84,7 @@ export function ChatInbox(){
   {loading?<p role="status">Loading conversations…</p>:error?<p role="alert">{error}</p>:visible.length===0?<p>{query?'No matching conversations.':'No conversations yet. Find a campus member to start chatting.'}</p>:
    <ul style={{listStyle:'none',padding:0}}>{visible.map(c=><li key={c.handle}><Link href={'/messages/'+encodeURIComponent(c.handle)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 4px',borderBottom:'1px solid var(--cc-border,#7773)',textDecoration:'none',color:'inherit'}}>
    <Avatar user={{name:c.name,handle:c.handle,avatarMediaId:c.avatarMediaId??null,avatarUrl:c.avatarUrl??null}} size={44} online={status==='connected'&&Boolean(c.peerUid)&&onlineUids.has(c.peerUid||'')} activityAllowed={Boolean(c.peerUid)&&allowedUids.has(c.peerUid||'')}/>
-   <span style={{minWidth:0,flex:1}}><strong>{c.name||c.handle}</strong><small style={{display:'block',opacity:.75}}>@{c.handle}</small><span style={{display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.preview||'Start a conversation'}</span></span>
+   <span style={{minWidth:0,flex:1}}><strong>{c.name||c.handle}</strong><small style={{display:'block',opacity:.75}}>@{c.handle}</small><span style={{display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.preview||'Start a conversation'}</span></span>{(c.unreadCount??0)>0&&<strong aria-label={(c.unreadCount??0)+' unread messages'} style={{borderRadius:20,background:'#9b59ef',color:'#fff',padding:'3px 8px',fontSize:12}}>{c.unreadCount}</strong>}
    {c.updatedAt&&<time dateTime={c.updatedAt} style={{fontSize:12,opacity:.7}}>{new Date(c.updatedAt).toLocaleDateString()}</time>}
    </Link></li>)}</ul>}
  </section>;
