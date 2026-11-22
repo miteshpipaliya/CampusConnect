@@ -77,6 +77,10 @@ export async function GET(request:NextRequest){
    if(data.storyId){
     const story=await db().collection('stories').doc(data.storyId).get();
     if(!story.exists||!(await canViewAuthor(user.uid,String(story.data()?.authorUid||'')))||(story.data()?.expiresAt?.toMillis?.()<=Date.now()&&!story.data()?.highlight))return errorResponse(403,'Story unavailable');
+    if(story.data()?.audience==='close'&&story.data()?.authorUid!==user.uid){
+     const friend=await db().collection('closeFriends').doc(String(story.data()?.authorUid||'')+'_'+user.uid).get();
+     if(!friend.exists)return errorResponse(403,'Story unavailable');
+    }
    }else{
     if(!data.postId)return errorResponse(403,'Private media');
     const post=await db().collection('posts').doc(data.postId).get();

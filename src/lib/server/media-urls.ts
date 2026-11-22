@@ -11,7 +11,11 @@ export async function mintUrls(mediaDocs:Array<{id:string;ownerUid?:string;key?:
   try{
    let allowed=media.ownerUid===opts.viewerUid;
    if(!allowed&&media.avatarOwnerUid){const doc=await db().collection('users').doc(media.avatarOwnerUid).get();allowed=doc.data()?.avatarMediaId===media.id&&!(await isBlockedEitherWay(opts.viewerUid,media.avatarOwnerUid))}
-   if(!allowed&&media.storyId){const doc=await db().collection('stories').doc(media.storyId).get();const data=doc.data();allowed=Boolean(data&&(data.highlight||data.expiresAt?.toMillis?.()>Date.now())&&await canViewAuthor(opts.viewerUid,String(data.authorUid||'')))}
+   if(!allowed&&media.storyId){const doc=await db().collection('stories').doc(media.storyId).get();const data=doc.data();allowed=Boolean(data&&(data.highlight||data.expiresAt?.toMillis?.()>Date.now())&&await canViewAuthor(opts.viewerUid,String(data.authorUid||'')));
+    if(allowed&&data?.audience==='close'&&data.authorUid!==opts.viewerUid){
+     const friend=await db().collection('closeFriends').doc(String(data.authorUid||'')+'_'+opts.viewerUid).get();
+     allowed=friend.exists;
+    }}
    if(!allowed&&media.postId){const doc=await db().collection('posts').doc(media.postId).get();allowed=Boolean(doc.exists&&await canViewAuthor(opts.viewerUid,String(doc.data()?.authorUid||'')))}
    if(!allowed)return;
    const expiresAt=media.storyExpiresAt??opts.storyExpiresAt;
