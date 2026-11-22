@@ -16,7 +16,8 @@ export async function GET(request:NextRequest){
   const stories=snapshot.docs.filter(d=>d.data().visibility==='campus'||d.data().authorUid===user.uid).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',highlight:Boolean(d.data().highlight),isMine:d.data().authorUid===user.uid,createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
   const mediaIds=stories.map(story=>story.mediaId).filter((id):id is string=>typeof id==='string');
   const media=mediaIds.length?await db().getAll(...mediaIds.map(id=>db().collection('media').doc(id))):[];
-  const urls=await mintUrls(media.filter(doc=>doc.exists).map(doc=>({id:doc.id,...(doc.data()??{})})),{viewerUid:user.uid});
+  const expiresByMedia=new Map(snapshot.docs.map(doc=>[doc.data().mediaId,doc.data().expiresAt?.toMillis?.()]));
+  const urls=await mintUrls(media.filter(doc=>doc.exists).map(doc=>{const expiry=expiresByMedia.get(doc.id);return {id:doc.id,...(doc.data()??{}),...(typeof expiry==='number'?{storyExpiresAt:expiry}:{})}}),{viewerUid:user.uid});
   return NextResponse.json({stories:stories.map(story=>({...story,mediaUrl:urls[story.mediaId]?.url??null}))},{headers:safeHeaders});
  }catch{return errorResponse(503,'Stories unavailable')}
 }
