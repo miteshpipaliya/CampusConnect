@@ -13,9 +13,9 @@ export async function GET(req:NextRequest){
    store.collectionGroup('comments').where('uid','==',user.uid).limit(50).get()
   ]);
   const raw=[
-   ...likes.docs.map(d=>({type:'like' as const,postId:d.ref.parent.parent?.id??'',text:'',createdAt:d.data().createdAt?.toMillis?.()??0})),
-   ...reposts.docs.map(d=>({type:'repost' as const,postId:String(d.data().postId||''),text:'',createdAt:d.data().createdAt?.toMillis?.()??0})),
-   ...comments.docs.map(d=>({type:'comment' as const,postId:d.ref.parent.parent?.id??'',text:String(d.data().text||''),createdAt:d.data().createdAt?.toMillis?.()??0}))
+   ...likes.docs.map(d=>({type:'like' as const,postId:d.ref.parent.parent?.id??'',commentId:null,text:'',createdAt:d.data().createdAt?.toMillis?.()??0})),
+   ...reposts.docs.map(d=>({type:'repost' as const,postId:String(d.data().postId||''),commentId:null,text:'',createdAt:d.data().createdAt?.toMillis?.()??0})),
+   ...comments.docs.map(d=>({type:'comment' as const,postId:d.ref.parent.parent?.id??'',commentId:d.id,text:String(d.data().text||''),createdAt:d.data().createdAt?.toMillis?.()??0}))
   ].sort((a,b)=>b.createdAt-a.createdAt).slice(0,100);
   const ids=[...new Set(raw.map(x=>x.postId).filter(Boolean))];
   const docs=ids.length?await store.getAll(...ids.map(id=>store.collection('posts').doc(id))):[];

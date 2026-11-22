@@ -23,7 +23,10 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
    else t.update(post,{'counters.likes':Math.max(0,current+(old.exists?-1:1))});
    return !old.exists;
   });
-  if(liked){const [owner,actor]=await Promise.all([post.get(),store.collection('users').doc(user.uid).get()]);const uid=owner.data()?.authorUid;if(uid&&uid!==user.uid)await store.collection('users').doc(uid).collection('notifications').add({type:'like',actorUid:user.uid,actorHandle:actor.data()?.handle??'Member',postId:id,createdAt:FieldValue.serverTimestamp()});}
+  if(liked){const [owner,actor]=await Promise.all([post.get(),store.collection('users').doc(user.uid).get()]);const uid=owner.data()?.authorUid;if(uid&&uid!==user.uid){
+   const target=await store.collection('users').doc(uid).get();
+   if(target.exists&&target.data()?.settings?.notifications?.likes!==false)await target.ref.collection('notifications').add({type:'like',actorUid:user.uid,actorHandle:actor.data()?.handle??'Member',postId:id,createdAt:FieldValue.serverTimestamp()});
+  }}
   return NextResponse.json({liked},{headers:safeHeaders});
  }catch{return errorResponse(404,'Post unavailable')}
 }

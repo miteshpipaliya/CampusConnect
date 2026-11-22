@@ -36,7 +36,31 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
    t.create(comment,{uid:user.uid,handle:profile.data()?.handle,text:parsed.data.text,createdAt:FieldValue.serverTimestamp()});
    t.set(post,{counters:{comments:FieldValue.increment(1)}},{merge:true});
   });
-  if(ownerUid&&ownerUid!==user.uid)await store.collection('users').doc(ownerUid).collection('notifications').add({type:'comment',actorUid:user.uid,actorHandle:profile.data()?.handle??'Member',postId:id,createdAt:FieldValue.serverTimestamp()});
+  if(ownerUid&&ownerUid!==user.uid){
+   const owner=await store.collection('users').doc(ownerUid).get();
+   if(owner.exists&&owner.data()?.settings?.notifications?.comments!==false)await owner.ref.collection('notifications').add({type:'comment',actorUid:user.uid,actorHandle:profile.data()?.handle??'Member',postId:id,createdAt:FieldValue.serverTimestamp()});
+  }
   return NextResponse.json({ok:true,id:comment.id},{headers:safeHeaders});
  }catch{return errorResponse(503,'Unable to comment')}
+}
+
+export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:string}>}){
+ const checked=await guard(request,{write:true,rateLimit:{key:'comments:{uid}',...RATE_LIMITS.comments}});
+ if(!checked.ok)return checked.response;
+ const {id}=await params,commentId=request.nextUrl.searchParams.get('commentId')||'';
+ if(!/^[A-Za-z0-9_-]{10,100}$/.test(id)||!/^[A-Za-z0-9_-]{10,100}$/.test(commentId))return errorResponse(400,'Invalid comment ID');
+ try{
+  const store=db(),post=store.collection('posts').doc(id),comment=post.collection('comments').doc(commentId);
+  const removed=await store.runTransaction(async tx=>{
+   const [p,c]=await Promise.all([tx.get(post),tx.get(comment)]);
+   if(!p.exists||!c.exists)return false;
+   if(c.data()?.uid!==checked.user.uid&&p.data()?.authorUid!==checked.user.uid)throw Error('FORBIDDEN');
+   tx.delete(comment);
+   const count=Number(p.data()?.counters?.comments||0);
+   tx.set(post,{counters:{comments:Math.max(0,count-1)}},{merge:true});
+   return true;
+  });
+  if(!removed)return errorResponse(404,'Comment unavailable');
+  return NextResponse.json({ok:true},{headers:safeHeaders});
+ }catch(e){if(e instanceof Error&&e.message==='FORBIDDEN')return errorResponse(403,'Cannot delete this comment');return errorResponse(503,'Unable to delete comment')}
 }
