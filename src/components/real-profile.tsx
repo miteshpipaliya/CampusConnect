@@ -30,6 +30,7 @@ export function RealProfile({username}:{username:string}){
    </div>
   </header>
   {data.private&&<p role="status" style={{padding:20}}>This account is private. Follow to request access to posts and stories.</p>}
+  {self&&<p style={{padding:'0 20px'}}><Link href="/settings/follow-requests">Manage follow requests</Link></p>}
   <div className="cc-profile-highlights"><h2>Story highlights</h2><div className="cc-profile-highlight-row">{highlights.map(h=><div key={h.id} className="cc-profile-highlight"><a href={'/api/media?id='+encodeURIComponent(h.mediaId)} target="_blank" rel="noreferrer"><span className="cc-profile-highlight-circle"><img src={'/api/media?id='+encodeURIComponent(h.mediaId)} alt={h.caption||'Saved story'}/></span></a><small>{h.caption||'Highlight'}</small>{self&&<button type="button" onClick={()=>void toggleHighlight(h.id,false)}>Remove</button>}</div>)}{!highlights.length&&<p>No saved highlights yet. {self?'Open your story to add one.':''}</p>}</div></div>
   <div className="cc-profile-tabs" role="tablist" aria-label="Profile content">
    {([{key:'posts',label:'Posts',Icon:Grid3X3},{key:'reels',label:'Reels',Icon:Clapperboard},{key:'reposts',label:'Reposts',Icon:Repeat2}] as const).map(({key,label,Icon})=><button type="button" role="tab" aria-selected={tab===key} className={tab===key?'active':''} key={key} onClick={()=>setTab(key)}><Icon size={18}/>{label}</button>)}
