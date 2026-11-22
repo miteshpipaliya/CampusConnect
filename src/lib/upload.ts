@@ -2,14 +2,15 @@ export type UploadPurpose='avatar'|'post'|'story'|'reel'|'chat';
 export async function uploadFile({file,purpose,onProgress,signal,maxRetries=2}:{file:File;purpose:UploadPurpose;onProgress?:(fraction:number)=>void;signal?:AbortSignal;maxRetries?:number}):Promise<string>{
  for(let attempt=0;attempt<=maxRetries;attempt++){
   try{
-   const reserved=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'reserve',contentType:file.type,size:file.size,purpose}),signal});
+   const reserved=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'reserve',contentType:file.type,size:file.size,purpose}),...(signal?{signal}:{})});
    if(!reserved.ok)throw Error('Upload reservation failed');
    const data:unknown=await reserved.json();
    if(!data||typeof data!=='object'||!('id' in data)||!('uploadUrl' in data)||typeof data.id!=='string'||typeof data.uploadUrl!=='string')throw Error('Invalid reservation');
-   await new Promise<void>((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open('PUT',data.uploadUrl);xhr.setRequestHeader('Content-Type',file.type);xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress?.(e.loaded/e.total)};xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve():reject(Error('Upload failed'));xhr.onerror=()=>reject(Error('Network error'));xhr.onabort=()=>reject(Error('Upload aborted'));signal?.addEventListener('abort',()=>xhr.abort(),{once:true});xhr.send(file)});
-   const confirmed=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'confirm',id:data.id}),signal});
+   const id=data.id as string, uploadUrl=data.uploadUrl as string;
+   await new Promise<void>((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open('PUT',uploadUrl);xhr.setRequestHeader('Content-Type',file.type);xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress?.(e.loaded/e.total)};xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve():reject(Error('Upload failed'));xhr.onerror=()=>reject(Error('Network error'));xhr.onabort=()=>reject(Error('Upload aborted'));signal?.addEventListener('abort',()=>xhr.abort(),{once:true});xhr.send(file)});
+   const confirmed=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'confirm',id}),signal});
    if(!confirmed.ok)throw Error('Upload confirmation failed');
-   return data.id;
+   return id;
   }catch(error){if(signal?.aborted||attempt===maxRetries)throw error;await new Promise(resolve=>setTimeout(resolve,250*2**attempt))}
  }
  throw Error('Upload failed');
