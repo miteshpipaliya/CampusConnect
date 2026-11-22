@@ -1,7 +1,7 @@
 import 'server-only';
 import {createHash} from 'node:crypto';
 import {createTtlCache} from '../core/session-cache';
-const cache=createTtlCache<{uid:string;email:string|undefined}>({ttlMs:60000,max:500});
+const cache=createTtlCache<{uid:string;email:string|undefined;admin:boolean}>({ttlMs:60000,max:500});
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from './services';
 
@@ -21,7 +21,7 @@ export async function session(request:NextRequest){
   const record=await auth().getUser(verified.uid);
   const profile=await (await import('./services')).db().collection('users').doc(record.uid).get();
   if(!profile.exists||profile.data()?.deletedAt)return null;
-  const result=record.emailVerified&&!record.disabled&&(record.email?.toLowerCase().endsWith('@bvmengineering.ac.in')||(process.env.APPROVED_TEST_EMAILS||'').split(',').map(email=>email.trim().toLowerCase()).filter(Boolean).includes(record.email?.toLowerCase()||''))?{uid:record.uid,email:record.email}:null;
+  const result=record.emailVerified&&!record.disabled&&(record.email?.toLowerCase().endsWith('@bvmengineering.ac.in')||(process.env.APPROVED_TEST_EMAILS||'').split(',').map(email=>email.trim().toLowerCase()).filter(Boolean).includes(record.email?.toLowerCase()||''))?{uid:record.uid,email:record.email,admin:verified.admin===true}:null;
   if(result)cache.set(key,result);
   return result;
  }catch{return null}

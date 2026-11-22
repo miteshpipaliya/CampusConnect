@@ -9,3 +9,8 @@ export function followAction(facts:{self:boolean;blocked:boolean;privateAccount:
  if(facts.existing!=='none')return 'unchanged';
  return facts.privateAccount?'pending':'active';
 }
+
+/** Canonical privacy rule for both legacy and current user documents. */
+export function isPrivateAccount(doc:{privacy?:unknown;isPrivate?:unknown;settings?:{isPrivate?:unknown}}|undefined|null):boolean{
+ return doc?.privacy==='private'||doc?.isPrivate===true||doc?.settings?.isPrivate===true;
+}
