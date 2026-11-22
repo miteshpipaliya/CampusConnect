@@ -25,3 +25,8 @@ test('publishing requirements',()=>{
  assert.equal(canPublish({kind:'post',items:Array.from({length:11},()=>({type:'image/jpeg'}))}),false);
  assert.equal(MEDIA_RULES.maxCarousel,10);
 });
+
+test('mentions at boundaries and punctuation',()=>{
+ assert.deepEqual(parseCaption('@first text, @middle; then @last!').mentions,['first','middle','last']);
+ assert.deepEqual(parseCaption('a@b.com test@example.com and @person').mentions,['person']);
+});
