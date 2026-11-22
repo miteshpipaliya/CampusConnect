@@ -3,6 +3,7 @@ import {FieldValue} from 'firebase-admin/firestore';
 import {z} from 'zod';
 import {db} from '@/lib/server/services';
 import {guard} from '@/lib/server/guard';
+import {handleChangesAllowed} from '@/lib/core/phase2-rules';
 import {syncStreamUser} from '@/lib/server/stream-user';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 export const runtime='nodejs';
@@ -30,7 +31,7 @@ export async function PATCH(request:NextRequest){
    const old=String(user.data()?.handle??'').toLowerCase();
    const now=Date.now();
    const history=Array.isArray(user.data()?.handleChangeTimes)?(user.data()?.handleChangeTimes as unknown[]).filter((value):value is number=>typeof value==='number'&&value>now-14*86400000):[];
-   if(history.length>=2)throw Error('CHANGE_LIMIT');
+   if(!handleChangesAllowed(history,now))throw Error('CHANGE_LIMIT');
    if(old===handle)return 'unchanged';
    const taken=await transaction.get(reservation);
    if(taken.exists&&taken.data()?.uid!==checked.user.uid)throw Error('TAKEN');

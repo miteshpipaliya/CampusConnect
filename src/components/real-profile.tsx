@@ -26,7 +26,7 @@ export function RealProfile({username}:{username:string}){
    await call('/api/media',{action:'confirm',id:reserved.id});
    await call('/api/profile/avatar',{mediaId:reserved.id});
    await load();
-  }catch(e){setError(e instanceof Error?e.message:'Avatar upload failed')}finally{setUploading(false);if(uploadInput.current)uploadInput.current.value=''}
+  }catch(e){setError(e instanceof Error?e.message:'Avatar upload failed');throw e}finally{setUploading(false);if(uploadInput.current)uploadInput.current.value=''}
  }
  if(error&&!data)return <div className="cc-live-empty" role="alert">{error} <Link href="/home">Back to Home</Link></div>;
  if(!data)return <div className="cc-live-empty">Loading profile…</div>;

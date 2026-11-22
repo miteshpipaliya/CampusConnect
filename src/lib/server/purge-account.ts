@@ -2,6 +2,7 @@ import 'server-only';
 import {Timestamp} from 'firebase-admin/firestore';
 import {auth,db} from './services';
 import {deleteObject} from './storage';
+import {deletionDue} from '../core/phase2-rules';
 /** Runs only for an account that opted into deletion >=30 days ago.
  * Each invocation performs a bounded batch and returns; cron resumes on the next run.
  * Never bypass review flags in the cron route.
@@ -9,7 +10,7 @@ import {deleteObject} from './storage';
 export async function purgeAccountBatch(uid:string,now=Date.now()):Promise<{stage:string;processed:number;complete:boolean}>{
  const store=db(),profileRef=store.collection('users').doc(uid),profile=await profileRef.get();
  const deleted=profile.data()?.deletedAt;
- if(!profile.exists||!deleted||typeof deleted.toMillis!=='function'||deleted.toMillis()>now-30*86400000){
+ if(!profile.exists||!deleted||typeof deleted.toMillis!=='function'||!deletionDue(deleted.toMillis(),now)){
   return {stage:'not_due',processed:0,complete:false};
  }
  const media=await store.collection('media').where('ownerUid','==',uid).limit(30).get();

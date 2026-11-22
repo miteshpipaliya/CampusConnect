@@ -9,7 +9,7 @@ import {relationshipStatuses,relationshipVisibilities} from '@/lib/student-email
 export const runtime='nodejs';
 const schema=z.object({
  name:z.string().trim().min(2).max(70),
- bio:z.string().trim().max(160),
+ bio:z.string().trim().max(150),
  website:z.union([z.literal(''),z.string().trim().url().max(200).refine(value=>/^https:\/\//i.test(value))]),
  branch:z.string().trim().max(80),
  division:z.string().trim().max(30),

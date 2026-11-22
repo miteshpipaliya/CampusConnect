@@ -18,10 +18,10 @@ export function ProfileSettings(){
  if(error&&!profile)return <section className="cc-live-empty" role="alert">{error}</section>;
  if(!profile)return <section className="cc-live-empty">Loading your settings…</section>;
  return <section className="cc-real-profile" style={{maxWidth:680,margin:'0 auto',padding:'24px'}}><h1>Edit profile</h1><p>Update the information displayed on your campus profile.</p>
- <form className="auth-form" onSubmit={save}>
+ <Link href="/profile/me">Change profile photo</Link><form className="auth-form" onSubmit={save}>
  <label>Username<input required value={handle} pattern="[a-z][a-z0-9._]{2,29}" maxLength={30} onChange={e=>setHandle(e.target.value.toLowerCase())}/></label>
  <label>Full name<input required minLength={2} maxLength={70} value={profile.name} onChange={e=>change('name',e.target.value)}/></label>
- <label>Bio<textarea maxLength={160} rows={4} value={profile.bio} onChange={e=>change('bio',e.target.value)}/></label>
+ <label>Bio<textarea maxLength={150} rows={4} value={profile.bio} onChange={e=>change('bio',e.target.value)}/></label>
  <label>Website<input type="url" placeholder="https://example.com" maxLength={200} value={profile.website} onChange={e=>change('website',e.target.value)}/></label>
  <label>Branch<input maxLength={80} value={profile.branch} onChange={e=>change('branch',e.target.value)}/></label>
  <label>Division<input maxLength={30} value={profile.division} onChange={e=>change('division',e.target.value)}/></label>
