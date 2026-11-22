@@ -29,7 +29,8 @@ export function ProfileSettings(){
  }
  async function save(event:FormEvent){event.preventDefault();if(!profile)return;setBusy(true);setError('');setMessage('');
  try{
-  const {handle:currentHandle,avatarMediaId,...settings}=profile;
+  const {handle:currentHandle,avatarMediaId,branch,division,...settings}=profile;
+  void branch;void division;
   const response=await fetch('/api/profile/settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(settings)});
   const result=await response.json();if(!response.ok)throw Error(result.error??'Unable to save');
   if(handle.trim().toLowerCase()!==currentHandle){const rename=await fetch('/api/profile/username',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle:handle.trim().toLowerCase()})});const renameResult=await rename.json();if(!rename.ok)throw Error('Settings saved, but username change failed: '+(renameResult.error??'Unavailable'));change('handle',renameResult.handle)}
@@ -51,8 +52,8 @@ export function ProfileSettings(){
  <label>Full name<input required minLength={2} maxLength={70} value={profile.name} onChange={e=>change('name',e.target.value)}/></label>
  <label>Bio<textarea maxLength={150} rows={4} value={profile.bio} onChange={e=>change('bio',e.target.value)}/></label>
  <label>Website<input type="url" placeholder="https://example.com" maxLength={200} value={profile.website} onChange={e=>change('website',e.target.value)}/></label>
- <label>Branch<input maxLength={80} value={profile.branch} onChange={e=>change('branch',e.target.value)}/></label>
- <label>Division<input maxLength={30} value={profile.division} onChange={e=>change('division',e.target.value)}/></label>
+ <label>Branch (verified)<input value={profile.branch} readOnly aria-readonly="true"/></label>
+ <label>Division (verified)<input value={profile.division} readOnly aria-readonly="true"/></label>
  <label>Relationship status<select value={profile.relationshipStatus} onChange={e=>change('relationshipStatus',e.target.value)}>{['','Single','In Relationship','Engaged','Married','Situationship'].map(x=><option key={x} value={x}>{x||'Not specified'}</option>)}</select></label>
  <label>Relationship visibility<select value={profile.relationshipVisibility} onChange={e=>change('relationshipVisibility',e.target.value as Profile['relationshipVisibility'])}><option value="me">Only me</option><option value="followers">Followers</option><option value="campus">Campus</option></select></label>
  <label>Account privacy<select value={profile.privacy} onChange={e=>change('privacy',e.target.value as Profile['privacy'])}><option value="campus">Campus visible</option><option value="private">Private</option></select></label>

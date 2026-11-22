@@ -6,6 +6,8 @@ import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
 import {notifySocial} from '@/lib/server/social-notify';
+import {followCounterDelta,safeCounter} from '@/lib/core/social-rules';
+import {isPrivateAccount} from '@/lib/core/privacy-rules';
 export const runtime='nodejs';
 const schema=z.object({handle:z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/)});
 async function targetUid(handle:string){const d=await db().collection('handles').doc(handle).get();return d.exists&&typeof d.data()?.uid==='string'?String(d.data()?.uid):null}
@@ -18,7 +20,7 @@ export async function GET(request:NextRequest){
   if(await isBlockedEitherWay(user.uid,target))return errorResponse(404,'Profile unavailable');
   const store=db(),[profile,follow]=await Promise.all([store.collection('users').doc(target).get(),store.collection('follows').doc(user.uid+'_'+target).get()]);
   if(!profile.exists||profile.data()?.deletedAt)return errorResponse(404,'Profile unavailable');
-  return NextResponse.json({self:target===user.uid,status:follow.data()?.status||'none',private:profile.data()?.privacy==='private'||profile.data()?.isPrivate===true},{headers:safeHeaders});
+  return NextResponse.json({self:target===user.uid,status:follow.data()?.status||'none',private:isPrivateAccount(profile.data())},{headers:safeHeaders});
  }catch{return errorResponse(503,'Follow status unavailable')}
 }
 export async function POST(request:NextRequest){
@@ -28,21 +30,27 @@ export async function POST(request:NextRequest){
   const target=await targetUid(parsed.data.handle);if(!target||target===checked.user.uid)return errorResponse(400,'Invalid account');
   if(await isBlockedEitherWay(checked.user.uid,target))return errorResponse(403,'Unavailable');
   const store=db(),ref=store.collection('follows').doc(checked.user.uid+'_'+target),targetRef=store.collection('users').doc(target);
-  const status=await store.runTransaction(async tx=>{
-   const [profile,existing]=await Promise.all([tx.get(targetRef),tx.get(ref)]);
+  const outcome=await store.runTransaction(async tx=>{
+   const actorRef=store.collection('users').doc(checked.user.uid);
+   const [profile,existing,actor]=await Promise.all([tx.get(targetRef),tx.get(ref),tx.get(actorRef)]);
    if(!profile.exists||profile.data()?.deletedAt)throw Error('TARGET_MISSING');
    const current=existing.data()?.status;
-   if(current==='active'||current==='pending')return current as 'active'|'pending';
+   if(current==='active'||current==='pending')return {status:current as 'active'|'pending',created:false};
    const next=profile.data()?.privacy==='private'||profile.data()?.isPrivate===true?'pending':'active';
+   if(next==='active'){tx.update(targetRef,{'counters.followers':safeCounter(profile.data()?.counters?.followers,1)});tx.update(actorRef,{'counters.following':safeCounter(actor.data()?.counters?.following,1)})}
    tx.set(ref,{followerUid:checked.user.uid,followingUid:target,status:next,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
-   return next;
+   return {status:next,created:true};
   });
-  if(status==='active'||status==='pending')await notifySocial(target,checked.user.uid,status==='active'?'follow':'follow_request').catch(()=>{});
-  return NextResponse.json({ok:true,status},{headers:safeHeaders});
+  if(outcome.created)await notifySocial(target,checked.user.uid,outcome.status==='active'?'follow':'follow_request').catch(()=>{});
+  return NextResponse.json({ok:true,status:outcome.status},{headers:safeHeaders});
  }catch{return errorResponse(503,'Follow unavailable')}
 }
 export async function DELETE(request:NextRequest){
- const checked=await guard(request,{write:true,schema});if(!checked.ok)return checked.response;
+ const checked=await guard(request,{write:true,schema,rateLimit:{key:'unfollow:{uid}',limit:120,windowSec:3600}});if(!checked.ok)return checked.response;
  const parsed=schema.safeParse(checked.input);if(!parsed.success)return errorResponse(400,'Invalid handle');
- try{const target=await targetUid(parsed.data.handle);if(!target)return errorResponse(404,'Profile unavailable');await db().collection('follows').doc(checked.user.uid+'_'+target).delete();return NextResponse.json({ok:true,status:'none'},{headers:safeHeaders})}catch{return errorResponse(503,'Unfollow unavailable')}
+ try{const target=await targetUid(parsed.data.handle);if(!target)return errorResponse(404,'Profile unavailable');const store=db(),ref=store.collection('follows').doc(checked.user.uid+'_'+target),actorRef=store.collection('users').doc(checked.user.uid),targetRef=store.collection('users').doc(target);
+  await store.runTransaction(async tx=>{const [relation,actor,other]=await Promise.all([tx.get(ref),tx.get(actorRef),tx.get(targetRef)]);if(!relation.exists)return;
+   if(relation.data()?.status==='active'){tx.update(actorRef,{'counters.following':safeCounter(actor.data()?.counters?.following,-1)});tx.update(targetRef,{'counters.followers':safeCounter(other.data()?.counters?.followers,-1)})}
+   tx.delete(ref);
+  });return NextResponse.json({ok:true,status:'none'},{headers:safeHeaders})}catch{return errorResponse(503,'Unfollow unavailable')}
 }
