@@ -1,8 +1,8 @@
 export type UploadPurpose='avatar'|'post'|'story'|'reel'|'chat';
-export async function uploadFile({file,purpose,onProgress,signal,maxRetries=2}:{file:File;purpose:UploadPurpose;onProgress?:(fraction:number)=>void;signal?:AbortSignal;maxRetries?:number}):Promise<string>{
+export async function uploadFile({file,purpose,onProgress,signal,maxRetries=2,durationSec}:{file:File;purpose:UploadPurpose;onProgress?:(fraction:number)=>void;signal?:AbortSignal;maxRetries?:number;durationSec?:number}):Promise<string>{
  for(let attempt=0;attempt<=maxRetries;attempt++){
   try{
-   const reserved=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'reserve',contentType:file.type,size:file.size,purpose}),...(signal?{signal}:{})});
+   const reserved=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'reserve',contentType:file.type,size:file.size,purpose,...(durationSec?{durationSec}:{})}),...(signal?{signal}:{})});
    if(!reserved.ok)throw Error('Upload reservation failed');
    const data:unknown=await reserved.json();
    if(!data||typeof data!=='object'||!('id' in data)||!('uploadUrl' in data)||typeof data.id!=='string'||typeof data.uploadUrl!=='string')throw Error('Invalid reservation');
@@ -25,4 +25,10 @@ export async function resizeImage(file:File,{maxEdge,quality=0.85}:{maxEdge:numb
 export async function captureVideoPoster(file:File):Promise<Blob>{
  const url=URL.createObjectURL(file),video=document.createElement('video');video.muted=true;video.preload='metadata';video.src=url;
  try{await new Promise<void>((resolve,reject)=>{video.onloadeddata=()=>resolve();video.onerror=()=>reject(Error('Video decode failed'))});const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d')?.drawImage(video,0,0);return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Poster failed')),'image/jpeg',0.8))}finally{URL.revokeObjectURL(url);video.removeAttribute('src');video.load()}
+}
+
+export async function readVideoDuration(file:File):Promise<number>{
+ const url=URL.createObjectURL(file),video=document.createElement('video');video.preload='metadata';video.src=url;
+ try{return await new Promise<number>((resolve,reject)=>{video.onloadedmetadata=()=>Number.isFinite(video.duration)&&video.duration>0?resolve(video.duration):reject(Error('Invalid video duration'));video.onerror=()=>reject(Error('Cannot read video'))})}
+ finally{URL.revokeObjectURL(url);video.removeAttribute('src');video.load()}
 }
