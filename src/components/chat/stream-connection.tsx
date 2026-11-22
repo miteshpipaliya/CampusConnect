@@ -33,14 +33,15 @@ export function StreamConnectionProvider({children}:{children:ReactNode}){
     const {StreamChat:StreamChatClass}=await import('stream-chat');
     const chat=StreamChatClass.getInstance(initial.apiKey);
     socket=chat;
-    const listener=chat.on('connection.changed',event=>{
-     if(live)setSession(previous=>({...previous,status:event.online?'connected':'disconnected'}));
-    });
-    stopConnection=()=>listener.unsubscribe();
+    // stream-chat v10 removed connection.changed; observe the socket's reactive health instead.
+    const unsubscribe=chat.wsConnection.state.subscribeWithSelector(
+     ({isHealthy})=>({isHealthy}),
+     ({isHealthy})=>{if(live)setSession(previous=>({...previous,status:isHealthy?'connected':'disconnected'}))}
+    );
+    stopConnection=unsubscribe;
     await chat.connectUser({
      id:initial.user.id,
      name:initial.user.name,
-     username:initial.user.username,
      image:initial.user.image,
      invisible:initial.user.invisible
     },async()=>{
