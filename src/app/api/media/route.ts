@@ -1,28 +1,34 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { PutObjectCommand,HeadObjectCommand,GetObjectCommand,DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {guard} from '@/lib/server/guard';
+import {checkRateLimit,RATE_LIMITS} from '@/lib/server/rate-limit';
+import {validateReserve} from '@/lib/core/media-limits';
+import {signatureMatches} from '@/lib/core/media-signature';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { db,storage } from '@/lib/server/services';
-import { session,sameOrigin,errorResponse,safeHeaders } from '@/lib/server/session';
+import { session,errorResponse,safeHeaders } from '@/lib/server/session';
 
 export const runtime='nodejs';
-const max:Record<string,number>={'image/jpeg':8*1024*1024,'image/png':8*1024*1024,'image/webp':8*1024*1024,'video/mp4':50*1024*1024,'video/webm':50*1024*1024};
 export async function POST(request:NextRequest){
- if(!sameOrigin(request))return errorResponse(403,'Untrusted request origin');
- const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
+ const checked=await guard(request,{write:true});if(!checked.ok)return checked.response;
+ const user=checked.user;
  try{
   const body:unknown=await request.json();
   const input=z.discriminatedUnion('action',[
-   z.object({action:z.literal('reserve'),contentType:z.string(),size:z.number().int().positive()}),
+   z.object({action:z.literal('reserve'),contentType:z.string(),size:z.number().int().positive(),purpose:z.enum(['avatar','post','story','reel','chat']).optional(),width:z.number().int().positive().optional(),height:z.number().int().positive().optional(),durationSec:z.number().positive().optional()}),
    z.object({action:z.literal('confirm'),id:z.string().uuid()})
   ]).safeParse(body);
   if(!input.success)return errorResponse(400,'Invalid media request');
   const {client,Bucket}=storage();
   if(input.data.action==='reserve'){
    const {contentType,size}=input.data;
-   if(!max[contentType]||size>(max[contentType]??0))return errorResponse(400,'Unsupported media type or size');
+   const validation=validateReserve(input.data);
+   if(!validation.ok)return errorResponse(400,'Unsupported media type or size');
+   const limit=await checkRateLimit({key:'media:'+user.uid,...RATE_LIMITS.media});
+   if(!limit.allowed)return NextResponse.json({error:'Too many requests'},{status:429,headers:{...safeHeaders,'Retry-After':String(limit.retryAfterSec)}});
    const today=new Date().toISOString().slice(0,10);
    const quota=db().collection('uploadQuotas').doc(user.uid+'_'+today);
    const allowed=await db().runTransaction(async t=>{
@@ -33,7 +39,7 @@ export async function POST(request:NextRequest){
    });
    if(!allowed)return errorResponse(429,'Daily upload limit reached');
    const id=randomUUID(),key='uploads/'+user.uid+'/'+id;
-   await db().collection('media').doc(id).create({ownerUid:user.uid,key,contentType,size,status:'pending',createdAt:FieldValue.serverTimestamp()});
+   await db().collection('media').doc(id).create({ownerUid:user.uid,key,contentType,size,status:'pending',purpose:validation.purpose,...(input.data.width?{width:input.data.width}:{}),...(input.data.height?{height:input.data.height}:{}),...(input.data.durationSec?{durationSec:input.data.durationSec}:{}),createdAt:FieldValue.serverTimestamp()});
    const uploadUrl=await getSignedUrl(client,new PutObjectCommand({Bucket,Key:key,ContentType:contentType}),{expiresIn:90});
    return NextResponse.json({id,uploadUrl},{headers:safeHeaders});
   }
@@ -45,6 +51,12 @@ export async function POST(request:NextRequest){
   if(Number(obj.ContentLength)!==data.size||obj.ContentType!==data.contentType){
    await client.send(new DeleteObjectCommand({Bucket,Key:data.key}));
    await ref.update({status:'rejected'});
+   return errorResponse(400,'Uploaded content does not match expected metadata');
+  }
+  const range=await client.send(new GetObjectCommand({Bucket,Key:data.key,Range:'bytes=0-31'}));
+  const bytes=range.Body?await range.Body.transformToByteArray():new Uint8Array();
+  if(!signatureMatches(data.contentType,bytes)){
+   await client.send(new DeleteObjectCommand({Bucket,Key:data.key}));await ref.update({status:'rejected'});
    return errorResponse(400,'Uploaded content does not match expected metadata');
   }
   await ref.update({status:'uploaded'});
