@@ -30,10 +30,12 @@ export async function PATCH(request:NextRequest){
    if(old===handle)return 'unchanged';
    const taken=await transaction.get(reservation);
    if(taken.exists&&taken.data()?.uid!==checked.user.uid)throw Error('TAKEN');
+   const oldRef=old?store.collection('handles').doc(old):null;
+   const oldSnap=oldRef?await transaction.get(oldRef):null;
    if(taken.exists)transaction.set(reservation,{uid:checked.user.uid,changedAt:FieldValue.serverTimestamp()},{merge:true});
    else transaction.create(reservation,{uid:checked.user.uid,changedAt:FieldValue.serverTimestamp()});
    transaction.update(profile,{handle,handleLower:handle,updatedAt:FieldValue.serverTimestamp()});
-   if(old){const oldRef=store.collection('handles').doc(old);const oldSnap=await transaction.get(oldRef);if(oldSnap.exists&&oldSnap.data()?.uid===checked.user.uid)transaction.delete(oldRef)}
+   if(oldRef&&oldSnap?.exists&&oldSnap.data()?.uid===checked.user.uid)transaction.delete(oldRef)
    return 'updated';
   });
   return NextResponse.json({ok:true,result,handle},{headers:safeHeaders});
