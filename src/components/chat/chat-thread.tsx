@@ -3,7 +3,8 @@ import Link from 'next/link';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Avatar} from '@/components/avatar';
 import {useStreamConnection} from './stream-connection';
-type Message={id:string;text:string;senderUid:string;createdAt:string|null;seen:boolean;quotedMessageId?:string|null;reactionCounts?:Record<string,number>;ownReactions?:string[]};
+import {ChatMediaUpload} from './chat-media-upload';
+type Message={id:string;text:string;senderUid:string;createdAt:string|null;seen:boolean;quotedMessageId?:string|null;reactionCounts?:Record<string,number>;ownReactions?:string[];mediaId?:string|null;mediaType?:string|null};
 type Emoji='love'|'laugh'|'wow'|'like'|'fire';
 export function ChatThread({handle}:{handle:string}){
  const [messages,setMessages]=useState<Message[]>([]),[uid,setUid]=useState(''),[draft,setDraft]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
@@ -40,6 +41,7 @@ export function ChatThread({handle}:{handle:string}){
  <div role="log" aria-live="polite" aria-relevant="additions" style={{flex:1,overflowY:'auto',padding:16,display:'flex',flexDirection:'column',gap:10}}>
  {loading?<p>Loading messages…</p>:messages.length===0?<p>No messages yet.</p>:messages.map(m=><div key={m.id} id={'cc-msg-'+m.id} style={{alignSelf:m.senderUid===uid?'flex-end':'flex-start',maxWidth:'82%',padding:'10px 14px',borderRadius:16,background:m.senderUid===uid?'#6240a9':'var(--cc-surface,#5553)',color:m.senderUid===uid?'white':'inherit',overflowWrap:'anywhere'}}>
  {m.quotedMessageId&&<a href={'#cc-msg-'+m.quotedMessageId} style={{display:'block',fontSize:12,marginBottom:8,padding:7,background:'#7773',borderRadius:8,color:'inherit'}}>↪ {messages.find(item=>item.id===m.quotedMessageId)?.text.slice(0,100)||'Message unavailable'}</a>}
+ {m.mediaId&&(m.mediaType==='video'?<video controls playsInline preload="metadata" src={'/api/media?id='+encodeURIComponent(m.mediaId)} style={{display:'block',maxWidth:'100%',maxHeight:340,borderRadius:10}}/>:<a href={'/api/media?id='+encodeURIComponent(m.mediaId)} target="_blank" rel="noopener noreferrer" aria-label="Open chat image"><img loading="lazy" src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Chat attachment" style={{display:'block',maxWidth:'100%',maxHeight:340,objectFit:'contain',borderRadius:10}}/></a>)}
  <p style={{whiteSpace:'pre-wrap',margin:0}}>{m.text}</p><small style={{display:'block',opacity:.75,marginTop:4}}>{m.createdAt?new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):''}{m.senderUid===uid?(m.seen?' · Seen':' · Sent'):''}</small>
  <div style={{display:'flex',gap:7,marginTop:7,flexWrap:'wrap',alignItems:'center'}}>
  <button type="button" onClick={()=>setReplyTo(m)}>Reply</button>
@@ -51,6 +53,7 @@ export function ChatThread({handle}:{handle:string}){
  </div>)}<div ref={last}/></div>
  {error&&<p role="alert" style={{padding:'0 16px',color:'#ef4444'}}>{error}</p>}{notice&&<p role="status" style={{padding:'0 16px'}}>{notice}</p>}
  {replyTo&&<div style={{display:'flex',gap:10,alignItems:'center',justifyContent:'space-between',padding:'8px 16px',background:'var(--cc-surface,#7772)'}}><span>Replying to: {replyTo.text.slice(0,100)}</span><button type="button" onClick={()=>setReplyTo(null)}>Cancel reply</button></div>}
+ <ChatMediaUpload recipientHandle={handle} onSent={refresh}/>
  <form onSubmit={e=>{e.preventDefault();void send()}} style={{display:'flex',gap:8,padding:12,borderTop:'1px solid var(--cc-border,#7774)'}}>
  <textarea aria-label="Message" value={draft} onChange={e=>changeDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void send()}}} maxLength={2000} rows={2} placeholder="Write a message…" style={{flex:1,minWidth:0,borderRadius:12,padding:10,resize:'none'}}/>
  <button type="submit" disabled={busy||!draft.trim()}>{busy?'Sending…':'Send'}</button></form>
