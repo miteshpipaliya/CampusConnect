@@ -1,2 +1,2 @@
-import {ProfileSettings} from '@/components/profile-settings';
-export default function SettingsPage(){return <ProfileSettings/>}
+import {redirect} from 'next/navigation';
+export default function SettingsPage(){redirect('/settings/edit-profile')}
