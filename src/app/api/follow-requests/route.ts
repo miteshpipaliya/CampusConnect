@@ -13,7 +13,8 @@ export async function GET(req:NextRequest){
  try{const store=db(),snap=await store.collection('follows').where('followingUid','==',user.uid).limit(100).get();
   const pending=snap.docs.filter(d=>d.data().status==='pending');
   const users=pending.length?await store.getAll(...pending.map(d=>store.collection('users').doc(String(d.data().followerUid)))):[];
-  const requests=pending.flatMap((d,i)=>users[i]?.exists?[{uid:d.data().followerUid,handle:users[i]!.data()?.handle||'',name:users[i]!.data()?.name||''}]:[]);
+  const visible=await Promise.all(pending.map(d=>isBlockedEitherWay(user.uid,String(d.data().followerUid)).then(blocked=>!blocked)));
+  const requests=pending.flatMap((d,i)=>visible[i]&&users[i]?.exists&&!users[i]!.data()?.deletedAt?[{uid:d.data().followerUid,handle:users[i]!.data()?.handle||'',name:users[i]!.data()?.name||''}]:[]);
   return NextResponse.json({requests},{headers:safeHeaders});
  }catch{return errorResponse(503,'Requests unavailable')}
 }
