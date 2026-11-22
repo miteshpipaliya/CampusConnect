@@ -17,3 +17,12 @@ test('WebM invalid metadata fails closed',async()=>{
  const {parseWebmDuration}=await import('../src/lib/core/video-duration.ts');
  assert.equal(parseWebmDuration(new Uint8Array([0x1a,0x45,0xdf,0xa3])),null);
 });
+
+test('WebM reads Info.Duration from a bounded segment',async()=>{
+ const {parseWebmDuration}=await import('../src/lib/core/video-duration.ts');
+ const float=new Uint8Array(8);new DataView(float.buffer).setFloat64(0,60000,false);
+ const duration=new Uint8Array([0x44,0x89,0x88,...float]);
+ const info=new Uint8Array([0x15,0x49,0xa9,0x66,0x80+duration.length,...duration]);
+ const segment=new Uint8Array([0x18,0x53,0x80,0x67,0x80+info.length,...info]);
+ assert.equal(parseWebmDuration(segment),60);
+});

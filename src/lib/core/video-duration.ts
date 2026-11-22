@@ -52,14 +52,19 @@ export function parseWebmDuration(bytes:Uint8Array):number|null{
    const id=vint(pos,false);if(!id)return;
    const size=vint(pos+id.length,true);if(!size)return;
    const at=pos+id.length+size.length,finish=at+size.value;
-   if(finish>end)return;
+   if(finish>end){
+    // Matroska segments may use an unknown size. Parse only the bytes available.
+    const unknownSize= size.value===Math.pow(2,7*size.length)-1;
+    if(!unknownSize)return;
+   }
+   const boundedFinish=Math.min(finish,end);
    if(id.value===0x2ad7b1&&size.value<=8){
     scale=0;for(let i=at;i<finish;i++)scale=scale*256+(bytes[i]??0);
    }else if(id.value===0x4489&&(size.value===4||size.value===8)){
     const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
     duration=size.value===4?view.getFloat32(at,false):view.getFloat64(at,false);
-   }else if(id.value===0x18538067||id.value===0x1549a966)walk(at,finish,depth+1);
-   pos=finish;
+   }else if(id.value===0x18538067||id.value===0x1549a966)walk(at,boundedFinish,depth+1);
+   pos=boundedFinish;
   }
  };
  walk(0,limit,0);
