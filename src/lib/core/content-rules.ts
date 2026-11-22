@@ -1,4 +1,4 @@
-import {MEDIA_LIMITS,validateReserve,type MediaPurpose} from './media-limits.ts';
+import {MEDIA_LIMITS,validateReserve,type MediaPurpose} from './media-limits';
 export const MEDIA_RULES={maxCarousel:10,storySeconds:MEDIA_LIMITS.storySeconds,reelSeconds:MEDIA_LIMITS.reelSeconds,allowedTypes:['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime']} as const;
 export function parseCaption(text:string):{hashtags:string[];mentions:string[]}{
  const hashtags:string[]=[],mentions:string[]=[];
