@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 type Member={uid:string;handle:string;name:string};
-export function PostActions({id,caption,authorUid,onChanged}:{id:string;caption:string;authorUid?:string;onChanged?:()=>void}){
+export function PostActions({id,caption,authorUid,onChanged}:{id:string;caption:string;authorUid?:string|undefined;onChanged?:()=>void}){
  const [mine,setMine]=useState(false),[open,setOpen]=useState(false),[share,setShare]=useState(false),[edit,setEdit]=useState(false),[draft,setDraft]=useState(caption),[members,setMembers]=useState<Member[]>([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  useEffect(()=>{let alive=true;void fetch('/api/auth',{cache:'no-store'}).then(r=>r.json()).then(d=>{if(alive)setMine(Boolean(authorUid&&d.user?.uid===authorUid))}).catch(()=>{});return()=>{alive=false}},[authorUid]);
  async function manage(action:'edit'|'archive'|'delete'){
