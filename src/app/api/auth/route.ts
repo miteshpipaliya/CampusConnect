@@ -3,14 +3,12 @@ import { randomBytes, randomInt, createHmac, timingSafeEqual } from 'node:crypto
 import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 import { auth, db, identityKey } from '@/lib/server/services';
-import { proposedCodes, relationshipStatuses, relationshipVisibilities } from '@/lib/student-email';
+import { proposedCodes, relationshipStatuses, relationshipVisibilities, isAllowedEmail } from '@/lib/student-email';
 import { session, setSession, clearSession, sameOrigin, errorResponse, safeHeaders } from '@/lib/server/session';
 
 export const runtime='nodejs';
 const emailSchema=z.string().trim().toLowerCase().email().max(254);
-const testEmail='taushalquery@gmail.com';
-const allowedEmail=(email:string)=>email===testEmail||emailPattern.test(email);
-const emailPattern=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/;
+const allowedEmail=(email:string)=>isAllowedEmail(email,process.env.APPROVED_TEST_EMAILS);
 const passwordSchema=z.string().min(12).max(128);
 const profileSchema=z.object({name:z.string().trim().min(2).max(70),handle:z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/),relationshipStatus:z.enum(relationshipStatuses),relationshipVisibility:z.enum(relationshipVisibilities),acceptTerms:z.literal(true),acknowledgePrivacy:z.literal(true)});
 const secret=()=>{const s=process.env.OTP_SIGNING_SECRET;if(!s||s.length<32)throw Error('OTP signing secret missing');return s};

@@ -1,5 +1,6 @@
 'use client';
 import { SocialPanels } from './social-panels';
+import { isAllowedEmail } from '@/lib/student-email';
 import { LiveStories } from './live-stories';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -25,7 +26,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
  const enrollment=parsed?.[1]&&parsed?.[2]&&parsed?.[3]?`${parsed[1]}${parsed[2]}${parsed[3]}`:'';
  const branch=parsed?.[2]?branchName[parsed[2].toLowerCase()]??'':'';
  async function requestCode(){
-  if(email.trim().toLowerCase()!=='taushalquery@gmail.com'&&(!parsed||!enrollment||!branch)){setMessage('Enter a valid BVM student email, for example 26el309@bvmengineering.ac.in');return}
+  if(!isAllowedEmail(email,process.env.NEXT_PUBLIC_APPROVED_TEST_EMAILS)&&(!parsed||!enrollment||!branch)){setMessage('Enter a valid BVM student email, for example 26el309@bvmengineering.ac.in');return}
   setBusy(true);setMessage('');
   try{const r=await api<{message:string}>('/api/auth','POST',{action:'requestOtp',email:email.trim().toLowerCase()});setStage('otp');setResendAt(Date.now()+60000);setMessage(r.message)}
   catch(e){setMessage(e instanceof Error?e.message:'Unable to send code')}finally{setBusy(false)}
