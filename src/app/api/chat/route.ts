@@ -2,7 +2,8 @@ import {NextRequest,NextResponse} from 'next/server';
 import {createHmac} from 'node:crypto';
 import {z} from 'zod';
 import {db} from '@/lib/server/services';
-import {session,sameOrigin,errorResponse,safeHeaders} from '@/lib/server/session';
+import {session,errorResponse,safeHeaders} from '@/lib/server/session';
+import {guard} from '@/lib/server/guard';
 export const runtime='nodejs';
 
 /** Stream owns chat messages, receipts, and typing metadata. Firestore is used only to resolve campus identities. */
@@ -71,9 +72,9 @@ export async function GET(request:NextRequest){
  }catch(error){console.error('CampusConnect chat GET failed',{operation:request.nextUrl.searchParams.has('with')?'conversation':'inbox',error:error instanceof Error?error.message:'unknown'});return errorResponse(503,'Stream chat unavailable. Check Stream credentials and service logs.')}
 }
 export async function POST(request:NextRequest){
- if(!sameOrigin(request))return errorResponse(403,'Untrusted origin');
- const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
- const parsed=schema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return errorResponse(400,'Invalid chat request');
+ const checked=await guard(request,{write:true,schema,invalidMessage:'Invalid chat request'});if(!checked.ok)return checked.response;
+ const user=checked.user;
+ const parsed=schema.safeParse(checked.input);if(!parsed.success)return errorResponse(400,'Invalid chat request');
  try{
   const input=parsed.data,other=await peer(input.recipientHandle);
   if(!other||other.id===user.uid)return errorResponse(404,'Member unavailable');
