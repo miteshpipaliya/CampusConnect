@@ -1,11 +1,5 @@
-# Architecture
-
-- Next.js App Router owns the public routes. `/` redirects to `/home` and social destinations use a shared shell with real URL navigation.
-- `SocialShell` provides responsive navigation and a single `DemoProvider` for shared social data.
-- `src/lib/demo-store.tsx` contains typed mock entities and browser-local persistence. `src/lib/demo-logic.ts` contains reusable feed selection and post interaction logic.
-- Demo social content is separate from Supabase Auth and is not represented as database-persisted content.
-- Supabase browser/server clients support sign-in, registration and recovery. `middleware.ts` refreshes SSR cookies, verifies claims with Supabase and checks the current user/email confirmation before serving protected routes when credentials are configured. Local demo runs without credentials remain accessible; production fails closed.
-- `/api/register` validates registration and the approved email domain allowlist on the server. Supabase Auth sends verification email.
-- SQL migrations are groundwork for the future backend connection; the current social demo does not read or mutate social tables. The connected Supabase project has no public tables or applied migrations yet.
-
-The initial RLS migration still needs independent review. The incremental `20261112140010_secure_media_social_foundation.sql` narrows selected policies and adds media/story metadata. It has not been applied to or exercised against a Supabase project. Admin tables have RLS enabled and no member policies; a hardened server-side admin authorization layer has not been built. Do not provision admin roles from a client.
+# CampusConnect architecture
+Next.js 15 App Router, Firebase Auth Admin session cookies, Firestore for student profiles/posts/stories, private R2 S3-compatible object storage, and Stream chat.
+Pure functions live in src/lib/core and are tested by Node strip-types. Server-only integrations live in src/lib/server.
+Phase 1B introduces optional storage abstraction, SHA-256 session cache, transaction-based rate limiting, guard, URL minting and daily cleanup cron. Phase 1C will wire them into routes.
+Older demo UI modules may still use local browser state; not all UI interactions are persisted. Never treat demo content as authoritative production data.

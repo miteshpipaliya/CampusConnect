@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/*.test.mjs",
-    "audit": "npm audit --audit-level=high"
+    "audit": "npm audit --audit-level=high",
+    "migrate": "node --experimental-strip-types scripts/migrate.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1173.0",

@@ -2,7 +2,7 @@ import 'server-only';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { S3Client } from '@aws-sdk/client-s3';
+import {getStorage} from './storage';
 
 function app(){
  const present=getApps().find(x=>x.name==='campusconnect');
@@ -21,13 +21,4 @@ export function identityKey(){
  if(!key)throw Error('Firebase server configuration unavailable');
  return key;
 }
-export function storage(){
- const endpoint=process.env.R2_ENDPOINT,account=process.env.R2_ACCOUNT_ID;
- const accessKeyId=process.env.R2_ACCESS_KEY_ID?.trim(),secretAccessKey=process.env.R2_SECRET_ACCESS_KEY?.trim();
- const Bucket=process.env.R2_BUCKET_NAME;
- if(!endpoint||!account||!accessKeyId||!secretAccessKey||!Bucket)throw Error('R2 configuration unavailable');
- if(!/^[A-Za-z0-9]+$/.test(accessKeyId))throw Error('R2 access key ID contains invalid characters');
- const url=new URL(endpoint);
- if(url.protocol!=='https:'||url.hostname!==account+'.r2.cloudflarestorage.com'||url.pathname!=='/')throw Error('R2 endpoint misconfigured');
- return {client:new S3Client({endpoint:url.origin,region:'auto',forcePathStyle:true,credentials:{accessKeyId,secretAccessKey}}),Bucket};
-}
+export function storage(){const {client,Bucket}=getStorage();return {client,Bucket}}
