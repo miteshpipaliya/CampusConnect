@@ -27,7 +27,7 @@ test('magic bytes identify media formats',()=>{
 test('media purpose limits and duration',()=>{
  assert.deepEqual(validateReserve({contentType:'image/jpeg',size:10}),{ok:true,purpose:'post'});
  assert.equal(validateReserve({purpose:'avatar',contentType:'video/mp4',size:1}).ok,false);
- assert.equal(validateReserve({purpose:'reel',contentType:'video/mp4',size:MEDIA_LIMITS.reel}).ok,true);
+ assert.equal(validateReserve({purpose:'reel',contentType:'video/mp4',size:MEDIA_LIMITS.reel,durationSec:90}).ok,true);
  assert.equal(validateReserve({purpose:'story',contentType:'video/mp4',size:100,durationSec:61}).ok,false);
  assert.equal(validateReserve({purpose:'reel',contentType:'video/mp4',size:100,durationSec:91}).ok,false);
  assert.equal(validateReserve({contentType:'image/png',size:0}).ok,false);

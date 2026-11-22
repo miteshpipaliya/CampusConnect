@@ -5,6 +5,8 @@ import {guard} from '@/lib/server/guard';
 import {checkRateLimit,RATE_LIMITS} from '@/lib/server/rate-limit';
 import {validateReserve} from '@/lib/core/media-limits';
 import {signatureMatches} from '@/lib/core/media-signature';
+import {parseMp4Duration,parseWebmDuration,durationWithinLimit} from '@/lib/core/video-duration';
+import {MEDIA_LIMITS} from '@/lib/core/media-limits';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
@@ -48,7 +50,9 @@ export async function POST(request:NextRequest){
   if(!item.exists||item.data()?.ownerUid!==user.uid)return errorResponse(404,'File not found');
   const data=item.data()!;
   if(data.status!=='pending')return errorResponse(400,'Invalid upload state');
-  const obj=await client.send(new HeadObjectCommand({Bucket,Key:data.key}));
+  let obj;
+  try{obj=await client.send(new HeadObjectCommand({Bucket,Key:data.key}));}
+  catch(error){if((error as {name?:string}).name==='NotFound'||(error as {name?:string}).name==='NoSuchKey')return errorResponse(409,'Upload not finished');throw error;}
   if(Number(obj.ContentLength)!==data.size||obj.ContentType!==data.contentType){
    await client.send(new DeleteObjectCommand({Bucket,Key:data.key}));
    await ref.update({status:'rejected'});
@@ -60,7 +64,17 @@ export async function POST(request:NextRequest){
    await client.send(new DeleteObjectCommand({Bucket,Key:data.key}));await ref.update({status:'rejected'});
    return errorResponse(400,'Uploaded content does not match expected metadata');
   }
-  await ref.update({status:'uploaded'});
+  if((data.purpose==='story'||data.purpose==='reel')&&String(data.contentType).startsWith('video/')){
+   const header=await client.send(new GetObjectCommand({Bucket,Key:data.key,Range:'bytes=0-65535'}));
+   const buffer=header.Body?await header.Body.transformToByteArray():new Uint8Array();
+   const actual=data.contentType==='video/webm'?parseWebmDuration(buffer):parseMp4Duration(buffer);
+   const limit=data.purpose==='story'?MEDIA_LIMITS.storySeconds:MEDIA_LIMITS.reelSeconds;
+   if(!durationWithinLimit(actual,Number(data.durationSec),limit)){
+    await client.send(new DeleteObjectCommand({Bucket,Key:data.key}));await ref.update({status:'rejected'});
+    return errorResponse(400,'Video duration invalid or unreadable');
+   }
+  }
+  await ref.update({status:'uploaded',confirmedAt:FieldValue.serverTimestamp()});
   return NextResponse.json({id,status:'uploaded'},{headers:safeHeaders});
  }catch{return errorResponse(503,'Media service unavailable')}
 }

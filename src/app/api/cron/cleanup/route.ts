@@ -17,9 +17,11 @@ export async function GET(request:NextRequest){
  const counts:{dryRun:boolean;mediaDeleted:number;rateLimitsDeleted:number;storiesDeleted:number;accountPurge?:{stage:string;processed:number;complete:boolean}}={dryRun,mediaDeleted:0,rateLimitsDeleted:0,storiesDeleted:0};
  try{
   const store=db(),now=Date.now(),older=Timestamp.fromMillis(now-86400000);
-  const pending=await store.collection('media').where('status','in',['pending','rejected']).limit(200).get();
+  const pending=await store.collection('media').where('status','in',['pending','rejected','uploaded']).limit(200).get();
   let processed=0;
-  for(const doc of pending.docs){if(processed>=200)break;const data=doc.data();if((data.createdAt?.toMillis?.()??now)>older.toMillis())continue;processed++;counts.mediaDeleted++;if(!dryRun){if(typeof data.key==='string')await deleteObject(data.key);await doc.ref.delete()}}
+  for(const doc of pending.docs){if(processed>=200)break;const data=doc.data();if((data.createdAt?.toMillis?.()??now)>older.toMillis())continue;
+   if(data.status==='uploaded'&&(data.postId||data.storyId||data.avatarOwnerUid))continue;
+   processed++;counts.mediaDeleted++;if(!dryRun){if(typeof data.key==='string')await deleteObject(data.key);await doc.ref.delete()}}
   if(processed<200){const limits=await store.collection('rateLimits').where('expiresAt','<',Timestamp.now()).limit(200-processed).get();for(const doc of limits.docs){processed++;counts.rateLimitsDeleted++;if(!dryRun)await doc.ref.delete()}}
   const archiveDays=Math.min(365,Math.max(1,Number(process.env.STORY_ARCHIVE_DAYS)||30));
   if(processed<200){const stories=await store.collection('stories').where('expiresAt','<',Timestamp.fromMillis(now-archiveDays*86400000)).limit(200-processed).get();for(const doc of stories.docs){if(doc.data().highlight)continue;processed++;counts.storiesDeleted++;if(!dryRun){const id=doc.data().mediaId;if(typeof id==='string'){const media=await store.collection('media').doc(id).get();if(media.exists){const key=media.data()?.key;if(typeof key==='string')await deleteObject(key);await media.ref.delete()}}await doc.ref.delete()}}}
