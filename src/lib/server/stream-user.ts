@@ -41,3 +41,33 @@ export async function syncStreamBlock(ownerUid:string,targetUid:string,remove:bo
  if(!response.ok){console.error('Stream user block synchronization rejected',{status:response.status,remove});return false}
  return true;
 }
+
+/** Delete Stream data as a confirmed async task; never drop the local audit record
+ * until Stream reports completion. A missing configuration pauses purging.
+ */
+export async function streamDeletionStep(uid:string,existingTaskId?:string):Promise<{complete:boolean;taskId:string|null}>{
+ const apiKey=process.env.STREAM_API_KEY?.trim(),secret=process.env.STREAM_API_SECRET?.trim();
+ if(!apiKey||!secret)throw Error('STREAM_DELETE_UNCONFIGURED');
+ const encode=(v:object)=>Buffer.from(JSON.stringify(v)).toString('base64url');
+ const payload=encode({alg:'HS256',typ:'JWT'})+'.'+encode({server:true});
+ const jwt=payload+'.'+createHmac('sha256',secret).update(payload).digest('base64url');
+ const url=new URL(existingTaskId?
+  'https://chat.stream-io-api.com/api/v2/tasks/'+encodeURIComponent(existingTaskId):
+  'https://chat.stream-io-api.com/api/v2/chat/users/delete');
+ url.searchParams.set('api_key',apiKey);
+ const response=await fetch(url.toString(),{
+  method:existingTaskId?'GET':'POST',
+  headers:{'Content-Type':'application/json',Authorization:jwt,'stream-auth-type':'jwt'},
+  ...(!existingTaskId?{body:JSON.stringify({user_ids:[uid],user:'hard',messages:'hard',conversations:'hard'})}:{}),
+  cache:'no-store'
+ });
+ if(!response.ok)throw Error('STREAM_DELETE_REJECTED_'+response.status);
+ const data=await response.json() as {task_id?:string;status?:string;task?:{status?:string}};
+ if(existingTaskId){
+  const status=data.status??data.task?.status;
+  if(status==='failed')throw Error('STREAM_DELETE_FAILED');
+  return {complete:status==='completed',taskId:existingTaskId};
+ }
+ if(typeof data.task_id!=='string'||!data.task_id)throw Error('STREAM_DELETE_TASK_MISSING');
+ return {complete:false,taskId:data.task_id};
+}

@@ -3,6 +3,7 @@ import {Timestamp} from 'firebase-admin/firestore';
 import {auth,db} from './services';
 import {deleteObject} from './storage';
 import {deletionDue} from '../core/phase2-rules';
+import {streamDeletionStep} from './stream-user';
 /** Runs only for an account that opted into deletion >=30 days ago.
  * Each invocation performs a bounded batch and returns; cron resumes on the next run.
  * Never bypass review flags in the cron route.
@@ -47,6 +48,13 @@ export async function purgeAccountBatch(uid:string,now=Date.now()):Promise<{stag
    else await doc.ref.delete();
   }
   return {stage:stage.name,processed:result.size,complete:false};
+ }
+ // Stream hard deletion is asynchronous; poll until confirmed before removing Firebase identity.
+ const priorTask=profile.data()?.streamDeleteTaskId;
+ const stream=await streamDeletionStep(uid,typeof priorTask==='string'?priorTask:undefined);
+ if(!stream.complete){
+  if(stream.taskId!==priorTask)await profileRef.update({streamDeleteTaskId:stream.taskId});
+  return {stage:'stream',processed:0,complete:false};
  }
  // Auth is deleted last so that a recoverable Firestore profile remains until external data is cleaned.
  try{await auth().deleteUser(uid)}catch(e){
