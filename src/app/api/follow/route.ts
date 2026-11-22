@@ -5,6 +5,7 @@ import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
+import {notifySocial} from '@/lib/server/social-notify';
 export const runtime='nodejs';
 const schema=z.object({handle:z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/)});
 async function targetUid(handle:string){const d=await db().collection('handles').doc(handle).get();return d.exists&&typeof d.data()?.uid==='string'?String(d.data()?.uid):null}
@@ -36,6 +37,7 @@ export async function POST(request:NextRequest){
    tx.set(ref,{followerUid:checked.user.uid,followingUid:target,status:next,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
    return next;
   });
+  if(status==='active'||status==='pending')await notifySocial(target,checked.user.uid,status==='active'?'follow':'follow_request').catch(()=>{});
   return NextResponse.json({ok:true,status},{headers:safeHeaders});
  }catch{return errorResponse(503,'Follow unavailable')}
 }

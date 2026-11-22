@@ -5,6 +5,7 @@ import {db} from '@/lib/server/services';
 import {guard} from '@/lib/server/guard';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
+import {notifySocial} from '@/lib/server/social-notify';
 export const runtime='nodejs';
 const schema=z.object({uid:z.string().min(8).max(128),action:z.enum(['accept','decline'])});
 export async function GET(req:NextRequest){
@@ -28,6 +29,7 @@ export async function POST(req:NextRequest){
    if(action==='accept')tx.update(ref,{status:'active',updatedAt:FieldValue.serverTimestamp()});else tx.delete(ref);return true;
   });
   if(!changed)return errorResponse(404,'Request unavailable');
+  if(action==='accept')await notifySocial(uid,checked.user.uid,'follow_accepted').catch(()=>{});
   return NextResponse.json({ok:true},{headers:safeHeaders});
  }catch{return errorResponse(503,'Request update unavailable')}
 }
