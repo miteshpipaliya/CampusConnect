@@ -8,6 +8,7 @@ import {RATE_LIMITS} from '@/lib/server/rate-limit';
 import {canViewMany} from '@/lib/server/privacy';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {mintUrls} from '@/lib/server/media-urls';
+import {claimMedia} from '@/lib/server/media-service';
 export const runtime='nodejs';
 const schema=z.object({mediaId:z.string().uuid(),caption:z.string().trim().max(250).default(''),overlay:z.object({text:z.string().max(150),color:z.string().max(30),x:z.number().min(0).max(1),y:z.number().min(0).max(1)}).optional(),poll:z.object({question:z.string().max(100),options:z.tuple([z.string().min(1).max(50),z.string().min(1).max(50)])}).optional(),audience:z.enum(['all','close']).default('all')});
 export async function GET(request:NextRequest){
@@ -41,10 +42,8 @@ export async function POST(request:NextRequest){
   if(!profile.exists)return errorResponse(403,'Profile missing');
   const mediaRef=store.collection('media').doc(parsed.data.mediaId),storyRef=store.collection('stories').doc();
   await store.runTransaction(async t=>{
-   const media=await t.get(mediaRef);
-   if(!media.exists||media.data()?.ownerUid!==user.uid||media.data()?.status!=='uploaded'||media.data()?.postId||media.data()?.storyId)throw Error('Media unavailable');
-   t.create(storyRef,{authorUid:user.uid,authorHandle:profile.data()?.handle,mediaId:parsed.data.mediaId,contentType:media.data()?.contentType||'image/jpeg',caption:parsed.data.caption,overlay:parsed.data.overlay||null,poll:parsed.data.poll||null,audience:parsed.data.audience,visibility:profile.data()?.privacy==='private'?'private':'campus',archived:true,createdAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
-   t.update(mediaRef,{storyId:storyRef.id});
+   const [media]=await claimMedia(t,{uid:user.uid,mediaRefs:[mediaRef],kind:'story',attachmentId:storyRef.id});
+   t.create(storyRef,{authorUid:user.uid,authorHandle:profile.data()?.handle,mediaId:parsed.data.mediaId,contentType:media?.contentType||'image/jpeg',caption:parsed.data.caption,overlay:parsed.data.overlay||null,poll:parsed.data.poll||null,audience:parsed.data.audience,visibility:profile.data()?.privacy==='private'?'private':'campus',archived:true,createdAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
   });
   return NextResponse.json({id:storyRef.id},{status:201,headers:safeHeaders});
  }catch{return errorResponse(400,'Unable to publish story')}

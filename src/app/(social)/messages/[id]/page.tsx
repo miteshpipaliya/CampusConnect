@@ -1,2 +1,2 @@
-import Link from 'next/link';
-export default function NotReady(){return <section className="cc-live-empty"><h2>Feature not available yet</h2><p>This section is being connected to real campus accounts. No demo content is shown.</p><Link href="/home">Return to your live feed</Link></section>}
+import {ChatThread} from '@/components/chat/chat-thread';
+export default async function ConversationPage({params}:{params:Promise<{id:string}>}){const {id}=await params;return <ChatThread handle={id}/>}

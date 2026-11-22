@@ -1,29 +1,64 @@
-# CampusConnect Phase 2 — Development and release audit
-Branch: `phase-2-completion`, PR #16. Supersedes PR #15 (`phase-2-3`).
-Code gate at `acaa51a3`: GitHub Actions quality SUCCESS (npm install, lint, strict TypeScript, Node unit tests, dependency audit, Next build) and secret-scan SUCCESS; Vercel preview READY.
-**Validation scope:** automated checks, static route tests and successful preview build. Authenticated two-account workflows against live Firebase, R2, Stream and Firestore are NOT independently verified.
+# CampusConnect implementation progress
 
-| Item | State | Evidence / remaining work |
-|---|---|---|
-| Shared Avatar / hydration | IMPLEMENTED | `avatar.tsx`, `avatar-hydration.ts`, hydrated feed, stories, DMs, profiles and suggestions |
-| Avatar crop / pan / zoom / upload / remove | IMPLEMENTED | `avatar-crop.tsx`, `real-profile.tsx`, `/api/profile/avatar`, crop unit tests |
-| Stream user sync | IMPLEMENTED, integration unverified | `stream-user.ts` sync after photo/name/username changes, chat-token flows, signed R2 URL |
-| Profile edit & unique username | IMPLEMENTED | transactional claim, change limit 2 / 14 days, handle tests, `/settings/edit-profile` |
-| Email eligibility | IMPLEMENTED | centralized student email validator, hardcoded tester removed; approved test accounts server only |
-| Privacy/theme/notification preferences | IMPLEMENTED, some integrations not verified | `/api/settings`, `/settings` UI; notification filtering for likes/comments, close-friends stories |
-| Blocked/muted/close friends | PARTIAL | Functional CRUD and settings, blocking checks in core content/chat. Mutes not yet enforced on all feeds/stories. Stream two-way-block setting requires owner validation |
-| Saved posts, archive, activity | IMPLEMENTED, index deployment needed | `/api/saves`, `/api/archive`, `/api/activity`, post detail and UI; Firestore indexes pending owner deploy |
-| Delete account | IMPLEMENTED, guarded / unverified integration | authenticated soft-delete, disabled Firebase account, 30-day grace, batch purge, Stream async hard-delete. Requires CRON flags and owner validation before enabling |
-| Logout all devices | IMPLEMENTED | `/api/account/sessions` refresh token revocation |
-| Server-side privacy | PARTIAL, security review pending | check feeds, media, posts/reels/stories/profile/comment/like/repost/chat; no complete multi-account attack/authorization audit |
-| End-to-end student tests | NOT VERIFIED | Needs two real test accounts and configured Firebase/R2/Stream + required Firestore indexes |
-| Lockfile accuracy | BLOCKED | `package-lock.json` predates Firebase/R2 deps. `npm ci` fails EUSAGE. CI temporarily uses `npm install` until owner or local agent regenerates lockfile |
-| Production main merge | NOT DONE | No deployment to production was performed |
+## Latest release-readiness checkpoint (2026-11-22)
+- Integration PR: #22, branch `fix/campusconnect-release-readiness`; production `main` remains at `732fa10524b0f8fa737e4c20e1895fca3c8a167d`. **Do not merge or deploy automatically.**
+- GitHub Actions CI **passed** at `58695eaecec2c42e40b36bb1e83cb9fe228c7f3c`: `npm ci`, lint (27 nonfatal warnings), TypeScript, 53 unit tests, high/critical dependency audit (14 moderate findings remain), Next.js production build, and secret scan. This is evidence for THAT SHA only.
+- Newer branch changes after that pass: cancel-safe chat media workflow, attachment revocation before unsend, no unauthorized "Offline" status. Revalidate CI and preview for the exact final head before merging.
+- Vercel's last confirmed READY preview is `c549e07e2c3fc1aabb60cb89b8f7af8e2a96f56a`, not the latest code. Additional deployments hit `api-deployments-free-per-day`; no SHA-matched preview or live smoke test has been established for the current head.
+- Real Stream/R2 two-user, multi-device, privacy, media, notification and reconnection acceptance remains **unverified**. The Stream client-token feature flag must remain disabled pending Stream permissions review and full acceptance.
+- Prior content-pipeline Batches 0–7, Firestore indexes, UI/composer/social-graph scope and API integration coverage are NOT complete merely because CI is green. See `RELEASE_READINESS.md` for remaining gates.
+- All earlier checkpoints below are historical and may describe the work before later commits.
 
-## Owner-only deployment prerequisites
-1. Regenerate and commit lockfile with `npm install --package-lock-only` and verify `npm ci`; restore CI to npm ci.
-2. Review then deploy `firebase deploy --only firestore:indexes`.
-3. Configure Stream Chat two-way blocking, Stream deletion permissions, and R2 CORS.
-4. Keep `CRON_DELETE_ENABLED`, `CRON_PURGE_ACCOUNTS_ENABLED`, `STREAM_CLIENT_TOKENS_ENABLED` disabled until reviewed and end-to-end tests pass.
-5. Test private account, blocked DMs, close-friends stories, avatar sync, save/activity/archive, account deletion against isolated test accounts.
-NEXT: resolve owner dependencies + E2E tests, review code, then merge PR #16 into main.
+Updated 2026-11-22. Source of truth: code and CI checks, not previous phase claims.
+
+## Current work: content-pipeline batch 1
+- DONE: shared pure caption parsing with deduplicated/capped hashtags and mentions.
+- DONE: canonical media rules, QuickTime type validation, required duration metadata for story/reel videos.
+- DONE: pure composer publish eligibility and file validation with unit tests.
+- TODO: tooling lockfile regeneration, React Query provider, optimistic mutations.
+- TODO: transactional media claiming and duration inspection from actual object bytes.
+- TODO: composer editor, upload queue, overlays, cover picker, feed rendering.
+- TODO: post lifecycle and full social graph fan-out.
+- TODO: isolated two-account smoke tests and Firestore index deployment.
+
+## Known constraints
+The existing lockfile may be out of sync. Do not switch CI to npm ci until the regenerated lockfile is committed and npm ci passes. Phase 1-3 audit PR #19 was merged; its remaining work is not automatically complete. No new functionality is considered production verified until preview smoke tests and CI gates pass.
+
+NEXT: Verify CI quality and Vercel preview for commit c510a1288dfea462b01f8e0a36ba172b62c9ecf8, fix any failures, then complete Batch 0 tooling and remaining Batches 1-7 via reviewed PRs.
+
+## Checkpoint 2026-11-22 (content pipeline)
+- DONE: pure media-access allow/deny matrix and claim-purpose matrix with regression tests.
+- DONE: transactional media-service claim helper used by post, reel, story publishing.
+- PENDING: latest CI quality + Vercel preview verification.
+- TODO: Batch 0 dependency lockfile and React Query provider, Batches 2-7 remaining scope, live two-account smoke tests.
+NEXT: Check GitHub Actions and Vercel preview for commit 4609b60718880c111b43579822f50f3e541cc4fc, fix errors, then implement media header duration validation and the rest of the uploaded spec; do not merge until all batches verified.
+
+## Checkpoint: media security continuation
+- DONE: central claimMedia with transaction-safe snapshot reuse; caption tags/mentions/location persisted; batch feed visibility; cleanup of unattached uploaded media; bounded MP4 duration parser with pure tests.
+- TODO: wire duration parser into confirmation (including WebM), finish tooling and React Query, client composer, rendering, social graph, identity, API integration tests, index deployment and smoke tests.
+NEXT: Inspect CI quality logs and Vercel preview for content branch; fix any failures. Wire MP4/WebM duration validation at confirm. Complete Batches 0-7 in separate verified PRs; merge only after green CI and preview.
+
+## 2026-11-22 duration confirmation integration
+- DONE: MP4/WebM bounded header duration parsing wired into media confirmation; mismatched or unreadable story/reel videos rejected; 409 for unfinished uploads.
+- NOTE: MP4 files whose moov atom is beyond the first 64KB will fail closed. WebM with unknown-size segments may fail closed. These formats need expanded fixture tests before production merge.
+- PENDING: full CI and Vercel preview checks for newest code; not production verified.
+NEXT: Read latest GitHub Actions quality results and Vercel preview for PR #20, fix TypeScript/test/build failures, then complete media-access batching and Batches 0-7 before any merge to main.
+
+## Checkpoint: WebM regression verification
+- Verified: GitHub Actions run 45021491746 for commit 47c97868 passed quality and secret-scan; Vercel preview for an earlier commit was Ready. This does not verify the current head.
+- DONE: WebM duration fixture and bounded unknown-size EBML segment support.
+- PENDING: current-head CI and preview; production unchanged.
+NEXT: Verify GitHub Actions quality and Vercel preview for head 71fffe3463f2193d919d320e606992e47fe3ce92; repair any failures. Implement remaining Batches 0-7, API tests and production smoke checks before merge.
+
+## Media URL authorization checkpoint
+- DONE: replace per-media Firestore fetches with getAll batches for post, story, avatar, block and close-friend checks; canViewMany called once for authors; pure maySignMedia decides access; fail closed on signing failures.
+- IMPORTANT: verify preview behavior for private avatars, close-friends stories, archived posts and blocked users. Newest commit is not yet verified.
+- CI: prior GitHub Actions run 45021491746 succeeded for old commit 47c97868 only. Do not infer current head is green.
+NEXT: Verify CI quality and Vercel preview for commit 99aafa6a1d1a197aa29f6dab194762b03a2c5576; fix errors and security regressions; implement tooling, composer, rendering, lifecycle, social graph, identity, and API tests before any main merge.
+
+## Release-readiness integration (2026-11-22; current)
+- PR #22 on `fix/campusconnect-release-readiness` preserves content-pipeline and messaging work without modifying `main`.
+- IMPLEMENTED IN SOURCE: Stream Chat SDK 10.2.0 client provider, authenticated token endpoint behind `STREAM_CLIENT_TOKENS_ENABLED`, real-time message/presence/typing/reactions listeners, server-backed sends, replies, private R2 chat media, post/Reel reference shares, bounded history pagination, inbox and notifications. These are NOT two-account verified.
+- CHECKED: regenerated lockfile is installed using `npm ci` in CI; previous runs completed typecheck, lint, tests, build and secret scan. Check the exact current commit before merging.
+- CORRECTED: Stream user-management REST paths, opt-in activity status, server partial update of Stream invisible status, older-message pagination and stale remote typing expiration.
+- OPEN: final commit CI and exact-SHA Vercel preview, full Stream permission review, dev Firestore indexes, authorized two-account E2E, unresolved main content/composer/social graph milestones. `main` must remain unchanged until approved.

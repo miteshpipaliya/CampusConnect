@@ -20,7 +20,8 @@
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "zod": "^4.1.0"
+    "zod": "^4.1.0",
+    "stream-chat": "10.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

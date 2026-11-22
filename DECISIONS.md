@@ -11,3 +11,9 @@
 - Firestore collection-group indexes for likes/comments/notifications are in firestore.indexes.json but need explicit owner deployment.
 - Story audience and signed-media reads check close-friends membership on the server.
 - New static security checks are regressions tests, not a substitute for two real user accounts and a Stream/R2 integration test.
+
+## Release-candidate decisions, 2026-11-22
+- Continue with Stream Chat JavaScript SDK v10.2.0 on the browser; server uses authenticated signed REST. Use the current Stream common user API (`/api/v2/users`) for profile upserts, block sync and deletion.
+- Update presence invisibility with a partial user update; never replace a complete Stream user object to change one property.
+- Default activity status to opt-in. Keep Stream browser-token issuance disabled until operator/role review and two-account checks.
+- Historical milestones are not evidence of current production readiness. PR #22 remains draft; no merge or production change without explicit separate approval.

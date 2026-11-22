@@ -5,10 +5,11 @@ export function validateReserve(input:{purpose?:unknown;contentType:unknown;size
  if(!['avatar','post','story','reel','chat'].includes(String(purpose)))return {ok:false,error:'Invalid media purpose'};
  const kind=purpose as MediaPurpose;
  const image=['image/jpeg','image/png','image/webp','image/gif'].includes(String(input.contentType));
- const video=['video/mp4','video/webm'].includes(String(input.contentType));
+ const video=['video/mp4','video/webm','video/quicktime'].includes(String(input.contentType));
  if(!image&&!video || (kind==='avatar'&&!image))return {ok:false,error:'Unsupported media type'};
  const max=image?(kind==='avatar'?MEDIA_LIMITS.avatar:MEDIA_LIMITS.image):(kind==='reel'?MEDIA_LIMITS.reel:MEDIA_LIMITS.video);
  if(typeof input.size!=='number'||!Number.isSafeInteger(input.size)||input.size<=0||input.size>max)return {ok:false,error:'Unsupported media size'};
+ if(video&&(kind==='story'||kind==='reel')&&input.durationSec===undefined)return {ok:false,error:'Video duration required'};
  if(input.durationSec!==undefined){
   const d=input.durationSec;
   if(typeof d!=='number'||!Number.isFinite(d)||d<=0)return {ok:false,error:'Invalid duration'};

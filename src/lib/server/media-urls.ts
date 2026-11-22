@@ -1,27 +1,60 @@
 import 'server-only';
 import {db} from './services';
-import {canViewAuthor} from './privacy';
+import {canViewMany} from './privacy';
 import {presignGet} from './storage';
-import {isBlockedEitherWay} from './privacy';
+import {maySignMedia} from '../core/media-access';
+
 export type MediaUrl={url:string;expiresAt:number};
-export async function mintUrls(mediaDocs:Array<{id:string;ownerUid?:string;key?:string;status?:string;postId?:string;storyId?:string;avatarOwnerUid?:string;storyExpiresAt?:number}>,opts:{viewerUid:string;storyExpiresAt?:number}):Promise<Record<string,MediaUrl>>{
+type MediaDoc={id:string;ownerUid?:string;key?:string;status?:string;postId?:string;storyId?:string;avatarOwnerUid?:string;storyExpiresAt?:number};
+type Doc=FirebaseFirestore.DocumentSnapshot;
+function chunks<T>(items:T[],size:number):T[][]{const out:T[][]=[];for(let i=0;i<items.length;i+=size)out.push(items.slice(i,i+size));return out}
+export async function mintUrls(mediaDocs:MediaDoc[],opts:{viewerUid:string;storyExpiresAt?:number}):Promise<Record<string,MediaUrl>>{
  const output:Record<string,MediaUrl>={};
- await Promise.all(mediaDocs.map(async media=>{
-  if(media.status!=='uploaded'||!media.key)return;
+ const eligible=mediaDocs.filter(media=>media.status==='uploaded'&&typeof media.key==='string'&&media.key.length>0);
+ if(!eligible.length)return output;
+ const store=db();
+ const avatars=[...new Set(eligible.map(m=>m.avatarOwnerUid).filter((id):id is string=>Boolean(id)))];
+ const stories=[...new Set(eligible.map(m=>m.storyId).filter((id):id is string=>Boolean(id)))];
+ const posts=[...new Set(eligible.map(m=>m.postId).filter((id):id is string=>Boolean(id)))];
+ const refs=[
+  ...avatars.map(id=>store.collection('users').doc(id)),
+  ...stories.map(id=>store.collection('stories').doc(id)),
+  ...posts.map(id=>store.collection('posts').doc(id))
+ ];
+ const docs:Doc[]=[];
+ for(const part of chunks(refs,100))docs.push(...await store.getAll(...part));
+ const avatarDocs=new Map(avatars.map((id,i)=>[id,docs[i]]));
+ const storyDocs=new Map(stories.map((id,i)=>[id,docs[avatars.length+i]]));
+ const postDocs=new Map(posts.map((id,i)=>[id,docs[avatars.length+stories.length+i]]));
+ const authors=[...new Set([...stories.map(id=>String(storyDocs.get(id)?.data()?.authorUid||'')),...posts.map(id=>String(postDocs.get(id)?.data()?.authorUid||''))].filter(Boolean))];
+ const visibility=await canViewMany(opts.viewerUid,[...authors,...avatars]);
+ const otherAvatars=avatars.filter(uid=>uid!==opts.viewerUid);
+ const blockRefs=otherAvatars.flatMap(uid=>[store.collection('blocks').doc(opts.viewerUid+'_'+uid),store.collection('blocks').doc(uid+'_'+opts.viewerUid)]);
+ const blockDocs:Doc[]=[];for(const part of chunks(blockRefs,100))blockDocs.push(...await store.getAll(...part));
+ const blockedAvatars=new Set(otherAvatars.filter((_,i)=>blockDocs[i*2]?.exists||blockDocs[i*2+1]?.exists));
+ const closeAuthors=[...new Set(stories.map(id=>storyDocs.get(id)?.data()).filter(d=>d?.audience==='close'&&d.authorUid!==opts.viewerUid).map(d=>String(d?.authorUid||'')))];
+ const closeRefs=closeAuthors.map(uid=>store.collection('closeFriends').doc(uid+'_'+opts.viewerUid));
+ const closeDocs:Doc[]=[];for(const part of chunks(closeRefs,100))closeDocs.push(...await store.getAll(...part));
+ const closeFriends=new Set(closeAuthors.filter((_,i)=>closeDocs[i]?.exists));
+ await Promise.all(eligible.map(async media=>{
   try{
-   let allowed=media.ownerUid===opts.viewerUid;
-   if(!allowed&&media.avatarOwnerUid){const doc=await db().collection('users').doc(media.avatarOwnerUid).get();allowed=doc.data()?.avatarMediaId===media.id&&!(await isBlockedEitherWay(opts.viewerUid,media.avatarOwnerUid))}
-   if(!allowed&&media.storyId){const doc=await db().collection('stories').doc(media.storyId).get();const data=doc.data();allowed=Boolean(data&&(data.highlight||data.expiresAt?.toMillis?.()>Date.now())&&await canViewAuthor(opts.viewerUid,String(data.authorUid||'')));
-    if(allowed&&data?.audience==='close'&&data.authorUid!==opts.viewerUid){
-     const friend=await db().collection('closeFriends').doc(String(data.authorUid||'')+'_'+opts.viewerUid).get();
-     allowed=friend.exists;
-    }}
-   if(!allowed&&media.postId){const doc=await db().collection('posts').doc(media.postId).get();allowed=Boolean(doc.exists&&!doc.data()?.deletedAt&&(!doc.data()?.archived||doc.data()?.authorUid===opts.viewerUid)&&await canViewAuthor(opts.viewerUid,String(doc.data()?.authorUid||'')))}
-   if(!allowed)return;
+   const avatar=media.avatarOwnerUid?avatarDocs.get(media.avatarOwnerUid):undefined;
+   const story=media.storyId?storyDocs.get(media.storyId):undefined;
+   const post=media.postId?postDocs.get(media.postId):undefined;
+   const storyData=story?.data(),postData=post?.data();
+   const storyAuthor=String(storyData?.authorUid||''),postAuthor=String(postData?.authorUid||'');
+   const allowed=maySignMedia({
+    owner:media.ownerUid===opts.viewerUid,status:media.status||'',hasKey:Boolean(media.key),
+    ...(avatar?{avatar:{active:avatar.exists&&!avatar.data()?.deletedAt&&avatar.data()?.avatarMediaId===media.id,blocked:blockedAvatars.has(media.avatarOwnerUid||'')}}:{}),
+    ...(story?{story:{active:Boolean(story.exists&&(storyData?.highlight||storyData?.expiresAt?.toMillis?.()>Date.now())),visible:visibility.get(storyAuthor)??false,closeFriendsOnly:storyData?.audience==='close'&&storyAuthor!==opts.viewerUid,closeFriend:closeFriends.has(storyAuthor)}}:{}),
+    ...(post?{post:{exists:post.exists,deleted:Boolean(postData?.deletedAt),archived:Boolean(postData?.archived),author:postAuthor===opts.viewerUid,visible:visibility.get(postAuthor)??false}}:{})
+   });
+   if(!allowed||!media.key)return;
    const expiresAt=media.storyExpiresAt??opts.storyExpiresAt;
+   if(expiresAt!==undefined&&expiresAt<=Date.now())return;
    const seconds=expiresAt===undefined?3600:Math.max(1,Math.min(3600,Math.floor((expiresAt-Date.now())/1000)));
    output[media.id]={url:await presignGet(media.key,seconds),expiresAt:Date.now()+seconds*1000};
-  }catch{return}
+  }catch{/* deny on failed authorization or signing */}
  }));
  return output;
 }

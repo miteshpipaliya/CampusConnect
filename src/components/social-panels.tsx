@@ -5,7 +5,7 @@ import {Avatar} from './avatar';
 type Member={handle:string;name:string;avatarUrl?:string|null;avatarMediaId?:string|null};
 type Conversation=Member&{preview:string;updatedAt:string};
 type Message={id:string;senderUid:string;text:string;seen:boolean;createdAt:string|null};
-type Notification={id:string;type:string;actorHandle:string;postId:string};
+type Notification={id:string;type:string;actorHandle:string;postId?:string;messageId?:string};
 async function get<T>(url:string):Promise<T>{const r=await fetch(url,{cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
 async function post(url:string,data:object){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
 export function SocialPanels({section}:{section:string}){
@@ -39,8 +39,8 @@ export function SocialPanels({section}:{section:string}){
  if(section==='home'||section==='community')return null;
  return <div className="cc-social" style={{padding:'24px 0'}}>
   {notice&&<div role="alert" className="cc-chat-error">Couldn&apos;t connect. <button type="button" onClick={()=>{setNotice('');setRetryCount(n=>n+1)}}>Retry</button></div>}
-  {section==='search'&&<section><h2>Search campus members</h2><input aria-label="Search students" placeholder="Search by username or name" value={search} onChange={e=>setSearch(e.target.value)}/><div className="cc-member-list">{members.filter(m=>(m.handle+' '+m.name).toLowerCase().includes(search.toLowerCase())).map(m=><p key={m.handle}><Link href={'/profile/'+encodeURIComponent(m.handle)}>@{m.handle} — {m.name}</Link> · <a href={'/home?section=chat&with='+encodeURIComponent(m.handle)}>Message</a></p>)}</div></section>}
-  {section==='notifications'&&<section><h2>Notifications</h2>{notifications.length?notifications.map(n=><p key={n.id}>@{n.actorHandle} {n.type==='like'?'liked':'commented on'} your post</p>):<p>No notifications yet.</p>}</section>}
+  {section==='search'&&<section><h2>Search campus members</h2><input aria-label="Search students" placeholder="Search by username or name" value={search} onChange={e=>setSearch(e.target.value)}/><div className="cc-member-list">{members.filter(m=>(m.handle+' '+m.name).toLowerCase().includes(search.toLowerCase())).map(m=><p key={m.handle}><Link href={'/profile/'+encodeURIComponent(m.handle)}>@{m.handle} — {m.name}</Link> · <a href={'/messages/'+encodeURIComponent(m.handle)}>Message</a></p>)}</div></section>}
+  {section==='notifications'&&<section><h2>Notifications</h2>{notifications.length?notifications.map(n=><p key={n.id}>{n.type==='chat_message'?<Link href={'/messages/'+encodeURIComponent(n.actorHandle)}>@{n.actorHandle} sent you a message</Link>:<span>@{n.actorHandle} {n.type==='like'?'liked':n.type==='follow'?'followed you':'interacted with'} {n.postId?'your post':'your profile'}</span>}</p>):<p>No notifications yet.</p>}</section>}
   {section==='reels'&&<section><h2>Reels</h2>{reels.length?reels.map(r=><article key={r.id}><strong>@{r.authorHandle}</strong><video src={'/api/media?id='+encodeURIComponent(r.mediaId)} controls playsInline preload="metadata" style={{width:'100%',maxHeight:650,display:'block',margin:'14px 0'}}/><p>{r.caption}</p></article>):<p>No video reels published yet. Upload a video post to appear here.</p>}</section>}
   {section==='chat'&&<section className="cc-messages-section"><div className="cc-chat-layout">
    <aside className={'cc-chat-people'+(peer?' cc-chat-people-selected':'')}>

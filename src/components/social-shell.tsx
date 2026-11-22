@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
+import {StreamConnectionProvider} from './chat/stream-connection';
 import type { LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -12,7 +13,7 @@ type NavItem = { label: string; href: string; Icon: LucideIcon };
 const links: NavItem[] = [
   {label:'Home',href:'/home',Icon:Home},
   {label:'Reels',href:'/home?section=reels',Icon:Clapperboard},
-  {label:'Messages',href:'/home?section=chat',Icon:Send},
+  {label:'Messages',href:'/messages',Icon:Send},
   {label:'Search',href:'/home?section=search',Icon:Search},
   {label:'Notifications',href:'/home?section=notifications',Icon:Heart},
   {label:'Create',href:'/home?compose=1',Icon:PlusSquare},
@@ -23,6 +24,7 @@ const mobileLabels = new Set(['Home', 'Search', 'Reels', 'Create', 'Community', 
 function activeLink(pathname: string, item: NavItem, section: string) {
   if (item.label === 'Create') return false;
   const sections:Record<string,string>={Reels:'reels',Messages:'chat',Search:'search',Notifications:'notifications',Community:'community'};
+  if(item.label==='Messages')return pathname.startsWith('/messages')||section==='chat';
   if(sections[item.label])return section===sections[item.label];
   if(item.label==='Home')return pathname==='/home'&&section==='home';
   if (item.label === 'Profile') return pathname.startsWith('/profile');
@@ -52,7 +54,7 @@ function Nav({ pathname, section, mobile = false }: { pathname: string; section:
 function Suggestions({handle}:{handle:string}){
  const [members,setMembers]=useState<Array<{handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null}>>([]);
  useEffect(()=>{let active=true;fetch('/api/chat?directory=1',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.members))setMembers(d.members.filter((m:{handle:string})=>m.handle&&m.handle!==handle).slice(0,8))}).catch(()=>{});return()=>{active=false}},[handle]);
- return <aside className="cc-suggestions"><div className="cc-me"><Avatar user={{handle}} size={44}/><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your campus account</small></div><Link href="/profile/me">View</Link></div><div className="cc-suggestion-heading">Campus members</div>{members.length?members.map(m=><div className="cc-suggested" key={m.handle}><Avatar user={{name:m.name,handle:m.handle,avatarMediaId:m.avatarMediaId??null,avatarUrl:m.avatarUrl??null}} size={44}/><div><Link href={'/profile/'+encodeURIComponent(m.handle)}><b>@{m.handle}</b></Link><small>{m.name}</small></div><Link href={'/home?section=chat&with='+encodeURIComponent(m.handle)}>Message</Link></div>):<p style={{fontSize:12,color:'#aaa'}}>No other campus members found.</p>}</aside>;
+ return <aside className="cc-suggestions"><div className="cc-me"><Avatar user={{handle}} size={44}/><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your campus account</small></div><Link href="/profile/me">View</Link></div><div className="cc-suggestion-heading">Campus members</div>{members.length?members.map(m=><div className="cc-suggested" key={m.handle}><Avatar user={{name:m.name,handle:m.handle,avatarMediaId:m.avatarMediaId??null,avatarUrl:m.avatarUrl??null}} size={44}/><div><Link href={'/profile/'+encodeURIComponent(m.handle)}><b>@{m.handle}</b></Link><small>{m.name}</small></div><Link href={'/messages/'+encodeURIComponent(m.handle)}>Message</Link></div>):<p style={{fontSize:12,color:'#aaa'}}>No other campus members found.</p>}</aside>;
 }
 
 export default function SocialShell({ children }: { children: ReactNode }) {
@@ -71,7 +73,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    if(!live)return;setChecked(true);if(x?.user?.profile?.handle)setHandle(x.user.profile.handle);else router.replace('/login');
   }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router]);
   if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
-  return <div className={'cc-app'+(pathname.startsWith('/profile')?' cc-profile-mode':section==='chat'?' cc-chat-mode':'')}>
+  return <StreamConnectionProvider><div className={'cc-app'+(pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} />
@@ -81,7 +83,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
       <header className="cc-mobile-header"><Brand compact/></header>
       <div className="cc-page">{children}</div>
     </main>
-    {!pathname.startsWith('/profile')&&section!=='chat'&&<Suggestions handle={handle}/>}
+    {!pathname.startsWith('/profile')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle}/>}
     <Nav pathname={pathname} section={section} mobile />
-  </div>;
+  </div></StreamConnectionProvider>;
 }

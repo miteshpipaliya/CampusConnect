@@ -5,11 +5,14 @@ import {guard} from '@/lib/server/guard';
 import {checkRateLimit,RATE_LIMITS} from '@/lib/server/rate-limit';
 import {validateReserve} from '@/lib/core/media-limits';
 import {signatureMatches} from '@/lib/core/media-signature';
+import {parseMp4Duration,parseWebmDuration,durationWithinLimit} from '@/lib/core/video-duration';
+import {MEDIA_LIMITS} from '@/lib/core/media-limits';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { db,storage } from '@/lib/server/services';
-import {canViewAuthor} from '@/lib/server/privacy';
+import {canViewAuthor,isBlockedEitherWay} from '@/lib/server/privacy';
+import {mayViewChatMedia} from '@/lib/core/chat-media-rules';
 import { session,errorResponse,safeHeaders } from '@/lib/server/session';
 
 export const runtime='nodejs';
@@ -48,7 +51,9 @@ export async function POST(request:NextRequest){
   if(!item.exists||item.data()?.ownerUid!==user.uid)return errorResponse(404,'File not found');
   const data=item.data()!;
   if(data.status!=='pending')return errorResponse(400,'Invalid upload state');
-  const obj=await client.send(new HeadObjectCommand({Bucket,Key:data.key}));
+  let obj;
+  try{obj=await client.send(new HeadObjectCommand({Bucket,Key:data.key}));}
+  catch(error){if((error as {name?:string}).name==='NotFound'||(error as {name?:string}).name==='NoSuchKey')return errorResponse(409,'Upload not finished');throw error;}
   if(Number(obj.ContentLength)!==data.size||obj.ContentType!==data.contentType){
    await client.send(new DeleteObjectCommand({Bucket,Key:data.key}));
    await ref.update({status:'rejected'});
@@ -60,7 +65,17 @@ export async function POST(request:NextRequest){
    await client.send(new DeleteObjectCommand({Bucket,Key:data.key}));await ref.update({status:'rejected'});
    return errorResponse(400,'Uploaded content does not match expected metadata');
   }
-  await ref.update({status:'uploaded'});
+  if((data.purpose==='story'||data.purpose==='reel')&&String(data.contentType).startsWith('video/')){
+   const header=await client.send(new GetObjectCommand({Bucket,Key:data.key,Range:'bytes=0-65535'}));
+   const buffer=header.Body?await header.Body.transformToByteArray():new Uint8Array();
+   const actual=data.contentType==='video/webm'?parseWebmDuration(buffer):parseMp4Duration(buffer);
+   const limit=data.purpose==='story'?MEDIA_LIMITS.storySeconds:MEDIA_LIMITS.reelSeconds;
+   if(!durationWithinLimit(actual,Number(data.durationSec),limit)){
+    await client.send(new DeleteObjectCommand({Bucket,Key:data.key}));await ref.update({status:'rejected'});
+    return errorResponse(400,'Video duration invalid or unreadable');
+   }
+  }
+  await ref.update({status:'uploaded',confirmedAt:FieldValue.serverTimestamp()});
   return NextResponse.json({id,status:'uploaded'},{headers:safeHeaders});
  }catch{return errorResponse(503,'Media service unavailable')}
 }
@@ -72,20 +87,37 @@ export async function GET(request:NextRequest){
   const item=await db().collection('media').doc(id).get();
   if(!item.exists||item.data()?.status!=='uploaded')return errorResponse(404,'File unavailable');
   const data=item.data()!;
-  if(data.ownerUid!==user.uid){
-   if(data.avatarOwnerUid){const owner=await db().collection('users').doc(data.avatarOwnerUid).get();if(owner.exists&&owner.data()?.avatarMediaId===id&&!owner.data()?.deletedAt&&!(await (await import('@/lib/server/privacy')).isBlockedEitherWay(user.uid,data.avatarOwnerUid))){const {client,Bucket}=storage();const url=await getSignedUrl(client,new GetObjectCommand({Bucket,Key:data.key}),{expiresIn:60});const response=NextResponse.redirect(url,302);response.headers.set('Cache-Control','private, no-store');response.headers.set('Referrer-Policy','no-referrer');return response;}}
-   if(data.storyId){
-    const story=await db().collection('stories').doc(data.storyId).get();
-    if(!story.exists||!(await canViewAuthor(user.uid,String(story.data()?.authorUid||'')))||(story.data()?.expiresAt?.toMillis?.()<=Date.now()&&!story.data()?.highlight))return errorResponse(403,'Story unavailable');
-    if(story.data()?.audience==='close'&&story.data()?.authorUid!==user.uid){
-     const friend=await db().collection('closeFriends').doc(String(story.data()?.authorUid||'')+'_'+user.uid).get();
-     if(!friend.exists)return errorResponse(403,'Story unavailable');
-    }
-   }else{
-    if(!data.postId)return errorResponse(403,'Private media');
-    const post=await db().collection('posts').doc(data.postId).get();
-    if(!post.exists||post.data()?.deletedAt||(post.data()?.archived&&post.data()?.authorUid!==user.uid)||!(await canViewAuthor(user.uid,String(post.data()?.authorUid||''))))return errorResponse(403,'Private media');
+  if(data.purpose==='chat'){
+   const peerUid=typeof data.chatPeerUid==='string'?data.chatPeerUid:'';
+   const ownerUid=String(data.ownerUid||'');
+   const blocked=peerUid?await isBlockedEitherWay(ownerUid,peerUid):true;
+   const owner=await db().collection('users').doc(ownerUid).get();
+   let hidden=false;
+   if(user.uid!==ownerUid&&typeof data.chatMessageId==='string'){
+    const hiddenDoc=await db().collection('users').doc(user.uid).collection('hiddenChatMessages').doc(data.chatMessageId).get();
+    hidden=hiddenDoc.exists;
    }
+   if(!mayViewChatMedia({viewerUid:user.uid,ownerUid,peerUid,
+    messageAttached:Boolean(data.chatChannelId&&data.chatMessageId&&!data.chatPending),
+    deleted:Boolean(data.chatDeletedAt),hidden,blocked,
+    ownerDeleted:!owner.exists||Boolean(owner.data()?.deletedAt)
+   }))return errorResponse(403,'Chat attachment unavailable');
+  }else{
+    if(data.ownerUid!==user.uid){
+     if(data.avatarOwnerUid){const owner=await db().collection('users').doc(data.avatarOwnerUid).get();if(owner.exists&&owner.data()?.avatarMediaId===id&&!owner.data()?.deletedAt&&!(await (await import('@/lib/server/privacy')).isBlockedEitherWay(user.uid,data.avatarOwnerUid))){const {client,Bucket}=storage();const url=await getSignedUrl(client,new GetObjectCommand({Bucket,Key:data.key}),{expiresIn:60});const response=NextResponse.redirect(url,302);response.headers.set('Cache-Control','private, no-store');response.headers.set('Referrer-Policy','no-referrer');return response;}}
+     if(data.storyId){
+      const story=await db().collection('stories').doc(data.storyId).get();
+      if(!story.exists||!(await canViewAuthor(user.uid,String(story.data()?.authorUid||'')))||(story.data()?.expiresAt?.toMillis?.()<=Date.now()&&!story.data()?.highlight))return errorResponse(403,'Story unavailable');
+      if(story.data()?.audience==='close'&&story.data()?.authorUid!==user.uid){
+       const friend=await db().collection('closeFriends').doc(String(story.data()?.authorUid||'')+'_'+user.uid).get();
+       if(!friend.exists)return errorResponse(403,'Story unavailable');
+      }
+     }else{
+      if(!data.postId)return errorResponse(403,'Private media');
+      const post=await db().collection('posts').doc(data.postId).get();
+      if(!post.exists||post.data()?.deletedAt||(post.data()?.archived&&post.data()?.authorUid!==user.uid)||!(await canViewAuthor(user.uid,String(post.data()?.authorUid||''))))return errorResponse(403,'Private media');
+     }
+    }
   }
   const {client,Bucket}=storage();
   const downloadUrl=await getSignedUrl(client,new GetObjectCommand({Bucket,Key:data.key}),{expiresIn:60});
