@@ -6,8 +6,10 @@ export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export async function GET(){
  const checks=await Promise.allSettled([
-  auth().listUsers(1),
-  db().collection('_health').limit(1).get(),
+  // Defer Firebase initialization into promises so synchronous setup failures
+  // become rejected health checks instead of an uncaught 500 response.
+  Promise.resolve().then(()=>auth().listUsers(1)),
+  Promise.resolve().then(()=>db().collection('_health').limit(1).get()),
   (async()=>{const {client,Bucket}=storage();await client.send(new ListObjectsV2Command({Bucket,MaxKeys:1}))})()
  ]);
  const services={firebaseAuth:checks[0].status==='fulfilled',firestore:checks[1].status==='fulfilled',r2:checks[2].status==='fulfilled'};
