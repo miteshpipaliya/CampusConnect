@@ -9,6 +9,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { db,storage } from '@/lib/server/services';
+import {canViewAuthor} from '@/lib/server/privacy';
 import { session,errorResponse,safeHeaders } from '@/lib/server/session';
 
 export const runtime='nodejs';
@@ -75,11 +76,11 @@ export async function GET(request:NextRequest){
    if(data.avatarOwnerUid){const owner=await db().collection('users').doc(data.avatarOwnerUid).get();if(owner.exists&&owner.data()?.avatarMediaId===id){const {client,Bucket}=storage();const url=await getSignedUrl(client,new GetObjectCommand({Bucket,Key:data.key}),{expiresIn:60});const response=NextResponse.redirect(url,302);response.headers.set('Cache-Control','private, no-store');response.headers.set('Referrer-Policy','no-referrer');return response;}}
    if(data.storyId){
     const story=await db().collection('stories').doc(data.storyId).get();
-    if(!story.exists||story.data()?.visibility!=='campus'||(story.data()?.expiresAt?.toMillis?.()<=Date.now()&&!story.data()?.highlight))return errorResponse(403,'Story unavailable');
+    if(!story.exists||!(await canViewAuthor(user.uid,String(story.data()?.authorUid||'')))||(story.data()?.expiresAt?.toMillis?.()<=Date.now()&&!story.data()?.highlight))return errorResponse(403,'Story unavailable');
    }else{
     if(!data.postId)return errorResponse(403,'Private media');
     const post=await db().collection('posts').doc(data.postId).get();
-    if(!post.exists||post.data()?.visibility!=='campus')return errorResponse(403,'Private media');
+    if(!post.exists||!(await canViewAuthor(user.uid,String(post.data()?.authorUid||''))))return errorResponse(403,'Private media');
    }
   }
   const {client,Bucket}=storage();
