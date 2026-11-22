@@ -1,23 +1,8 @@
-# Phase 1 foundation — merged
-- 1.0 Inventory: PARTIAL — docs/DATA_MODEL_AS_IS.md lists primary persisted collections; full route-level audit still needs owner review.
-- 1.1 Models/time: DONE — PR #11.
-- 1.2 Pure modules/tests: DONE — PR #11.
-- 1.3 Guard: DONE for existing authenticated write routes — PRs #12 and #13.
-- 1.4 Firestore rate limiting: DONE — PRs #12 and #13; fail-open by design.
-- 1.5 Session cache: DONE — PR #12.
-- 1.6 Storage abstraction: DONE — PR #12.
-- 1.7 Media magic-byte verification: DONE — PR #13.
-- 1.8 Signed mediaUrl response fields: DONE — PR #13; legacy mediaId retained.
-- 1.9 Feed pagination/counters: PARTIAL — PR #13; legacy counter correctness and full N+1 elimination require further audit.
-- 1.10 Safe daily cleanup cron: DONE — PR #12; deletion disabled by default.
-- 1.11 Client upload helper: DONE (not wired to UI) — PR #12.
-- 1.12 TanStack Query: DEFERRED — needs npm to update the lock file; run on a machine with npm.
-- 1.13 CSP Stream CDN: DONE — PR #12.
-- 1.14 Migration script: PARTIAL — PR #12; dry-run default, not executed; owner must review correctness and scale before --apply.
-- 1.15 Index/env/docs: PARTIAL — PRs #11 and #12; full index review and owner documentation validation pending.
-- Batch A: MERGED — PR #11, commit 0b04f5c, quality/secret-scan/Vercel success.
-- Batch B: MERGED — PR #12, commit 96bc263, quality/secret-scan/Vercel success.
-- Batch C: MERGED — PR #13, commit 33491f7, quality/secret-scan/Vercel success.
-- Production deployment for commit 33491f7: READY; deployment smoke tests home 200, cron 503, health 200; unauthenticated posts not independently verified.
-- NEXT: Owner manual tests for sign-in/feed/like/comment/avatar/story/chat; review deferred items and migration dry run.
-- Phases 2–12: NOT STARTED.
+# CampusConnect Phase 2 + 3 combined upgrade
+- [x] Created dedicated phase-2-3-upgrade branch.
+- [x] Added pure identity validation and privacy rules with tests.
+- [x] Added server relationship/privacy foundation.
+- [ ] Phase 2: avatar hydration and editor, settings APIs/UI, handle claims, account deletion, logout and full identity wiring.
+- [ ] Phase 3: follow/requests, followers/following, block/mute/close friends, suggestions, privacy on all reads and media, feed fan-out, indexes.
+- [ ] Verify CI, Vercel preview, two-account acceptance tests, production smoke tests.
+- NEXT: Implement remaining Phase 2 and 3 features on this branch. Keep main untouched until green tests and privacy review.

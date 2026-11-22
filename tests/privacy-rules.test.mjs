@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {canViewFromFacts,followDecision} from '../src/lib/core/privacy-rules.ts';
+test('privacy truth table',()=>{for(const self of [false,true])for(const blocked of [false,true])for(const privateAccount of [false,true])for(const following of [false,true]){const expected=self||(!blocked&&(!privateAccount||following));assert.equal(canViewFromFacts({self,blocked,privateAccount,following}),expected)}});
+test('follow requests respect privacy and blocks',()=>{assert.equal(followDecision({self:false,blocked:false,privateAccount:true,existing:null}),'pending');assert.equal(followDecision({self:false,blocked:true,privateAccount:false,existing:null}),'forbidden')});
