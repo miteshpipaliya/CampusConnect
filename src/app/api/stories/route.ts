@@ -9,7 +9,7 @@ import {canViewAuthor} from '@/lib/server/privacy';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {mintUrls} from '@/lib/server/media-urls';
 export const runtime='nodejs';
-const schema=z.object({mediaId:z.string().uuid(),caption:z.string().trim().max(250).default(''),audience:z.enum(['all','close']).default('all')});
+const schema=z.object({mediaId:z.string().uuid(),caption:z.string().trim().max(250).default(''),overlay:z.object({text:z.string().max(150),color:z.string().max(30),x:z.number().min(0).max(1),y:z.number().min(0).max(1)}).optional(),poll:z.object({question:z.string().max(100),options:z.tuple([z.string().min(1).max(50),z.string().min(1).max(50)])}).optional(),audience:z.enum(['all','close']).default('all')});
 export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  try{
@@ -21,7 +21,7 @@ export async function GET(request:NextRequest){
   const closeAccess=new Map(closeAuthors.map((uid,i)=>[uid,friendChecks[i]]));
   const muteSnap=await db().collection('mutes').where('ownerUid','==',user.uid).limit(200).get();
   const mutedStories=new Set(muteSnap.docs.filter(d=>d.data().stories!==false).map(d=>String(d.data().targetUid||'')));
-  const stories=snapshot.docs.filter((d,i)=>visibility[i]&&!mutedStories.has(String(d.data().authorUid||''))&&(d.data().audience!=='close'||closeAccess.get(String(d.data().authorUid||''))===true)).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',highlight:Boolean(d.data().highlight),isMine:d.data().authorUid===user.uid,createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
+  const stories=snapshot.docs.filter((d,i)=>visibility[i]&&!mutedStories.has(String(d.data().authorUid||''))&&(d.data().audience!=='close'||closeAccess.get(String(d.data().authorUid||''))===true)).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',overlay:d.data().overlay||null,poll:d.data().poll||null,highlight:Boolean(d.data().highlight),isMine:d.data().authorUid===user.uid,createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
   const authors=await hydrateAvatars(stories.map(story=>story.authorUid),user.uid);
   const mediaIds=stories.map(story=>story.mediaId).filter((id):id is string=>typeof id==='string');
   const media=mediaIds.length?await db().getAll(...mediaIds.map(id=>db().collection('media').doc(id))):[];
@@ -42,7 +42,7 @@ export async function POST(request:NextRequest){
   await store.runTransaction(async t=>{
    const media=await t.get(mediaRef);
    if(!media.exists||media.data()?.ownerUid!==user.uid||media.data()?.status!=='uploaded'||media.data()?.postId||media.data()?.storyId)throw Error('Media unavailable');
-   t.create(storyRef,{authorUid:user.uid,authorHandle:profile.data()?.handle,mediaId:parsed.data.mediaId,contentType:media.data()?.contentType||'image/jpeg',caption:parsed.data.caption,audience:parsed.data.audience,visibility:profile.data()?.privacy==='private'?'private':'campus',archived:true,createdAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
+   t.create(storyRef,{authorUid:user.uid,authorHandle:profile.data()?.handle,mediaId:parsed.data.mediaId,contentType:media.data()?.contentType||'image/jpeg',caption:parsed.data.caption,overlay:parsed.data.overlay||null,poll:parsed.data.poll||null,audience:parsed.data.audience,visibility:profile.data()?.privacy==='private'?'private':'campus',archived:true,createdAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
    t.update(mediaRef,{storyId:storyRef.id});
   });
   return NextResponse.json({id:storyRef.id},{status:201,headers:safeHeaders});

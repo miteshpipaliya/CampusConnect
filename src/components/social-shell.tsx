@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, Menu, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users } from 'lucide-react';
+import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
 import type { LucideIcon } from 'lucide-react';
@@ -75,10 +75,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} />
-      <details className="cc-more">
-        <summary><Menu size={25} strokeWidth={1.8} /><span>More</span></summary>
-        <div><Link href="/home"><Home size={18}/>Home</Link></div>
-      </details>
+
     </aside>
     <main className="cc-main" id="main-content">
       <header className="cc-mobile-header"><Brand compact/></header>

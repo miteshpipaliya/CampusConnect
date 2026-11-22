@@ -18,13 +18,13 @@ export function ProfileSettings(){
    const sent=await fetch(reserved.uploadUrl,{method:'PUT',headers:{'Content-Type':file.type},body:file});if(!sent.ok)throw Error('Photo storage upload failed');
    await post('/api/media',{action:'confirm',id:reserved.id});
    await post('/api/profile/avatar',{mediaId:reserved.id});
-   setProfile(p=>p?{...p,avatarMediaId:reserved.id}:p);setPhotoVersion(n=>n+1);setMessage('Profile photo updated.');
+   setProfile(p=>p?{...p,avatarMediaId:reserved.id}:p);setPhotoVersion(n=>n+1);window.dispatchEvent(new Event('cc-avatar-updated'));setMessage('Profile photo updated.');
   }catch(e){setError(e instanceof Error?e.message:'Photo upload failed');throw e}finally{setPhotoBusy(false);if(photoInput.current)photoInput.current.value=''}
  }
  async function removeAvatar(){
   setPhotoBusy(true);setError('');try{
    const r=await fetch('/api/profile/avatar',{method:'DELETE'});const d=await r.json();if(!r.ok)throw Error(d.error||'Could not remove photo');
-   setProfile(p=>p?{...p,avatarMediaId:null}:p);setPhotoVersion(n=>n+1);setMessage('Profile photo removed.');
+   setProfile(p=>p?{...p,avatarMediaId:null}:p);setPhotoVersion(n=>n+1);window.dispatchEvent(new Event('cc-avatar-updated'));setMessage('Profile photo removed.');
   }catch(e){setError(e instanceof Error?e.message:'Could not remove photo')}finally{setPhotoBusy(false)}
  }
  async function save(event:FormEvent){event.preventDefault();if(!profile)return;setBusy(true);setError('');setMessage('');

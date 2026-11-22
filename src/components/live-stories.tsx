@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {Avatar} from './avatar';
-type Story={id:string;authorHandle:string;authorUid:string;mediaId:string;caption:string;createdAt:number;contentType?:string;highlight?:boolean;isMine?:boolean;avatarMediaId?:string|null;avatarUrl?:string|null;mediaUrl?:string|null};
+type Story={overlay?:{text:string;color:string;x:number;y:number}|null;poll?:{question:string;options:[string,string]}|null;id:string;authorHandle:string;authorUid:string;mediaId:string;caption:string;createdAt:number;contentType?:string;highlight?:boolean;isMine?:boolean;avatarMediaId?:string|null;avatarUrl?:string|null;mediaUrl?:string|null};
 async function request<T>(url:string,method='GET',body?:object):Promise<T>{const r=await fetch(url,{method,credentials:'same-origin',cache:'no-store',...(body?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
 export function LiveStories(){
  const [stories,setStories]=useState<Story[]>([]),[selected,setSelected]=useState<number|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -29,6 +29,8 @@ export function LiveStories(){
  {story&&<div className="cc-live-story-overlay" role="presentation" onClick={()=>setSelected(null)}><section className="cc-live-story-dialog" role="dialog" aria-modal="true" aria-label={'Story from '+story.authorHandle} onClick={e=>e.stopPropagation()}>
   <header><Link href={'/profile/'+encodeURIComponent(story.authorHandle)}>@{story.authorHandle}</Link><button type="button" onClick={()=>setSelected(null)} aria-label="Close story">✕</button></header>
   {story.contentType?.startsWith('video/')?<video src={story.mediaUrl||'/api/media?id='+encodeURIComponent(story.mediaId)} controls playsInline autoPlay/>:<img src={'/api/media?id='+encodeURIComponent(story.mediaId)} alt={'Story by '+story.authorHandle}/>} 
+  {story.overlay?.text&&<p style={{color:story.overlay.color,textAlign:'center',fontSize:22,fontWeight:700}}>{story.overlay.text}</p>}
+  {story.poll&&<div style={{padding:12}}><strong>{story.poll.question}</strong><div>{story.poll.options.map((option,i)=><button key={i} type="button" onClick={()=>void request('/api/stories/vote','POST',{storyId:story.id,option:i}).then(()=>setError('Poll vote recorded')).catch(e=>setError(String(e)))}>{option}</button>)}</div></div>}
   {story.caption&&<p>{story.caption}</p>}
   <footer>{story.isMine&&<button type="button" onClick={async()=>{try{await request('/api/stories','PATCH',{id:story.id,highlight:!story.highlight});await load()}catch(e){setError(String(e))}}}>{story.highlight?'Remove highlight':'Add to highlights'}</button>}<button type="button" onClick={()=>setSelected(i=>i===null?null:Math.max(0,i-1))} disabled={selected===0}>‹ Previous</button><button type="button" onClick={()=>setSelected(i=>i===null?null:i+1>=stories.length?null:i+1)}>Next ›</button></footer>
  </section></div>}</>;

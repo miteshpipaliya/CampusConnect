@@ -22,16 +22,16 @@ export function RealProfile({username}:{username:string}){
  const entries=tab==='posts'?posts:tab==='reposts'?reposts:posts.filter(p=>p.contentType?.startsWith('video/'));
  return <section className="cc-real-profile cc-profile-instagram">
   {error&&<p role="alert" className="form-error">{error}</p>}
-  <header className="cc-profile-hero"><div className="cc-profile-avatar" style={{width:160,height:160,flex:'0 0 160px',borderRadius:'50%',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar user={profile} size={150}/></div>
+  <header className="cc-profile-hero"><div className="cc-profile-avatar" style={{width:150,height:150,flex:'0 0 150px',borderRadius:'50%',overflow:'hidden',border:'none',outline:'none',padding:0,background:'transparent',boxShadow:'none'}}><Avatar user={profile} size={150}/></div>
    <div className="cc-profile-details"><div className="cc-profile-name"><h1>{profile.handle}</h1>{self?<Link href="/settings/edit-profile" className="cc-profile-action">Edit profile</Link>:<Link href={'/home?section=chat&with='+encodeURIComponent(profile.handle)} className="cc-profile-action">Message</Link>}{!self&&<button className="cc-profile-action" type="button" disabled={followBusy} onClick={()=>void toggleFollow()}>{followStatus==='active'?'Following':followStatus==='pending'?'Requested':'Follow'}</button>}</div>
-    <p><Link href={'/connections?handle='+encodeURIComponent(profile.handle)}>View followers, following and suggestions</Link></p>
-    <div className="cc-profile-counts"><span><b>{posts.length}</b> posts</span><span><b>{reposts.length}</b> reposts</span><span><b>{highlights.length}</b> highlights</span></div>
+
+    <div className="cc-profile-counts"><Link href={'/connections?handle='+encodeURIComponent(profile.handle)}><b>{posts.length}</b> posts · <b>{reposts.length}</b> reposts · <b>{highlights.length}</b> highlights</Link></div>
     <strong>{profile.name}</strong><p>{profile.bio||'No bio added yet.'}</p><p>{profile.branch}{profile.division?' · Division '+profile.division:''}</p>
     {profile.relationshipStatus&&<p>Relationship: {profile.relationshipStatus}</p>}
    </div>
   </header>
   {data.private&&<p role="status" style={{padding:20}}>This account is private. Follow to request access to posts and stories.</p>}
-  {self&&<p style={{padding:'0 20px'}}><Link href="/settings/follow-requests">Manage follow requests</Link></p>}
+
   <div className="cc-profile-highlights"><h2>Story highlights</h2><div className="cc-profile-highlight-row">{highlights.map(h=><div key={h.id} className="cc-profile-highlight"><a href={'/api/media?id='+encodeURIComponent(h.mediaId)} target="_blank" rel="noreferrer"><span className="cc-profile-highlight-circle"><img src={'/api/media?id='+encodeURIComponent(h.mediaId)} alt={h.caption||'Saved story'}/></span></a><small>{h.caption||'Highlight'}</small>{self&&<button type="button" onClick={()=>void toggleHighlight(h.id,false)}>Remove</button>}</div>)}{!highlights.length&&<p>No saved highlights yet. {self?'Open your story to add one.':''}</p>}</div></div>
   <div className="cc-profile-tabs" role="tablist" aria-label="Profile content">
    {([{key:'posts',label:'Posts',Icon:Grid3X3},{key:'reels',label:'Reels',Icon:Clapperboard},{key:'reposts',label:'Reposts',Icon:Repeat2}] as const).map(({key,label,Icon})=><button type="button" role="tab" aria-selected={tab===key} className={tab===key?'active':''} key={key} onClick={()=>setTab(key)}><Icon size={18}/>{label}</button>)}
