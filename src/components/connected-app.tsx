@@ -2,6 +2,7 @@
 import { SocialPanels } from './social-panels';
 import {Avatar} from './avatar';
 import {PostActions} from './post-actions';
+import {CreateComposer} from './create-composer';
 import { isAllowedEmail } from '@/lib/student-email';
 import { LiveStories } from './live-stories';
 import { useSearchParams } from 'next/navigation';
@@ -129,19 +130,7 @@ export function ConnectedFeed(){
  }
  return <section className={'cc-connected-feed'+(section==='chat'?' cc-chat-view':'')}><SocialPanels section={section}/>
   {status&&<p role="status">{status}</p>}
-  {composeOpen&&<div className="cc-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setComposeOpen(false)}}>
-   <section className="cc-dialog" role="dialog" aria-modal="true" aria-label="Create a campus post">
-    <header><h2>{mediaStep==='preview'?'Preview your post':'Caption and hashtags'}</h2><button type="button" aria-label="Close" disabled={busy} onClick={()=>setComposeOpen(false)}>✕</button></header>
-    <form onSubmit={e=>{if(mediaStep==='preview'){e.preventDefault();setMediaStep('caption')}else void publish(e)}}>
-    {mediaStep==='preview'?<><label>Select a photo or video<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={e=>setFile(e.target.files?.[0]||null)}/></label>
-     {previewUrl&&(file?.type.startsWith('video/')?<video src={previewUrl} controls playsInline style={{maxWidth:'100%',maxHeight:380}}/>:<img className="cc-dialog-preview" src={previewUrl} alt="Preview of selected upload" style={{maxHeight:380,objectFit:'contain'}}/>)}
-     <p className="cc-dialog-note">Review your selected media before continuing. You can also publish a text-only post.</p><button type="submit" className="cc-primary">Next: Caption</button></>:
-     <><label>Caption and hashtags<textarea required maxLength={2200} placeholder="Write a caption and add #hashtags" value={caption} onChange={e=>setCaption(e.target.value)}/></label>
-     {previewUrl&&(file?.type.startsWith('video/')?<video src={previewUrl} controls playsInline style={{maxWidth:'100%',maxHeight:230}}/>:<img className="cc-dialog-preview" src={previewUrl} alt="Your selected post media"/>)}
-     <div style={{display:'flex',justifyContent:'space-between',gap:12}}><button type="button" disabled={busy} onClick={()=>setMediaStep('preview')}>Back</button><button className="cc-primary" type="submit" disabled={busy||!caption.trim()}>{busy?'Publishing…':'Confirm & Share'}</button></div></>}
-    </form>
-   </section>
-  </div>}
+  {composeOpen&&<CreateComposer onClose={()=>setComposeOpen(false)} onPublished={()=>{setStatus('Content published');void refresh()}}/>}
   {(section==='home'||section==='community')&&<LiveStories/>}
   {(section==='home'||section==='community')&&(loading&&!feedCache?<p className="cc-feed-skeleton" aria-label="Loading posts"/>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
    <Link href={'/profile/'+encodeURIComponent(post.authorHandle)} style={{display:'flex',alignItems:'center',gap:8}}><Avatar user={{handle:post.authorHandle,avatarMediaId:post.avatarMediaId??null,avatarUrl:post.avatarUrl??null}} size={32}/><strong>@{post.authorHandle}</strong></Link>
