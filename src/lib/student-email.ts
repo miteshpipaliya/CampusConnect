@@ -35,3 +35,10 @@ export function checkStudentEmail(value:string,branch:string,nowYear=2026,enroll
 }
 export const relationshipStatuses=['Single','In Relationship','Engaged','Married','Situationship'] as const;
 export const relationshipVisibilities=['campus','followers','me'] as const;
+
+/** Comma-separated approved test emails; provided explicitly by the deployment owner. */
+export function isAllowedEmail(value:string,approvedTestEmails=''):boolean{
+ const email=value.trim().toLowerCase();
+ if(/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/.test(email))return true;
+ return approvedTestEmails.split(',').some(item=>item.trim().toLowerCase()===email&&email.length>0);
+}

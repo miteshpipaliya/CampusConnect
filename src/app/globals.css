@@ -48,3 +48,6 @@
 .cc-landing-divider{margin:25px 0;color:#9ca3af;font-size:12px}
 .cc-landing-entry-inner>small{display:block;margin-top:25px;color:#8a94a5;line-height:1.6}
 @media(max-width:760px){.cc-landing{grid-template-columns:1fr}.cc-landing-story{min-height:48dvh;padding:26px}.cc-landing-copy{margin:40px 0}.cc-landing-copy h1{letter-spacing:-2px}.cc-landing-entry{min-height:52dvh;padding:35px 25px 60px}}
+
+html[data-theme="light"]{color-scheme:light;--background:#f7f8fc;--surface:#fff;--raised:#f0f2f7;--hover:#e8eaf1;--border:#dce0ea;--border-hover:#c2c8d5;--text:#171c2b;--secondary:#596476;--muted:#687489;--accent:#6352cb;--accent-hover:#4737a8;--accent-soft:#6352cb18}
+html[data-theme="light"] body{background:var(--background);color:var(--text)}

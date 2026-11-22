@@ -3,14 +3,12 @@ import { randomBytes, randomInt, createHmac, timingSafeEqual } from 'node:crypto
 import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 import { auth, db, identityKey } from '@/lib/server/services';
-import { proposedCodes, relationshipStatuses, relationshipVisibilities } from '@/lib/student-email';
+import { proposedCodes, relationshipStatuses, relationshipVisibilities, isAllowedEmail } from '@/lib/student-email';
 import { session, setSession, clearSession, sameOrigin, errorResponse, safeHeaders } from '@/lib/server/session';
 
 export const runtime='nodejs';
 const emailSchema=z.string().trim().toLowerCase().email().max(254);
-const testEmail='taushalquery@gmail.com';
-const allowedEmail=(email:string)=>email===testEmail||emailPattern.test(email);
-const emailPattern=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/;
+const allowedEmail=(email:string)=>isAllowedEmail(email,process.env.APPROVED_TEST_EMAILS);
 const passwordSchema=z.string().min(12).max(128);
 const profileSchema=z.object({name:z.string().trim().min(2).max(70),handle:z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/),relationshipStatus:z.enum(relationshipStatuses),relationshipVisibility:z.enum(relationshipVisibilities),acceptTerms:z.literal(true),acknowledgePrivacy:z.literal(true)});
 const secret=()=>{const s=process.env.OTP_SIGNING_SECRET;if(!s||s.length<32)throw Error('OTP signing secret missing');return s};
@@ -115,8 +113,8 @@ export async function POST(request:NextRequest){
    const existingProfile=user?await db().collection('users').doc(user.uid).get():null;
    if(!existingProfile?.exists){
     if(!parsed.data.profile)return errorResponse(400,'Complete your profile first');
-    const p=parsed.data.profile,parts=emailPattern.exec(email);
-    if(!parts&&email!==testEmail)return errorResponse(403,'Unsupported email address');
+    const p=parsed.data.profile,parts=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/.exec(email);
+    if(!parts&&!allowedEmail(email))return errorResponse(403,'Unsupported email address');
     const branch=parts?branchFor(parts[2] as keyof typeof proposedCodes):'';
     if(!user)user=await auth().createUser({email,emailVerified:true,disabled:false,password:parsed.data.password});
     else await auth().updateUser(user.uid,{emailVerified:true,password:parsed.data.password});

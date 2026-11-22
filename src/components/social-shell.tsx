@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, Menu, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
+import {Avatar} from './avatar';
 import type { LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -49,15 +50,23 @@ function Nav({ pathname, section, mobile = false }: { pathname: string; section:
   </nav>;
 }
 function Suggestions({handle}:{handle:string}){
- const [members,setMembers]=useState<Array<{handle:string;name:string}>>([]);
+ const [members,setMembers]=useState<Array<{handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null}>>([]);
  useEffect(()=>{let active=true;fetch('/api/chat?directory=1',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.members))setMembers(d.members.filter((m:{handle:string})=>m.handle&&m.handle!==handle).slice(0,8))}).catch(()=>{});return()=>{active=false}},[handle]);
- return <aside className="cc-suggestions"><div className="cc-me"><span className="cc-person-avatar you">CC</span><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your campus account</small></div><Link href="/profile/me">View</Link></div><div className="cc-suggestion-heading">Campus members</div>{members.length?members.map(m=><div className="cc-suggested" key={m.handle}><span className="cc-person-avatar">{m.name.slice(0,1).toUpperCase()}</span><div><Link href={'/profile/'+encodeURIComponent(m.handle)}><b>@{m.handle}</b></Link><small>{m.name}</small></div><Link href={'/home?section=chat&with='+encodeURIComponent(m.handle)}>Message</Link></div>):<p style={{fontSize:12,color:'#aaa'}}>No other campus members found.</p>}</aside>;
+ return <aside className="cc-suggestions"><div className="cc-me"><Avatar user={{handle}} size={44}/><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your campus account</small></div><Link href="/profile/me">View</Link></div><div className="cc-suggestion-heading">Campus members</div>{members.length?members.map(m=><div className="cc-suggested" key={m.handle}><Avatar user={{name:m.name,handle:m.handle,avatarMediaId:m.avatarMediaId??null,avatarUrl:m.avatarUrl??null}} size={44}/><div><Link href={'/profile/'+encodeURIComponent(m.handle)}><b>@{m.handle}</b></Link><small>{m.name}</small></div><Link href={'/home?section=chat&with='+encodeURIComponent(m.handle)}>Message</Link></div>):<p style={{fontSize:12,color:'#aaa'}}>No other campus members found.</p>}</aside>;
 }
 
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname=usePathname(),params=useSearchParams(),router=useRouter();
   const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
   useEffect(()=>{setSection(params.get('section')||'home')},[params]);
+  useEffect(()=>{
+   const cached=localStorage.getItem('cc-theme');
+   if(cached==='dark'||cached==='light')document.documentElement.dataset.theme=cached;
+   void fetch('/api/settings',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{
+    const theme=data?.settings?.theme;
+    if(theme==='dark'||theme==='light'){document.documentElement.dataset.theme=theme;localStorage.setItem('cc-theme',theme)}
+   }).catch(()=>{});
+  },[]);
   useEffect(()=>{let live=true;fetch('/api/auth',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(x=>{
    if(!live)return;setChecked(true);if(x?.user?.profile?.handle)setHandle(x.user.profile.handle);else router.replace('/login');
   }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router]);

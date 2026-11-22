@@ -1,12 +1,14 @@
 'use client';
 import { SocialPanels } from './social-panels';
+import {Avatar} from './avatar';
+import { isAllowedEmail } from '@/lib/student-email';
 import { LiveStories } from './live-stories';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
-import { Heart,MessageCircle,Repeat2 } from 'lucide-react';
+import { Heart,MessageCircle,Repeat2,Bookmark } from 'lucide-react';
 
-type Post={id:string;caption:string;authorHandle:string;mediaId:string|null;likes:number;liked:boolean;comments:number};
+type Post={id:string;caption:string;authorHandle:string;mediaId:string|null;mediaUrl?:string|null;avatarMediaId?:string|null;avatarUrl?:string|null;likes:number;liked:boolean;saved?:boolean;comments:number};
 type Me={uid:string;email:string;profile:{handle:string;name:string;branch:string;division:string}|null};
 async function api<T>(path:string,method='GET',data?:object):Promise<T>{
  const r=await fetch(path,{method,cache:'no-store',credentials:'same-origin',
@@ -25,7 +27,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
  const enrollment=parsed?.[1]&&parsed?.[2]&&parsed?.[3]?`${parsed[1]}${parsed[2]}${parsed[3]}`:'';
  const branch=parsed?.[2]?branchName[parsed[2].toLowerCase()]??'':'';
  async function requestCode(){
-  if(email.trim().toLowerCase()!=='taushalquery@gmail.com'&&(!parsed||!enrollment||!branch)){setMessage('Enter a valid BVM student email, for example 26el309@bvmengineering.ac.in');return}
+  if(!isAllowedEmail(email)&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())){setMessage('Enter a valid BVM student email, for example 26el309@bvmengineering.ac.in');return}
   setBusy(true);setMessage('');
   try{const r=await api<{message:string}>('/api/auth','POST',{action:'requestOtp',email:email.trim().toLowerCase()});setStage('otp');setResendAt(Date.now()+60000);setMessage(r.message)}
   catch(e){setMessage(e instanceof Error?e.message:'Unable to send code')}finally{setBusy(false)}
@@ -106,6 +108,7 @@ export function ConnectedFeed(){
  useEffect(()=>{if(!file){setPreviewUrl(null);return}const url=URL.createObjectURL(file);setPreviewUrl(url);return()=>URL.revokeObjectURL(url)},[file]);
  useEffect(()=>{const selected=params.get('section')||'home';setSection(['home','reels','chat','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[params]);
  async function toggleLike(id:string){try{await api('/api/posts/'+id+'/likes','POST',{});await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Like failed')}}
+ async function toggleSave(id:string,saved:boolean){try{await api('/api/saves',saved?'DELETE':'POST',{postId:id});await refresh();setStatus(saved?'Removed from saved posts':'Saved privately')}catch(e){setStatus(e instanceof Error?e.message:'Save failed')}}
  async function repost(id:string){try{const result=await api<{reposted:boolean}>('/api/reposts','POST',{postId:id});setStatus(result.reposted?'Added to your reposts':'Removed from reposts')}catch(e){setStatus(e instanceof Error?e.message:'Repost failed')}}
  async function openComments(id:string){if(opened===id){setOpened(null);return}try{const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));setOpened(id)}catch(e){setStatus(e instanceof Error?e.message:'Comments unavailable')}}
  async function sendComment(event:FormEvent<HTMLFormElement>,id:string){event.preventDefault();try{await api('/api/posts/'+id+'/comments','POST',{text:reply});setReply('');const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Comment failed')}}
@@ -140,11 +143,11 @@ export function ConnectedFeed(){
   </div>}
   {(section==='home'||section==='community')&&<LiveStories/>}
   {(section==='home'||section==='community')&&(loading&&!feedCache?<p className="cc-feed-skeleton" aria-label="Loading posts"/>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
-   <Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><strong>@{post.authorHandle}</strong></Link>
-   {post.mediaId&&<img src={'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
+   <Link href={'/profile/'+encodeURIComponent(post.authorHandle)} style={{display:'flex',alignItems:'center',gap:8}}><Avatar user={{handle:post.authorHandle,avatarMediaId:post.avatarMediaId??null,avatarUrl:post.avatarUrl??null}} size={32}/><strong>@{post.authorHandle}</strong></Link>
+   {post.mediaId&&<img src={post.mediaUrl||'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
    <p>{post.caption}</p>
    <div><button type="button" onClick={()=>toggleLike(post.id)}><Heart size={20} fill={post.liked?'currentColor':'none'}/> {post.likes||0}</button>
-   <button type="button" onClick={()=>openComments(post.id)}><MessageCircle size={20}/> {post.comments||0}</button><button type="button" onClick={()=>repost(post.id)} aria-label="Toggle repost"><Repeat2 size={20}/> Repost</button></div>
+   <button type="button" onClick={()=>openComments(post.id)}><MessageCircle size={20}/> {post.comments||0}</button><button type="button" onClick={()=>repost(post.id)} aria-label="Toggle repost"><Repeat2 size={20}/> Repost</button><button type="button" aria-label={post.saved?'Remove saved post':'Save post'} onClick={()=>void toggleSave(post.id,Boolean(post.saved))}><Bookmark size={20} fill={post.saved?'currentColor':'none'}/> {post.saved?'Saved':'Save'}</button></div>
    {opened===post.id&&<div className="cc-live-comments">
     {(comments[post.id]||[]).map(c=><p key={c.id}><b>@{c.handle}</b> {c.text}</p>)}
     <form onSubmit={e=>sendComment(e,post.id)}><input value={reply} onChange={e=>setReply(e.target.value)} maxLength={1000} placeholder="Write a comment" required/><button disabled={!reply.trim()}>Post</button></form>

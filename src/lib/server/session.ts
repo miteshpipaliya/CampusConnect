@@ -19,6 +19,8 @@ export async function session(request:NextRequest){
  try{
   const verified=await auth().verifySessionCookie(cookie,true);
   const record=await auth().getUser(verified.uid);
+  const profile=await (await import('./services')).db().collection('users').doc(record.uid).get();
+  if(!profile.exists||profile.data()?.deletedAt)return null;
   const result=record.emailVerified&&!record.disabled&&(record.email?.toLowerCase().endsWith('@bvmengineering.ac.in')||(process.env.APPROVED_TEST_EMAILS||'').split(',').map(email=>email.trim().toLowerCase()).filter(Boolean).includes(record.email?.toLowerCase()||''))?{uid:record.uid,email:record.email}:null;
   if(result)cache.set(key,result);
   return result;
