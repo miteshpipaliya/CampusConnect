@@ -10,7 +10,7 @@ import {normalizeCounters} from '@/lib/core/counters';
 import {canViewAuthor} from '@/lib/server/privacy';
 import {mintUrls} from '@/lib/server/media-urls';
 export const runtime='nodejs';
-const schema=z.object({caption:z.string().trim().min(1).max(2200),mediaId:z.string().uuid().optional()});
+const schema=z.object({caption:z.string().trim().min(1).max(2200),type:z.enum(['post','reel']).default('post'),mediaId:z.string().uuid().optional(),media:z.array(z.object({mediaId:z.string().uuid(),alt:z.string().max(250).default('')})).max(10).optional(),cropRatio:z.enum(['1 / 1','4 / 5','16 / 9']).optional(),filter:z.enum(['none','grayscale','sepia','contrast','saturate','brightness']).optional(),commentsOff:z.boolean().optional(),hideLikeCount:z.boolean().optional()});
 export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  const cursorValue=request.nextUrl.searchParams.get('cursor');
@@ -30,7 +30,7 @@ export async function GET(request:NextRequest){
     let allowed=authorCache.get(uid);if(!allowed){allowed=canViewAuthor(user.uid,uid);authorCache.set(uid,allowed)}
     return allowed;
    }));
-   for(let i=0;i<snap.docs.length;i++){const doc=snap.docs[i]!;if(visible[i]&&!doc.data().deletedAt&&(!doc.data().archived||doc.data().authorUid===user.uid)){selected.push(doc);if(selected.length===limit)break}}
+   for(let i=0;i<snap.docs.length;i++){const doc=snap.docs[i]!;if(visible[i]&&!doc.data().deletedAt&&!doc.data().archived){selected.push(doc);if(selected.length===limit)break}}
    if(snap.docs.length<50)break;
    const last=snap.docs.at(-1);if(!last)break;
    query=query.startAfter(last);
@@ -65,7 +65,7 @@ export async function GET(request:NextRequest){
    const mediaId=typeof data.mediaId==='string'?data.mediaId:null;
    const author=authors.get(String(data.authorUid||''));
    const avatarMediaId=typeof author?.avatarMediaId==='string'?author.avatarMediaId:null;
-   return {id:d.id,caption:data.caption,authorHandle:data.authorHandle,authorUid:data.authorUid,mediaId,likes:counters.likes,comments:counters.comments,reposts:counters.reposts,liked:ownLikes[i]?.exists??false,saved:ownSaves[i]?.exists??false,avatarMediaId,avatarUrl:avatarMediaId?mediaUrls[avatarMediaId]?.url??null:null,mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null};
+   return {id:d.id,media:Array.isArray(data.media)?data.media:[],type:data.type||'post',caption:data.caption,authorHandle:data.authorHandle,authorUid:data.authorUid,mediaId,likes:counters.likes,comments:counters.comments,reposts:counters.reposts,liked:ownLikes[i]?.exists??false,saved:ownSaves[i]?.exists??false,avatarMediaId,avatarUrl:avatarMediaId?mediaUrls[avatarMediaId]?.url??null:null,mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null};
   }));
   const last=selected.at(-1);
   const lastMs=last?.data().createdAt?.toMillis?.();
@@ -82,14 +82,27 @@ export async function POST(request:NextRequest){
  try{
   const store=db(),profile=await store.collection('users').doc(user.uid).get();
   if(!profile.exists)return errorResponse(403,'Profile missing');
-  const mediaId=parsed.data.mediaId,newPost=store.collection('posts').doc();
-  await store.runTransaction(async transaction=>{
-   if(mediaId){const media=store.collection('media').doc(mediaId),info=await transaction.get(media);
-    if(!info.exists||info.data()?.ownerUid!==user.uid||info.data()?.status!=='uploaded'||info.data()?.postId||info.data()?.storyId)throw Error('INVALID_MEDIA');
-    transaction.update(media,{postId:newPost.id});
-   }
-   transaction.create(newPost,{authorUid:user.uid,authorHandle:profile.data()!.handle,caption:parsed.data.caption,mediaId:mediaId||null,visibility:profile.data()!.privacy==='private'?'private':'campus',createdAt:FieldValue.serverTimestamp(),type:'post',deletedAt:null,counters:{likes:0,comments:0,reposts:0,saves:0,shares:0,views:0}});
-  });
+  const input=parsed.data,media=input.media?.length?input.media:input.mediaId?[{mediaId:input.mediaId,alt:''}]:[];
+  if(input.type==='reel'&&media.length!==1)return errorResponse(400,'A reel requires one video');
+  if(input.type==='post'&&media.length>10)return errorResponse(400,'Too many media items');
+  if(new Set(media.map(m=>m.mediaId)).size!==media.length)return errorResponse(400,'Duplicate media');
+  const newPost=store.collection('posts').doc(),mediaRefs=media.map(m=>store.collection('media').doc(m.mediaId));
+  try{
+   await store.runTransaction(async transaction=>{
+    const snapshots=mediaRefs.length?await transaction.getAll(...mediaRefs):[];
+    for(const info of snapshots){
+     if(!info.exists||info.data()?.ownerUid!==user.uid||info.data()?.status!=='uploaded'||info.data()?.postId||info.data()?.storyId)throw Error('INVALID_MEDIA');
+     if(input.type==='reel'&&!String(info.data()?.contentType||'').startsWith('video/'))throw Error('REEL_REQUIRES_VIDEO');
+    }
+    for(const ref of mediaRefs)transaction.update(ref,{postId:newPost.id});
+    transaction.create(newPost,{authorUid:user.uid,authorHandle:profile.data()!.handle,caption:input.caption,mediaId:media[0]?.mediaId||null,media:media.map(m=>({...m})),type:input.type,cropRatio:input.cropRatio||'1 / 1',filter:input.filter||'none',commentsOff:input.commentsOff||false,hideLikeCount:input.hideLikeCount||false,visibility:profile.data()!.privacy==='private'?'private':'campus',createdAt:FieldValue.serverTimestamp(),deletedAt:null,archived:false,counters:{likes:0,comments:0,reposts:0,saves:0,shares:0,views:0}});
+   });
+  }catch{return errorResponse(400,'Invalid media or unable to publish')}
+  const tags=[...new Set((input.caption.match(/#[a-zA-Z][a-zA-Z0-9_]{0,49}/g)||[]).map(x=>x.slice(1).toLowerCase()))].slice(0,20);
+  if(tags.length){const batch=store.batch();for(const tag of tags)batch.set(store.collection('hashtags').doc(tag),{tag,count:FieldValue.increment(1),updatedAt:FieldValue.serverTimestamp()},{merge:true});await batch.commit().catch(()=>{})}
+  const followers=await store.collection('follows').where('followingUid','==',user.uid).limit(500).get().catch(()=>null);
+  if(followers){const active=followers.docs.filter(d=>d.data().status==='active');for(let i=0;i<active.length;i+=400){const batch=store.batch();for(const f of active.slice(i,i+400))batch.set(store.collection('users').doc(String(f.data().followerUid)).collection('feedItems').doc(newPost.id),{postId:newPost.id,authorUid:user.uid,createdAt:FieldValue.serverTimestamp()});await batch.commit().catch(()=>{})}}
+  await store.collection('users').doc(user.uid).set({counters:{posts:FieldValue.increment(1)}},{merge:true}).catch(()=>{});
   return NextResponse.json({ok:true,id:newPost.id},{headers:safeHeaders});
  }catch{return errorResponse(503,'Unable to publish post')}
 }
