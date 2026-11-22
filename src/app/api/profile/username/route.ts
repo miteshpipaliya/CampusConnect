@@ -27,6 +27,9 @@ export async function PATCH(request:NextRequest){
   const result=await store.runTransaction(async transaction=>{
    const user=await transaction.get(profile);if(!user.exists)throw Error('MISSING_PROFILE');
    const old=String(user.data()?.handle??'').toLowerCase();
+   const now=Date.now();
+   const history=Array.isArray(user.data()?.handleChangeTimes)?(user.data()?.handleChangeTimes as unknown[]).filter((value):value is number=>typeof value==='number'&&value>now-14*86400000):[];
+   if(history.length>=2)throw Error('CHANGE_LIMIT');
    if(old===handle)return 'unchanged';
    const taken=await transaction.get(reservation);
    if(taken.exists&&taken.data()?.uid!==checked.user.uid)throw Error('TAKEN');
@@ -34,10 +37,10 @@ export async function PATCH(request:NextRequest){
    const oldSnap=oldRef?await transaction.get(oldRef):null;
    if(taken.exists)transaction.set(reservation,{uid:checked.user.uid,changedAt:FieldValue.serverTimestamp()},{merge:true});
    else transaction.create(reservation,{uid:checked.user.uid,changedAt:FieldValue.serverTimestamp()});
-   transaction.update(profile,{handle,handleLower:handle,updatedAt:FieldValue.serverTimestamp()});
+   transaction.update(profile,{handle,handleLower:handle,handleChangeTimes:[...history,now],updatedAt:FieldValue.serverTimestamp()});
    if(oldRef&&oldSnap?.exists&&oldSnap.data()?.uid===checked.user.uid)transaction.delete(oldRef)
    return 'updated';
   });
   return NextResponse.json({ok:true,result,handle},{headers:safeHeaders});
- }catch(error){if(error instanceof Error&&error.message==='TAKEN')return errorResponse(409,'Username is already taken');return errorResponse(503,'Unable to update username')}
+ }catch(error){if(error instanceof Error&&error.message==='TAKEN')return errorResponse(409,'Username is already taken');if(error instanceof Error&&error.message==='CHANGE_LIMIT')return errorResponse(429,'You can change your username twice every 14 days');return errorResponse(503,'Unable to update username')}
 }
