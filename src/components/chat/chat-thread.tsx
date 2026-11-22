@@ -1,17 +1,33 @@
 'use client';
 import Link from 'next/link';
 import {useCallback,useEffect,useRef,useState} from 'react';
+import {Avatar} from '@/components/avatar';
+import {useStreamConnection} from './stream-connection';
 type Message={id:string;text:string;senderUid:string;createdAt:string|null;seen:boolean};
 export function ChatThread({handle}:{handle:string}){
  const [messages,setMessages]=useState<Message[]>([]),[uid,setUid]=useState(''),[draft,setDraft]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const last=useRef<HTMLDivElement>(null);
- const refresh=useCallback(async(signal?:AbortSignal)=>{const r=await fetch('/api/chat?with='+encodeURIComponent(handle),{cache:'no-store',signal:signal??null});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Chat unavailable');setMessages(Array.isArray(data.messages)?data.messages:[]);setUid(data.myUid||'')},[handle]);
+ const {client,status}=useStreamConnection();
+ const [channelId,setChannelId]=useState(''),[peerUid,setPeerUid]=useState(''),[peerName,setPeerName]=useState(''),[peerOnline,setPeerOnline]=useState(false),[presenceAllowed,setPresenceAllowed]=useState(false),[peerTyping,setPeerTyping]=useState(false);
+ const typingRef=useRef<ReturnType<typeof setTimeout>|null>(null),lastTypingRef=useRef(0);
+ const refresh=useCallback(async(signal?:AbortSignal)=>{const r=await fetch('/api/chat?with='+encodeURIComponent(handle),{cache:'no-store',signal:signal??null});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Chat unavailable');setMessages(Array.isArray(data.messages)?data.messages:[]);setUid(data.myUid||'');setChannelId(data.channelId||'');setPeerUid(data.peerUid||'');setPeerName(data.peerName||handle)},[handle]);
  useEffect(()=>{const controller=new AbortController();refresh(controller.signal).catch(e=>{if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Chat unavailable')}).finally(()=>{if(!controller.signal.aborted)setLoading(false)});return()=>controller.abort()},[refresh]);
  useEffect(()=>{last.current?.scrollIntoView({behavior:'smooth',block:'end'})},[messages.length]);
- const send=async()=>{const text=draft.trim();if(!text||busy)return;setBusy(true);setError('');try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',recipientHandle:handle,text})});if(!r.ok)throw Error((await r.json().catch(()=>({}))).error||'Unable to send');setDraft('');setNotice('Sent');await refresh()}catch(e){setError(e instanceof Error?e.message:'Send failed')}finally{setBusy(false)}};
+ const notifyTyping=useCallback((typing:boolean)=>{if(status!=='connected')return;void fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'typing',recipientHandle:handle,typing})}).catch(()=>{})},[status,handle]);
+ const changeDraft=(next:string)=>{setDraft(next);if(status!=='connected')return;const now=Date.now();if(now-lastTypingRef.current>=2000){lastTypingRef.current=now;notifyTyping(true)}if(typingRef.current)clearTimeout(typingRef.current);typingRef.current=setTimeout(()=>notifyTyping(false),3500)};
+ useEffect(()=>()=>{if(typingRef.current)clearTimeout(typingRef.current);notifyTyping(false)},[notifyTyping]);
+ useEffect(()=>{if(!peerUid)return;let live=true;setPresenceAllowed(false);void fetch('/api/chat/presence?uids='+encodeURIComponent(peerUid),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(live)setPresenceAllowed(d?.allowed?.[peerUid]===true)}).catch(()=>{if(live)setPresenceAllowed(false)});return()=>{live=false}},[peerUid]);
+ useEffect(()=>{if(!client||status!=='connected'||!channelId||!peerUid)return;let live=true;const channel=client.channel('messaging',channelId);const release=channel.activate();
+  void channel.watch({presence:true}).then(()=>{if(live){setPeerOnline(channel.state.members[peerUid]?.user?.online===true);if(document.visibilityState==='visible')void fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'read',recipientHandle:handle})}).catch(()=>{})}}).catch(()=>{if(live)setPeerOnline(false)});
+  const update=()=>{if(!live)return;void refresh();if(document.visibilityState==='visible')void fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'read',recipientHandle:handle})}).catch(()=>{})};
+  const subscriptions=[channel.on('message.new',update),channel.on('message.deleted',update),channel.on('message.read',update),channel.on('reaction.new',update),channel.on('reaction.deleted',update),channel.on('typing.start',event=>{if(live&&event.user?.id===peerUid)setPeerTyping(true)}),channel.on('typing.stop',event=>{if(live&&event.user?.id===peerUid)setPeerTyping(false)}),client.on('user.presence.changed',event=>{if(live&&event.user?.id===peerUid)setPeerOnline(event.user.online===true)})];
+  return()=>{live=false;subscriptions.forEach(s=>s.unsubscribe());release();setPeerOnline(false);setPeerTyping(false)};
+ },[client,status,channelId,peerUid,refresh,handle]);
+ const send=async()=>{notifyTyping(false);if(typingRef.current)clearTimeout(typingRef.current);const text=draft.trim();if(!text||busy)return;setBusy(true);setError('');try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',recipientHandle:handle,text})});if(!r.ok)throw Error((await r.json().catch(()=>({}))).error||'Unable to send');setDraft('');setNotice('Sent');await refresh()}catch(e){setError(e instanceof Error?e.message:'Send failed')}finally{setBusy(false)}};
  const action=async(kind:'unsend'|'deleteForMe',messageId:string)=>{setError('');try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:kind,recipientHandle:handle,messageId})});if(!r.ok)throw Error((await r.json().catch(()=>({}))).error||'Action failed');await refresh()}catch(e){setError(e instanceof Error?e.message:'Action failed')}};
  return <section aria-label={'Chat with '+handle} style={{display:'flex',flexDirection:'column',height:'min(78dvh,820px)',minHeight:400,maxWidth:850,margin:'0 auto',border:'1px solid var(--cc-border,#7774)',borderRadius:16,overflow:'hidden'}}>
- <header style={{display:'flex',gap:12,alignItems:'center',padding:16,borderBottom:'1px solid var(--cc-border,#7774)'}}><Link href="/messages" aria-label="Back to inbox">←</Link><strong>@{handle}</strong></header>
+ <header style={{display:'flex',gap:12,alignItems:'center',padding:16,borderBottom:'1px solid var(--cc-border,#7774)'}}><Link href="/messages" aria-label="Back to inbox">←</Link><Avatar user={{name:peerName||handle,handle}} size={44} online={peerOnline&&status==='connected'} activityAllowed={presenceAllowed}/><div><strong>{peerName||handle}</strong><small style={{display:'block',opacity:.7}}>@{handle} · {peerTyping?'Typing…':presenceAllowed&&peerOnline&&status==='connected'?'Online':'Offline'}</small></div></header>
+ {status==='error'&&<p role="status" style={{padding:'4px 16px'}}>Live chat connection unavailable; server-backed messages remain accessible.</p>}
  <div role="log" aria-live="polite" aria-relevant="additions" style={{flex:1,overflowY:'auto',padding:16,display:'flex',flexDirection:'column',gap:10}}>
  {loading?<p>Loading messages…</p>:messages.length===0?<p>No messages yet.</p>:messages.map(m=><div key={m.id} style={{alignSelf:m.senderUid===uid?'flex-end':'flex-start',maxWidth:'82%',padding:'10px 14px',borderRadius:16,background:m.senderUid===uid?'#6240a9':'var(--cc-surface,#5553)',color:m.senderUid===uid?'white':'inherit',overflowWrap:'anywhere'}}>
  <p style={{whiteSpace:'pre-wrap',margin:0}}>{m.text}</p><small style={{display:'block',opacity:.75,marginTop:4}}>{m.createdAt?new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):''}{m.senderUid===uid?(m.seen?' · Seen':' · Sent'):''}</small>
@@ -19,7 +35,7 @@ export function ChatThread({handle}:{handle:string}){
  </div>)}<div ref={last}/></div>
  {error&&<p role="alert" style={{padding:'0 16px',color:'#ef4444'}}>{error}</p>}{notice&&<p role="status" style={{padding:'0 16px'}}>{notice}</p>}
  <form onSubmit={e=>{e.preventDefault();void send()}} style={{display:'flex',gap:8,padding:12,borderTop:'1px solid var(--cc-border,#7774)'}}>
- <textarea aria-label="Message" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void send()}}} maxLength={2000} rows={2} placeholder="Write a message…" style={{flex:1,minWidth:0,borderRadius:12,padding:10,resize:'none'}}/>
+ <textarea aria-label="Message" value={draft} onChange={e=>changeDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void send()}}} maxLength={2000} rows={2} placeholder="Write a message…" style={{flex:1,minWidth:0,borderRadius:12,padding:10,resize:'none'}}/>
  <button type="submit" disabled={busy||!draft.trim()}>{busy?'Sending…':'Send'}</button></form>
  </section>
 }
