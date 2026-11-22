@@ -1,4 +1,14 @@
 # CampusConnect implementation progress
+
+## Latest release-readiness checkpoint (2026-11-22)
+- Integration PR: #22, branch `fix/campusconnect-release-readiness`; production `main` remains at `732fa10524b0f8fa737e4c20e1895fca3c8a167d`. **Do not merge or deploy automatically.**
+- GitHub Actions CI **passed** at `58695eaecec2c42e40b36bb1e83cb9fe228c7f3c`: `npm ci`, lint (27 nonfatal warnings), TypeScript, 53 unit tests, high/critical dependency audit (14 moderate findings remain), Next.js production build, and secret scan. This is evidence for THAT SHA only.
+- Newer branch changes after that pass: cancel-safe chat media workflow, attachment revocation before unsend, no unauthorized "Offline" status. Revalidate CI and preview for the exact final head before merging.
+- Vercel's last confirmed READY preview is `c549e07e2c3fc1aabb60cb89b8f7af8e2a96f56a`, not the latest code. Additional deployments hit `api-deployments-free-per-day`; no SHA-matched preview or live smoke test has been established for the current head.
+- Real Stream/R2 two-user, multi-device, privacy, media, notification and reconnection acceptance remains **unverified**. The Stream client-token feature flag must remain disabled pending Stream permissions review and full acceptance.
+- Prior content-pipeline Batches 0–7, Firestore indexes, UI/composer/social-graph scope and API integration coverage are NOT complete merely because CI is green. See `RELEASE_READINESS.md` for remaining gates.
+- All earlier checkpoints below are historical and may describe the work before later commits.
+
 Updated 2026-11-22. Source of truth: code and CI checks, not previous phase claims.
 
 ## Current work: content-pipeline batch 1

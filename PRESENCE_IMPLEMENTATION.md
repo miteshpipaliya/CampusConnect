@@ -1,5 +1,15 @@
 # Stream presence implementation and acceptance
 
+## Current status (2026-11-22)
+**Implemented in the release candidate, but NOT production-accepted.**
+- Stream Chat v10.2.0 is in the locked dependency tree and the GitHub quality workflow passed `npm ci`, TypeScript, tests and build at `58695eaecec2`.
+- A client-side Stream connection provider, message event subscriptions, presence permission endpoint, inbox/thread presence, typing indicators, reactions, read receipts, chat media sharing and server-authenticated message routes are now implemented.
+- Presence indicators require BOTH real Stream online state AND server authorization. The chat header no longer claims peers are offline when authorization has not been granted.
+- Stream client tokens remain gated by `STREAM_CLIENT_TOKENS_ENABLED=true`. **Do not enable this in production** before auditing Stream app permissions, recipient/channel access and the complete two-account/multiple-device privacy matrix.
+- Full end-to-end acceptance with live Stream, Firestore and R2 credentials, latest Vercel preview and production-safe smoke tests has NOT been performed. See `RELEASE_READINESS.md`.
+- The older milestones below are historical notes and are not the current implementation status.
+
+
 Status: **IN PROGRESS — NOT PRODUCTION READY**
 
 ## Existing integrations
