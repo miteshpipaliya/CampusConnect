@@ -19,11 +19,26 @@ export async function syncStreamUser(uid:string):Promise<{synced:boolean;user:{i
  const encode=(v:object)=>Buffer.from(JSON.stringify(v)).toString('base64url');
  const payload=encode({alg:'HS256',typ:'JWT'})+'.'+encode({server:true});
  const jwt=payload+'.'+createHmac('sha256',secret).update(payload).digest('base64url');
- const endpoint=new URL('https://chat.stream-io-api.com/api/v2/chat/users');
+ const endpoint=new URL('https://chat.stream-io-api.com/api/v2/users');
  endpoint.searchParams.set('api_key',apiKey);
  const response=await fetch(endpoint.toString(),{method:'POST',headers:{'Content-Type':'application/json',Authorization:jwt,'stream-auth-type':'jwt'},body:JSON.stringify({users:{[uid]:user}}),cache:'no-store'});
  if(!response.ok){console.error('Stream sync rejected',{status:response.status});return {synced:false,user}}
  return {synced:true,user};
+}
+
+/** Synchronize online-status privacy without replacing other Stream user fields. */
+export async function setStreamActivityVisibility(uid:string,visible:boolean):Promise<boolean>{
+ const key=process.env.STREAM_API_KEY?.trim(),secret=process.env.STREAM_API_SECRET?.trim();
+ if(!key||!secret)return false;
+ const enc=(v:object)=>Buffer.from(JSON.stringify(v)).toString('base64url');
+ const unsigned=enc({alg:'HS256',typ:'JWT'})+'.'+enc({server:true});
+ const authorization=unsigned+'.'+createHmac('sha256',secret).update(unsigned).digest('base64url');
+ const url=new URL('https://chat.stream-io-api.com/api/v2/users');url.searchParams.set('api_key',key);
+ try{
+  const response=await fetch(url.toString(),{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:authorization,'stream-auth-type':'jwt'},body:JSON.stringify({users:[{id:uid,set:{invisible:!visible}}]}),cache:'no-store'});
+  if(!response.ok)console.error('Stream visibility update rejected',{status:response.status});
+  return response.ok;
+ }catch{return false}
 }
 
 /** Mirror Firestore block mutations into Stream's native user block list.
@@ -35,7 +50,7 @@ export async function syncStreamBlock(ownerUid:string,targetUid:string,remove:bo
  const encode=(v:object)=>Buffer.from(JSON.stringify(v)).toString('base64url');
  const payload=encode({alg:'HS256',typ:'JWT'})+'.'+encode({server:true});
  const jwt=payload+'.'+createHmac('sha256',secret).update(payload).digest('base64url');
- const url=new URL('https://chat.stream-io-api.com/api/v2/chat/users/'+(remove?'unblock':'block'));
+ const url=new URL('https://chat.stream-io-api.com/api/v2/users/'+(remove?'unblock':'block'));
  url.searchParams.set('api_key',apiKey);
  const response=await fetch(url.toString(),{method:'POST',headers:{'Content-Type':'application/json',Authorization:jwt,'stream-auth-type':'jwt'},body:JSON.stringify({user_id:ownerUid,blocked_user_id:targetUid}),cache:'no-store'});
  if(!response.ok){console.error('Stream user block synchronization rejected',{status:response.status,remove});return false}
@@ -53,7 +68,7 @@ export async function streamDeletionStep(uid:string,existingTaskId?:string):Prom
  const jwt=payload+'.'+createHmac('sha256',secret).update(payload).digest('base64url');
  const url=new URL(existingTaskId?
   'https://chat.stream-io-api.com/api/v2/tasks/'+encodeURIComponent(existingTaskId):
-  'https://chat.stream-io-api.com/api/v2/chat/users/delete');
+  'https://chat.stream-io-api.com/api/v2/users/delete');
  url.searchParams.set('api_key',apiKey);
  const response=await fetch(url.toString(),{
   method:existingTaskId?'GET':'POST',
