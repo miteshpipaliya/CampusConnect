@@ -3,6 +3,7 @@ import {z} from 'zod';
 import {FieldValue} from 'firebase-admin/firestore';
 import {guard} from '@/lib/server/guard';
 import {db} from '@/lib/server/services';
+import {syncStreamBlock} from '@/lib/server/stream-user';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 export const runtime='nodejs';
 const schema=z.object({handle:z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/)});
@@ -21,7 +22,8 @@ async function change(req:NextRequest,remove:boolean){
   if(a.exists)tx.delete(forward);
   if(b.exists)tx.delete(reverse);
  });
- return NextResponse.json({ok:true},{headers:safeHeaders})}catch{return errorResponse(503,'Block update unavailable')}
+ const streamSynced=await syncStreamBlock(checked.user.uid,target,remove).catch(()=>false);
+ return NextResponse.json({ok:true,streamSynced},{headers:safeHeaders})}catch{return errorResponse(503,'Block update unavailable')}
 }
 export async function POST(req:NextRequest){return change(req,false)}
 export async function DELETE(req:NextRequest){return change(req,true)}

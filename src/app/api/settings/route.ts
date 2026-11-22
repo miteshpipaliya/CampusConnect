@@ -10,7 +10,8 @@ const defaults={isPrivate:false,activityStatus:true,storyReplies:'everyone' as c
 export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  try{const doc=await db().collection('users').doc(user.uid).get();if(!doc.exists)return errorResponse(404,'Profile not found');
- return NextResponse.json({settings:schema.parse({...defaults,...(doc.data()?.settings??{})})},{headers:safeHeaders});
+ const saved=doc.data()?.settings??{};
+ return NextResponse.json({settings:schema.parse({...defaults,...saved,isPrivate:doc.data()?.privacy==='private'||doc.data()?.isPrivate===true,notifications:{...defaults.notifications,...saved.notifications}})},{headers:safeHeaders});
  }catch{return errorResponse(503,'Settings unavailable')}
 }
 export async function PATCH(request:NextRequest){
