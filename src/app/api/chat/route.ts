@@ -62,9 +62,9 @@ export async function GET(request:NextRequest){
    const store=db(),users=store.collection('users');
    const candidates=query?(
     await Promise.all([
-     users.orderBy('handle').startAt(query.toLowerCase()).endAt(query.toLowerCase()+'\\uf8ff').limit(20).get(),
-     users.orderBy('name').startAt(query).endAt(query+'\\uf8ff').limit(20).get(),
-     users.orderBy('name').startAt(query[0]!.toUpperCase()+query.slice(1)).endAt(query[0]!.toUpperCase()+query.slice(1)+'\\uf8ff').limit(20).get()
+     users.orderBy('handle').startAt(query.toLowerCase()).endAt(query.toLowerCase()+'\uf8ff').limit(20).get(),
+     users.orderBy('name').startAt(query).endAt(query+'\uf8ff').limit(20).get(),
+     users.orderBy('name').startAt(query[0]!.toUpperCase()+query.slice(1)).endAt(query[0]!.toUpperCase()+query.slice(1)+'\uf8ff').limit(20).get()
     ])
    ).flatMap(result=>result.docs):(await users.limit(20).get()).docs;
    const unique=[...new Map(candidates.map(doc=>[doc.id,doc])).values()].slice(0,30);
