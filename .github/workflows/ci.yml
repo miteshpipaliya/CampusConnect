@@ -28,7 +28,7 @@ jobs:
           node-version: 24
           cache: npm
       - name: Install locked dependencies
-        run: npm install --no-audit
+        run: npm ci --no-audit
       - name: Lint
         run: npm run lint
       - name: Type check

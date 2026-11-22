@@ -10,6 +10,7 @@ function token(secret:string,claims:Record<string,unknown>){
 }
 export async function POST(request:NextRequest){
  if(!sameOrigin(request))return errorResponse(403,'Untrusted origin');
+ if(process.env.STREAM_CLIENT_TOKENS_ENABLED!=='true')return errorResponse(403,'Direct Stream client tokens are disabled');
  const auth=await session(request);
  if(!auth)return errorResponse(401,'Sign in required');
  const apiKey=process.env.STREAM_API_KEY?.trim(),secret=process.env.STREAM_API_SECRET?.trim();
@@ -17,7 +18,7 @@ export async function POST(request:NextRequest){
  try{
   const {synced,user}=await syncStreamUser(auth.uid);
   if(!synced)return errorResponse(503,'Unable to synchronize Stream profile');
-  return NextResponse.json({token:token(secret,{user_id:auth.uid}),apiKey,user},{headers:safeHeaders});
+  return NextResponse.json({token:token(secret,{user_id:auth.uid,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600}),apiKey,user},{headers:safeHeaders});
  }catch(error){
   console.error('Chat token endpoint failed',error instanceof Error?error.message:'unknown');
   return errorResponse(503,'Chat service unavailable');
