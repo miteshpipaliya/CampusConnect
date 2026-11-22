@@ -20,7 +20,7 @@ export async function GET(request:NextRequest){
   const pending=await store.collection('media').where('status','in',['pending','rejected','uploaded']).limit(200).get();
   let processed=0;
   for(const doc of pending.docs){if(processed>=200)break;const data=doc.data();if((data.createdAt?.toMillis?.()??now)>older.toMillis())continue;
-   if(data.status==='uploaded'&&(data.postId||data.storyId||data.avatarOwnerUid))continue;
+   if(data.status==='uploaded'&&(data.postId||data.storyId||data.avatarOwnerUid||data.chatChannelId||data.chatMessageId))continue;
    processed++;counts.mediaDeleted++;if(!dryRun){if(typeof data.key==='string')await deleteObject(data.key);await doc.ref.delete()}}
   if(processed<200){const limits=await store.collection('rateLimits').where('expiresAt','<',Timestamp.now()).limit(200-processed).get();for(const doc of limits.docs){processed++;counts.rateLimitsDeleted++;if(!dryRun)await doc.ref.delete()}}
   const archiveDays=Math.min(365,Math.max(1,Number(process.env.STORY_ARCHIVE_DAYS)||30));

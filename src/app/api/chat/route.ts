@@ -8,6 +8,7 @@ import {checkRateLimit} from '@/lib/server/rate-limit';
 import {syncStreamUser} from '@/lib/server/stream-user';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
+import {claimChatMedia,finishChatMedia,releaseChatMedia,revokeChatMedia} from '@/lib/server/chat-media';
 export const runtime='nodejs';
 
 /** Stream owns chat messages, receipts, and typing metadata. Firestore is used only to resolve campus identities. */
@@ -33,6 +34,7 @@ async function stream(path:string,method='POST',data?:object){
 }
 const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('send'),recipientHandle:z.string().min(3).max(30),text:z.string().trim().min(1).max(2000),quotedMessageId:z.string().min(1).max(200).optional()}),
+ z.object({action:z.literal('sendMedia'),recipientHandle:z.string().min(3).max(30),mediaId:z.string().uuid(),text:z.string().trim().max(2000).default('')}),
  z.object({action:z.literal('read'),recipientHandle:z.string().min(3).max(30)}),
  z.object({action:z.literal('typing'),recipientHandle:z.string().min(3).max(30),typing:z.boolean()}),
  z.object({action:z.literal('deleteForMe'),recipientHandle:z.string().min(3).max(30),messageId:z.string().min(1).max(200)}),
@@ -41,7 +43,7 @@ const schema=z.discriminatedUnion('action',[
 ]);
 async function messageInChannel(messageId:string,channelId:string){
  const found=await stream('/messages/'+encodeURIComponent(messageId),'GET');
- const message=found.message as {cid?:string;user?:{id?:string};user_id?:string}|undefined;
+ const message=found.message as {cid?:string;user?:{id?:string};user_id?:string;campusMediaId?:string;custom?:{campusMediaId?:string}}|undefined;
  return message?.cid==='messaging:'+channelId?message:null;
 }
 async function peer(handle:string){const snap=await db().collection('users').where('handle','==',handle.toLowerCase()).limit(1).get();return snap.docs[0]??null}
@@ -98,8 +100,9 @@ export async function GET(request:NextRequest){
   const {result}=await ensureChannel(user.uid,other.id,handle,other.data().name);
   const hidden=await db().collection('users').doc(user.uid).collection('hiddenChatMessages').where('channelId','==',channelId(user.uid,other.id)).limit(500).get();
   const hiddenIds=new Set(hidden.docs.map(d=>d.id));
-  const messages=(result.messages||[]).filter((m:{id:string;type?:string})=>!hiddenIds.has(m.id)&&m.type!=='deleted').map((m:{id:string;text?:string;user?:{id:string};created_at?:string;quoted_message_id?:string;reaction_counts?:Record<string,number>;latest_reactions?:Array<{user_id?:string;type?:string}>})=>({
+  const messages=(result.messages||[]).filter((m:{id:string;type?:string})=>!hiddenIds.has(m.id)&&m.type!=='deleted').map((m:{id:string;text?:string;user?:{id:string};created_at?:string;quoted_message_id?:string;reaction_counts?:Record<string,number>;latest_reactions?:Array<{user_id?:string;type?:string}>;campusMediaId?:string;campusMediaType?:string;custom?:{campusMediaId?:string;campusMediaType?:string}})=>({
    id:m.id,text:m.text||'',senderUid:m.user?.id||'',createdAt:m.created_at||null,
+   mediaId:m.campusMediaId??m.custom?.campusMediaId??null,mediaType:m.campusMediaType??m.custom?.campusMediaType??null,
    quotedMessageId:m.quoted_message_id??null,reactionCounts:m.reaction_counts??{},
    ownReactions:(m.latest_reactions||[]).filter(reaction=>reaction.user_id===user.uid).map(reaction=>reaction.type||'').filter(Boolean),
    seen:Boolean((result.read||[]).find((x:{user?:{id:string};last_read?:string})=>x.user?.id===other.id&&x.last_read&&m.created_at&&x.last_read>=m.created_at))
@@ -117,7 +120,7 @@ export async function POST(request:NextRequest){
  try{
   const input=parsed.data,other=await peer(input.recipientHandle);
   if(!other||other.id===user.uid||other.data().deletedAt)return errorResponse(404,'Member unavailable');
-  const quota=await checkRateLimit({key:'chat:'+input.action+':'+user.uid,limit:input.action==='typing'?120:input.action==='send'?30:60,windowSec:60});
+  const quota=await checkRateLimit({key:'chat:'+input.action+':'+user.uid,limit:input.action==='typing'?120:(input.action==='send'||input.action==='sendMedia')?30:60,windowSec:60});
   if(!quota.allowed)return errorResponse(429,'Too many chat requests');
   if(await isBlockedEitherWay(user.uid,other.id))return errorResponse(403,'CHAT_BLOCKED');
   const {id,result}=await ensureChannel(user.uid,other.id,input.recipientHandle,other.data().name);
@@ -128,12 +131,28 @@ export async function POST(request:NextRequest){
    if(input.action==='unsend'){
     if((message.user?.id||message.user_id)!==user.uid)return errorResponse(403,'You can only unsend your own messages');
     await stream('/messages/'+encodeURIComponent(input.messageId),'DELETE');
+    const attached=message.campusMediaId??message.custom?.campusMediaId;
+    if(attached)await revokeChatMedia(attached,input.messageId);
    }else if(input.action==='deleteForMe'){
     await db().collection('users').doc(user.uid).collection('hiddenChatMessages').doc(input.messageId).set({channelId:id,hiddenAt:new Date().toISOString()});
    }else{
     const path='/messages/'+encodeURIComponent(input.messageId)+'/reaction';
     if(input.remove)await stream(path+'/'+input.emoji+'?user_id='+encodeURIComponent(user.uid),'DELETE');
     else await stream(path,'POST',{reaction:{type:input.emoji,user_id:user.uid},enforce_unique:true});
+   }
+  }else if(input.action==='sendMedia'){
+   const media=await claimChatMedia({uid:user.uid,peerUid:other.id,channelId:id,mediaId:input.mediaId});
+   if(!media)return errorResponse(400,'Chat attachment is unavailable or already attached');
+   let sentId:string|undefined;
+   try{
+    const result=await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,campusMediaId:input.mediaId,campusMediaType:media.contentType.startsWith('video/')?'video':'image'}});
+    sentId=String(result.message?.id||'');
+    if(!sentId)throw Error('STREAM_MESSAGE_ID_MISSING');
+    await finishChatMedia(input.mediaId,id,sentId);
+   }catch(error){
+    if(sentId)await stream('/messages/'+encodeURIComponent(sentId),'DELETE').catch(()=>{});
+    await releaseChatMedia(input.mediaId,id).catch(()=>{});
+    throw error;
    }
   }else if(input.action==='typing'){
    await stream(path+'/event','POST',{event:{type:input.typing?'typing.start':'typing.stop',user_id:user.uid}});
