@@ -16,9 +16,16 @@ type Me={uid:string;email:string;profile:{handle:string;name:string;branch:strin
 async function api<T>(path:string,method='GET',data?:object):Promise<T>{
  const r=await fetch(path,{method,cache:'no-store',credentials:'same-origin',
   ...(data?{headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{})});
- if(!(r.headers.get('content-type')||'').includes('application/json'))throw Error('Server returned a webpage instead of API data. Check deployment logs.');
- const result=await r.json().catch(()=>null);if(!result||typeof result!=='object')throw Error('Invalid server response');
- if(!r.ok)throw Error(result.error||'Request failed');return result as T;
+ const kind=(r.headers.get('content-type')||'').toLowerCase();
+ if(!kind.includes('application/json')){
+  if(r.redirected||r.status===401||r.status===403)throw Error('Sign-in or deployment access blocked this request. Check your login and deployment access settings.');
+  if(r.status>=500)throw Error('The service is temporarily unavailable. Please try again shortly.');
+  throw Error('The server returned a webpage instead of API data. Refresh the page or check deployment logs.');
+ }
+ const result:unknown=await r.json().catch(()=>null);
+ if(!result||typeof result!=='object')throw Error('The server returned an invalid API response. Please try again.');
+ if(!r.ok)throw Error('error' in result&&typeof result.error==='string'?result.error:'Request failed ('+r.status+')');
+ return result as T;
 }
 export function CampusAuth({mode}:{mode:'login'|'register'}){
  const [email,setEmail]=useState(''),[code,setCode]=useState(''),[password,setPassword]=useState(''),[resetMode,setResetMode]=useState(false),[needsProfile,setNeedsProfile]=useState(false),[stage,setStage]=useState<'email'|'otp'|'profile'|'privacy'|'password'|'done'>('email');
