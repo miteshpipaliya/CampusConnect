@@ -9,6 +9,7 @@ import {syncStreamUser} from '@/lib/server/stream-user';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {isBlockedEitherWay,canViewMany} from '@/lib/server/privacy';
 import {claimChatMedia,finishChatMedia,releaseChatMedia,revokeChatMedia} from '@/lib/server/chat-media';
+import {notifyChatMessage} from '@/lib/server/chat-notify';
 export const runtime='nodejs';
 
 /** Stream owns chat messages, receipts, and typing metadata. Firestore is used only to resolve campus identities. */
@@ -151,6 +152,7 @@ export async function POST(request:NextRequest){
     sentId=String(result.message?.id||'');
     if(!sentId)throw Error('STREAM_MESSAGE_ID_MISSING');
     await finishChatMedia(input.mediaId,id,sentId);
+    void notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sentId}).catch(()=>{});
    }catch(error){
     if(sentId)await stream('/messages/'+encodeURIComponent(sentId),'DELETE').catch(()=>{});
     await releaseChatMedia(input.mediaId,id).catch(()=>{});
@@ -164,14 +166,16 @@ export async function POST(request:NextRequest){
    const recipientAllowed=await canViewMany(other.id,[authorUid]);
    if(!allowed.get(authorUid)||!recipientAllowed.get(authorUid))return errorResponse(403,'Recipient cannot view this content');
    const kind=details?.type==='reel'?'reel':'post';
-   await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,campusContentId:input.postId,campusContentType:kind}});
+   const shared=await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,campusContentId:input.postId,campusContentType:kind}});
+   if(typeof shared.message?.id==='string')void notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:shared.message.id}).catch(()=>{});
   }else if(input.action==='typing'){
    await stream(path+'/event','POST',{event:{type:input.typing?'typing.start':'typing.stop',user_id:user.uid}});
   }else if(input.action==='read'){
    await stream(path+'/read','POST',{user_id:user.uid});
   }else{
    if(input.quotedMessageId&&!(await messageInChannel(input.quotedMessageId,id)))return errorResponse(404,'Quoted message is unavailable');
-   await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,...(input.quotedMessageId?{quoted_message_id:input.quotedMessageId}:{})}});
+   const sent=await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,...(input.quotedMessageId?{quoted_message_id:input.quotedMessageId}:{})}});
+   if(typeof sent.message?.id==='string')void notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sent.message.id}).catch(()=>{});
   }
   return NextResponse.json({ok:true},{headers:safeHeaders});
  }catch(error){console.error('CampusConnect chat POST failed',{error:error instanceof Error?error.message:'unknown'});return errorResponse(503,'Stream chat operation failed')}
