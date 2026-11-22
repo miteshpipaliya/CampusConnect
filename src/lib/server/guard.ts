@@ -20,6 +20,8 @@ export async function guard(request:NextRequest,opts:GuardOptions={}):Promise<{o
   const {key,limit,windowSec}=opts.rateLimit;
   const result=await checkRateLimit({key:key.replace('{uid}',user.uid).replace('{ip}',ip),limit,windowSec});
   if(!result.allowed)return {ok:false,response:NextResponse.json({error:'Too many requests'},{status:429,headers:{...safeHeaders,'Retry-After':String(result.retryAfterSec)}})};
+  const ipResult=await checkRateLimit({key:key.replace('{uid}',user.uid).replace('{ip}',ip)+':ip:'+ip,limit,windowSec});
+  if(!ipResult.allowed)return {ok:false,response:NextResponse.json({error:'Too many requests'},{status:429,headers:{...safeHeaders,'Retry-After':String(ipResult.retryAfterSec)}})};
  }
  return {ok:true,user,input,ip};
 }

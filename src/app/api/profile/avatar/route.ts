@@ -2,13 +2,15 @@ import {NextRequest,NextResponse} from 'next/server';
 import {GetObjectCommand} from '@aws-sdk/client-s3';
 import {z} from 'zod';
 import {db,storage} from '@/lib/server/services';
-import {session,sameOrigin,errorResponse,safeHeaders} from '@/lib/server/session';
+import {errorResponse,safeHeaders} from '@/lib/server/session';
+import {guard} from '@/lib/server/guard';
+import {RATE_LIMITS} from '@/lib/server/rate-limit';
 export const runtime='nodejs';
 const schema=z.object({mediaId:z.string().uuid()});
 export async function POST(request:NextRequest){
- if(!sameOrigin(request))return errorResponse(403,'Untrusted origin');
- const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
- const parsed=schema.safeParse(await request.json().catch(()=>null));
+ const checked=await guard(request,{write:true,schema,invalidMessage:'Invalid avatar request',rateLimit:{key:'avatar:{uid}',...RATE_LIMITS.avatar}});if(!checked.ok)return checked.response;
+ const user=checked.user;
+ const parsed=schema.safeParse(checked.input);
  if(!parsed.success)return errorResponse(400,'Invalid avatar request');
  try{
   const store=db(),ref=store.collection('media').doc(parsed.data.mediaId);

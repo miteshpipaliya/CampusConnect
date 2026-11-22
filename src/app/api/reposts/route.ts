@@ -2,18 +2,27 @@ import {NextRequest,NextResponse} from 'next/server';
 import {FieldValue} from 'firebase-admin/firestore';
 import {z} from 'zod';
 import {db} from '@/lib/server/services';
-import {session,sameOrigin,errorResponse,safeHeaders} from '@/lib/server/session';
+import {errorResponse,safeHeaders} from '@/lib/server/session';
+import {guard} from '@/lib/server/guard';
+import {RATE_LIMITS} from '@/lib/server/rate-limit';
 export const runtime='nodejs';
 const schema=z.object({postId:z.string().min(10).max(100)});
 export async function POST(request:NextRequest){
- if(!sameOrigin(request))return errorResponse(403,'Untrusted request origin');
- const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
- const input=schema.safeParse(await request.json().catch(()=>null));if(!input.success)return errorResponse(400,'Invalid post');
- try{const store=db(),original=await store.collection('posts').doc(input.data.postId).get();
-  if(!original.exists||original.data()?.visibility!=='campus')return errorResponse(404,'Post unavailable');
-  const id=user.uid+'_'+input.data.postId,ref=store.collection('reposts').doc(id),existing=await ref.get();
-  if(existing.exists){await ref.delete();return NextResponse.json({reposted:false},{headers:safeHeaders})}
-  await ref.create({ownerUid:user.uid,postId:input.data.postId,createdAt:FieldValue.serverTimestamp()});
-  return NextResponse.json({reposted:true},{status:201,headers:safeHeaders});
+ const checked=await guard(request,{write:true,schema,invalidMessage:'Invalid post',rateLimit:{key:'reposts:{uid}',...RATE_LIMITS.reposts}});
+ if(!checked.ok)return checked.response;
+ const user=checked.user,input=schema.safeParse(checked.input);
+ if(!input.success)return errorResponse(400,'Invalid post');
+ try{
+  const store=db(),post=store.collection('posts').doc(input.data.postId),ref=store.collection('reposts').doc(user.uid+'_'+input.data.postId);
+  const reposted=await store.runTransaction(async t=>{
+   const original=await t.get(post);if(!original.exists||original.data()?.visibility!=='campus')throw Error('NOT_FOUND');
+   const existing=await t.get(ref);
+   if(existing.exists)t.delete(ref);else t.create(ref,{ownerUid:user.uid,postId:input.data.postId,createdAt:FieldValue.serverTimestamp()});
+   const count=Number(original.data()?.counters?.reposts);
+   const current=Number.isFinite(count)?Math.max(0,Math.floor(count)):0;
+   t.set(post,{counters:{reposts:Math.max(0,current+(existing.exists?-1:1))}},{merge:true});
+   return !existing.exists;
+  });
+  return NextResponse.json({reposted},{status:reposted?201:200,headers:safeHeaders});
  }catch{return errorResponse(503,'Unable to update repost')}
 }
