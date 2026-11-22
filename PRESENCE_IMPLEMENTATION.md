@@ -35,3 +35,9 @@ Status: **IN PROGRESS — NOT PRODUCTION READY**
 - Container cannot resolve github.com for cloning, so local `npm ci`, TypeScript, lint, tests and build could not be run. GitHub Actions runs were not available for this branch at checkpoint; Vercel preview build was in progress, not verified.
 - Missing: compatible SDK dependency and lockfile, real-time messages/presence/typing/receipts, pagination, replies/reactions, secure media and content sharing, notifications, two-account acceptance tests. Do not enable Stream client tokens or merge to production.
 NEXT: Inspect latest Vercel preview build and GitHub Actions quality results for branch upgrade/stream-dm-presence; fix errors, regenerate lockfile, integrate official Stream SDK and complete remaining DM requirements before production merge.
+
+## Integration build verification
+- The earlier Vercel error came from commit 3c8aaa2; avatar props were normalized to null in commit 48ca4b1 and are present in current branch.
+- PR #21 was retargeted to main so its combined PR #20 + PR #21 tree is checked by the GitHub Actions pull_request workflow.
+- Vercel API refused a new deployment with HTTP 402 api-deployments-free-per-day; no green Vercel preview can be claimed until quota resets.
+- Do not merge while CI and Vercel checks are unverified or while feature acceptance is incomplete.
