@@ -15,3 +15,10 @@ Updated 2026-11-22. Source of truth: code and CI checks, not previous phase clai
 The existing lockfile may be out of sync. Do not switch CI to npm ci until the regenerated lockfile is committed and npm ci passes. Phase 1-3 audit PR #19 was merged; its remaining work is not automatically complete. No new functionality is considered production verified until preview smoke tests and CI gates pass.
 
 NEXT: Verify CI quality and Vercel preview for commit c510a1288dfea462b01f8e0a36ba172b62c9ecf8, fix any failures, then complete Batch 0 tooling and remaining Batches 1-7 via reviewed PRs.
+
+## Checkpoint 2026-11-22 (content pipeline)
+- DONE: pure media-access allow/deny matrix and claim-purpose matrix with regression tests.
+- DONE: transactional media-service claim helper used by post, reel, story publishing.
+- PENDING: latest CI quality + Vercel preview verification.
+- TODO: Batch 0 dependency lockfile and React Query provider, Batches 2-7 remaining scope, live two-account smoke tests.
+NEXT: Check GitHub Actions and Vercel preview for commit 4609b60718880c111b43579822f50f3e541cc4fc, fix errors, then implement media header duration validation and the rest of the uploaded spec; do not merge until all batches verified.
