@@ -12,3 +12,8 @@ test('unreadable MP4 headers and duration limits fail closed',()=>{
  assert.equal(durationWithinLimit(60,60,60),true);
  assert.equal(durationWithinLimit(60,30,60),false);
 });
+
+test('WebM invalid metadata fails closed',async()=>{
+ const {parseWebmDuration}=await import('../src/lib/core/video-duration.ts');
+ assert.equal(parseWebmDuration(new Uint8Array([0x1a,0x45,0xdf,0xa3])),null);
+});

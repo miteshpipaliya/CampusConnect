@@ -31,3 +31,37 @@ export function parseMp4Duration(bytes:Uint8Array):number|null{
 export function durationWithinLimit(actual:number|null,reported:number,limit:number):boolean{
  return actual!==null&&Number.isFinite(actual)&&actual>0&&actual<=limit&&Number.isFinite(reported)&&reported>0&&Math.abs(actual-reported)<=2;
 }
+
+/** WebM Info.Duration in milliseconds, using EBML's default 1ms timecode scale. */
+export function parseWebmDuration(bytes:Uint8Array):number|null{
+ let scale=1000000,duration:number|null=null;
+ const limit=bytes.length;
+ const vint=(at:number,forSize:boolean):{value:number;length:number}|null=>{
+  if(at>=limit)return null;
+  const first=bytes[at]??0;if(!first)return null;
+  let mask=128,length=1;while(length<=8&&!(first&mask)){mask>>=1;length++}
+  if(length>8||at+length>limit)return null;
+  let value=forSize?(first&(mask-1)):first;
+  for(let i=1;i<length;i++)value=value*256+(bytes[at+i]??0);
+  if(!Number.isSafeInteger(value))return null;
+  return {value,length};
+ };
+ const walk=(start:number,end:number,depth:number):void=>{
+  if(depth>6)return;
+  for(let pos=start;pos<end;){
+   const id=vint(pos,false);if(!id)return;
+   const size=vint(pos+id.length,true);if(!size)return;
+   const at=pos+id.length+size.length,finish=at+size.value;
+   if(finish>end)return;
+   if(id.value===0x2ad7b1&&size.value<=8){
+    scale=0;for(let i=at;i<finish;i++)scale=scale*256+(bytes[i]??0);
+   }else if(id.value===0x4489&&(size.value===4||size.value===8)){
+    const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+    duration=size.value===4?view.getFloat32(at,false):view.getFloat64(at,false);
+   }else if(id.value===0x18538067||id.value===0x1549a966)walk(at,finish,depth+1);
+   pos=finish;
+  }
+ };
+ walk(0,limit,0);
+ return duration!==null&&Number.isFinite(duration)&&duration>0&&scale>0?duration*scale/1000000000:null;
+}
