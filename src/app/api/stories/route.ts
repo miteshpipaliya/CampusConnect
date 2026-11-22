@@ -21,7 +21,7 @@ export async function GET(request:NextRequest){
   const closeAccess=new Map(closeAuthors.map((uid,i)=>[uid,friendChecks[i]]));
   const muteSnap=await db().collection('mutes').where('ownerUid','==',user.uid).limit(200).get();
   const mutedStories=new Set(muteSnap.docs.filter(d=>d.data().stories!==false).map(d=>String(d.data().targetUid||'')));
-  const stories=snapshot.docs.filter((d,i)=>visibility[i]&&!mutedStories.has(String(d.data().authorUid||''))&&(d.data().audience!=='close'||closeAccess.get(String(d.data().authorUid||''))===true)).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',highlight:Boolean(d.data().highlight),isMine:d.data().authorUid===user.uid,createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
+  const stories=snapshot.docs.filter((d,i)=>visibility[i]&&!mutedStories.has(String(d.data().authorUid||''))&&(d.data().audience!=='close'||closeAccess.get(String(d.data().authorUid||''))===true)).map(d=>({id:d.id,authorHandle:d.data().authorHandle,authorUid:d.data().authorUid,mediaId:d.data().mediaId,contentType:d.data().contentType||'image/jpeg',caption:d.data().caption||'',overlay:d.data().overlay||null,poll:d.data().poll||null,highlight:Boolean(d.data().highlight),isMine:d.data().authorUid===user.uid,createdAt:d.data().createdAt?.toMillis?.()||0})).sort((a,b)=>b.createdAt-a.createdAt);
   const authors=await hydrateAvatars(stories.map(story=>story.authorUid),user.uid);
   const mediaIds=stories.map(story=>story.mediaId).filter((id):id is string=>typeof id==='string');
   const media=mediaIds.length?await db().getAll(...mediaIds.map(id=>db().collection('media').doc(id))):[];
