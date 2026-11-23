@@ -9,5 +9,5 @@ export function fitReelFrame(availableWidth:number,availableHeight:number,source
   :9/16;
  const fittedWidth=Math.min(availableWidth,availableHeight*aspect);
  const fittedHeight=Math.min(availableHeight,fittedWidth/aspect);
- return {width:Math.max(1,Math.floor(fittedWidth)),height:Math.max(1,Math.floor(fittedHeight))};
+ return {width:Math.max(1,Math.round(fittedWidth)),height:Math.max(1,Math.round(fittedHeight))};
 }
