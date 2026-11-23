@@ -1,4 +1,4 @@
-import {NextRequest,NextResponse} from 'next/server';
+import {NextRequest,NextResponse,after} from 'next/server';
 import {FieldValue} from 'firebase-admin/firestore';
 import {z} from 'zod';
 import {db} from '@/lib/server/services';
@@ -6,6 +6,7 @@ import {guard} from '@/lib/server/guard';
 import {canViewAuthor} from '@/lib/server/privacy';
 import {errorResponse,safeHeaders} from '@/lib/server/session';
 import {eligibleReelView} from '@/lib/core/reel-views';
+import {recordDailyView} from '@/lib/server/daily-stats';
 import {couldBeReel,isPlayableReelMedia,reelMediaId} from '@/lib/core/reel-discovery';
 export const runtime='nodejs';
 const schema=z.object({watchMs:z.number().int().min(0).max(3600000)});
@@ -28,6 +29,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{id:string}>
    tx.update(ref,{'counters.views':FieldValue.increment(1)});
    return true;
   });
+  if(counted)after(()=>recordDailyView(String(post.data()?.authorUid||''),'views',true).catch(()=>{}));
   return NextResponse.json({ok:true,firstView:counted},{headers:safeHeaders});
  }catch{return errorResponse(503,'Could not record Reel view')}
 }

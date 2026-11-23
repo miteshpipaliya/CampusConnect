@@ -1,9 +1,10 @@
-import {NextRequest,NextResponse} from 'next/server';
+import {NextRequest,NextResponse,after} from 'next/server';
 import {db,auth} from '@/lib/server/services';
 import {canViewAuthor,isBlockedEitherWay,canViewMany} from '@/lib/server/privacy';
 import {isPrivateAccount} from '@/lib/core/privacy-rules';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
+import {recordProfileVisit} from '@/lib/server/daily-stats';
 export const runtime='nodejs';
 export async function GET(request:NextRequest,{params}:{params:Promise<{username:string}>}){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
@@ -14,6 +15,7 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{username
   const target=self?current:await (async()=>{const handle=await store.collection('handles').doc(username.toLowerCase()).get();return handle.exists?store.collection('users').doc(handle.data()!.uid).get():null})();
   if(!target?.exists||target.data()?.deletedAt||await isBlockedEitherWay(user.uid,target.id))return errorResponse(404,'Profile not found');
   const d=target.data()!,allowed=await canViewAuthor(user.uid,target.id);
+  if(!self)after(()=>recordProfileVisit(target.id,user.uid).catch(()=>{}));
   const {handle,name,branch,division,bio='',relationshipStatus='',relationshipVisibility='me',avatarMediaId=null}=d;
   const [avatarMap,follow,verification]=await Promise.all([
    hydrateAvatars([target.id],user.uid),
