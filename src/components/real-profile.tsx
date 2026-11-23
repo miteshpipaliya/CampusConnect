@@ -19,7 +19,7 @@ export function RealProfile({username}:{username:string}){
 
  if(error&&!data)return <div className="cc-live-empty" role="alert">{error} <Link href="/home">Back to Home</Link></div>;
  if(!data)return <div className="cc-live-empty">Loading profile…</div>;
- const {profile,posts,reposts,self}=data;
+ const {profile,posts,reposts,highlights,self}=data;
  const entries=tab==='posts'?posts:tab==='reposts'?reposts:posts.filter(p=>p.contentType?.startsWith('video/'));
  return <section className="cc-real-profile cc-profile-instagram">
   {error&&<p role="alert" className="form-error">{error}</p>}
@@ -33,7 +33,7 @@ export function RealProfile({username}:{username:string}){
   </header>
   {data.private&&<p role="status" style={{padding:20}}>This account is private. Follow to request access to posts and stories.</p>}
 
-  <ProfileHighlights handle={profile.handle} self={self}/>
+  <ProfileHighlights handle={profile.handle} self={self} legacy={highlights}/>
   <div className="cc-profile-tabs" role="tablist" aria-label="Profile content">
    {([{key:'posts',label:'Posts',Icon:Grid3X3},{key:'reels',label:'Reels',Icon:Clapperboard},{key:'reposts',label:'Reposts',Icon:Repeat2}] as const).map(({key,label,Icon})=><button type="button" role="tab" aria-selected={tab===key} className={tab===key?'active':''} key={key} onClick={()=>setTab(key)}><Icon size={18}/>{label}</button>)}
   </div>

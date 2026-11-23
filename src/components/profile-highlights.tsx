@@ -1,8 +1,9 @@
 'use client';
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
-type Item={id:string;title:string;coverUrl:string|null;storyCount:number};
-export function ProfileHighlights({handle,self}:{handle:string;self:boolean}){
+type Item={id:string;title:string;coverUrl:string|null;coverContentType:string;storyCount:number};
+type Legacy={id:string;mediaId:string;caption:string;active:boolean};
+export function ProfileHighlights({handle,self,legacy=[]}:{handle:string;self:boolean;legacy?:Legacy[]}){
  const [items,setItems]=useState<Item[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const load=async()=>{
   const r=await fetch('/api/highlights?handle='+encodeURIComponent(handle),{cache:'no-store'});
@@ -23,13 +24,18 @@ export function ProfileHighlights({handle,self}:{handle:string;self:boolean}){
   <div className="cc-profile-highlight-row">
   {items.map(h=><div className="cc-profile-highlight" key={h.id}>
     <Link href={'/highlights/'+encodeURIComponent(h.id)} aria-label={'View '+h.title+' highlight'}>
-     <span className="cc-profile-highlight-circle">{h.coverUrl?<img src={h.coverUrl} loading="lazy" alt={h.title}/>:<span aria-hidden="true">◌</span>}</span>
+     <span className="cc-profile-highlight-circle">{h.coverUrl?(h.coverContentType.startsWith('video/')?<video src={h.coverUrl} muted playsInline preload="metadata" aria-label={h.title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<img src={h.coverUrl} loading="lazy" alt={h.title}/>):<span aria-hidden="true">◌</span>}</span>
     </Link>
     <small>{h.title} ({h.storyCount})</small>
     {self&&<button disabled={busy} type="button" onClick={()=>void remove(h.id)}>Remove</button>}
    </div>)}
   {self&&<Link className="cc-profile-highlight" href="/settings/archive"><span className="cc-profile-highlight-circle" aria-hidden="true">+</span><small>New highlight</small></Link>}
-  {!items.length&&!self&&<p>No highlights yet.</p>}
+  {!items.length&&!legacy.length&&!self&&<p>No highlights yet.</p>}
+  {legacy.map(h=><div className="cc-profile-highlight" key={'legacy-'+h.id}>
+    <a href={'/api/media?id='+encodeURIComponent(h.mediaId)} target="_blank" rel="noreferrer" aria-label={'Open saved story '+h.caption}>
+      <span className="cc-profile-highlight-circle"><img src={'/api/media?id='+encodeURIComponent(h.mediaId)} alt={h.caption||'Saved story'}/></span>
+    </a><small>{h.caption||'Saved story'} (legacy)</small>
+  </div>)}
   </div>
  </section>;
 }
