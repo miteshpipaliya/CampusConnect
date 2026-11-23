@@ -12,6 +12,7 @@ import {mintUrls} from '@/lib/server/media-urls';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
 import {parseCaption} from '@/lib/core/content-rules';
 import {claimMedia} from '@/lib/server/media-service';
+import {notify} from '@/lib/server/notify';
 export const runtime='nodejs';
 const schema=z.object({caption:z.string().trim().max(2200).default(''),type:z.enum(['post','reel']).default('post'),mediaId:z.string().uuid().optional(),media:z.array(z.object({mediaId:z.string().uuid(),alt:z.string().max(250).default('')})).max(10).optional(),cropRatio:z.enum(['1 / 1','4 / 5','16 / 9']).optional(),filter:z.enum(['none','grayscale','sepia','contrast','saturate','brightness']).optional(),location:z.string().trim().max(80).optional(),commentsOff:z.boolean().optional(),hideLikeCount:z.boolean().optional()});
 export async function GET(request:NextRequest){
@@ -99,7 +100,7 @@ export async function POST(request:NextRequest){
   if(tags.length){const batch=store.batch();for(const tag of tags)batch.set(store.collection('hashtags').doc(tag),{tag,count:FieldValue.increment(1),updatedAt:FieldValue.serverTimestamp()},{merge:true});await batch.commit().catch(()=>{})}
   for(const handle of mentions){
    try{const person=await store.collection('users').where('handle','==',handle).limit(1).get();const target=person.docs[0];if(!target||target.id===user.uid||target.data().deletedAt||await isBlockedEitherWay(user.uid,target.id))continue;
-    await store.collection('users').doc(target.id).collection('notifications').add({type:'mention',actorUid:user.uid,actorHandle:String(profile.data()?.handle||''),postId:newPost.id,read:false,createdAt:FieldValue.serverTimestamp()});
+    await notify({recipientUid:target.id,actorUid:user.uid,type:'mention',postId:newPost.id}).catch(()=>{});
    }catch{}
   }
   const followers=await store.collection('follows').where('followingUid','==',user.uid).limit(500).get().catch(()=>null);

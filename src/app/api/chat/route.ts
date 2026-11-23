@@ -11,6 +11,7 @@ import {isBlockedEitherWay,canViewMany} from '@/lib/server/privacy';
 import {claimChatMedia,finishChatMedia,releaseChatMedia,revokeChatMedia} from '@/lib/server/chat-media';
 import {notifyChatMessage} from '@/lib/server/chat-notify';
 import {streamIso,streamReadByPeer} from '@/lib/core/stream-time';
+import {notify} from '@/lib/server/notify';
 export const runtime='nodejs';
 
 /** Stream owns chat messages, receipts, and typing metadata. Firestore is used only to resolve campus identities. */
@@ -179,9 +180,11 @@ export async function POST(request:NextRequest){
    const recipientAllowed=await canViewMany(other.id,[authorUid]);
    if(!allowed.get(authorUid)||!recipientAllowed.get(authorUid))return errorResponse(403,'Recipient cannot view this content');
    const kind=details?.type==='reel'?'reel':'post';
+
    const shared=await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,campusContentId:input.postId,campusContentType:kind}});
    if(typeof shared.message?.id==='string'){
     deliveredId=shared.message.id;
+    if(authorUid)after(()=>notify({recipientUid:authorUid,actorUid:user.uid,type:'share',postId:input.postId}).catch(()=>{}));
     after(()=>notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:shared.message.id}).catch(error=>console.error('Chat notification failed',error instanceof Error?error.message:'unknown')));
    }
   }else if(input.action==='typing'){
