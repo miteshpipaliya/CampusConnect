@@ -6,6 +6,7 @@ import {errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {RATE_LIMITS} from '@/lib/server/rate-limit';
 import {canViewAuthor} from '@/lib/server/privacy';
+import {notify} from '@/lib/server/notify';
 export const runtime='nodejs';
 const schema=z.object({postId:z.string().min(10).max(100)});
 export async function POST(request:NextRequest){
@@ -26,6 +27,7 @@ export async function POST(request:NextRequest){
    t.set(post,{counters:{reposts:Math.max(0,current+(existing.exists?-1:1))}},{merge:true});
    return !existing.exists;
   });
+  if(reposted){const uid=String(source.data()?.authorUid||'');if(uid)await notify({recipientUid:uid,actorUid:user.uid,type:'repost',postId:input.data.postId}).catch(()=>{})}
   return NextResponse.json({reposted},{status:reposted?201:200,headers:safeHeaders});
  }catch{return errorResponse(503,'Unable to update repost')}
 }
