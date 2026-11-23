@@ -5,7 +5,7 @@ export async function removePostComment(actorUid:string,postId:string,commentId:
  const store=db(),post=store.collection('posts').doc(postId),comment=post.collection('comments').doc(commentId);
  return store.runTransaction(async tx=>{
   const [p,c]=await Promise.all([tx.get(post),tx.get(comment)]);
-  if(!p.exists||!c.exists||p.data()?.deletedAt)return 'missing';
+  if(!p.exists||!c.exists||c.data()?.deletedAt||p.data()?.deletedAt)return 'missing';
   if(c.data()?.uid!==actorUid&&p.data()?.authorUid!==actorUid)return 'forbidden';
   const replies=c.data()?.parentId?[]:(await tx.get(post.collection('comments').where('parentId','==',commentId).limit(399))).docs;
   if(replies.length>=399)return 'too-many';

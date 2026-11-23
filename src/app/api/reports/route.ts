@@ -23,8 +23,11 @@ export async function POST(req:NextRequest){
    const exists=await store.collection(collection).doc(data.targetId).get();
    if(!exists.exists||exists.data()?.deletedAt)return errorResponse(404,'Reported item unavailable');
   }else{
-   // Comment IDs are nested under posts; avoid blind global lookups.
-   // Report remains pending verification by a moderator.
+   if(!data.postId)return errorResponse(400,'Comment report requires its parent post');
+   const post=await store.collection('posts').doc(data.postId).get();
+   if(!post.exists||post.data()?.deletedAt)return errorResponse(404,'Reported post unavailable');
+   const comment=await post.ref.collection('comments').doc(data.targetId).get();
+   if(!comment.exists||comment.data()?.deletedAt)return errorResponse(404,'Reported comment unavailable');
   }
   const duplicate=await ref.get();
   if(duplicate.exists)return NextResponse.json({ok:true,alreadyReported:true},{headers:safeHeaders});

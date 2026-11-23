@@ -25,12 +25,12 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{id:strin
   if(!p.exists||p.data()?.deletedAt||(p.data()?.archived&&p.data()?.authorUid!==user.uid)||!(await canViewAuthor(user.uid,String(p.data()?.authorUid||''))))return errorResponse(404,'Post unavailable');
   let query=ref.collection('comments').orderBy('createdAt','desc');
   if(cursor){const prev=await ref.collection('comments').doc(cursor).get();if(!prev.exists)return errorResponse(400,'Invalid cursor');query=query.startAfter(prev)}
-  const snap=await query.limit(80).get(),uids=[...new Set(snap.docs.map(d=>String(d.data().uid||'')).filter(Boolean))];
+  const snap=await query.limit(80).get(),live=snap.docs.filter(d=>!d.data().deletedAt),uids=[...new Set(live.map(d=>String(d.data().uid||'')).filter(Boolean))];
   const [avatars,likes]=await Promise.all([
    hydrateAvatars(uids,user.uid),
-   snap.docs.length?store.getAll(...snap.docs.map(d=>d.ref.collection('likes').doc(user.uid))):Promise.resolve([])
+   live.length?store.getAll(...live.map(d=>d.ref.collection('likes').doc(user.uid))):Promise.resolve([])
   ]);
-  const flat=snap.docs.map((d,i)=>{const x=d.data(),uid=String(x.uid||'');
+  const flat=live.map((d,i)=>{const x=d.data(),uid=String(x.uid||'');
    return {id:d.id,uid,handle:avatars[uid]?.handle||String(x.handle||''),avatarUrl:avatars[uid]?.avatarUrl??null,
     text:String(x.text||''),createdAt:x.createdAt?.toMillis?.()??0,likes:Number(x.counters?.likes||0),
     liked:likes[i]?.exists??false,parentId:String(x.parentId||''),pinned:x.pinned===true};
@@ -50,11 +50,11 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
   ]);
   if(!profile.exists||!p.exists||p.data()?.deletedAt||p.data()?.archived||!(await canViewAuthor(checked.user.uid,String(p.data()?.authorUid||''))))return errorResponse(404,'Post unavailable');
   if(p.data()?.commentsOff)return errorResponse(403,'Comments are turned off');
-  if(input.parentId&&(!parent?.exists||parent.data()?.parentId))return errorResponse(404,'Parent comment unavailable');
+  if(input.parentId&&(!parent?.exists||parent.data()?.parentId||parent.data()?.deletedAt))return errorResponse(404,'Parent comment unavailable');
   await store.runTransaction(async tx=>{
    const ref=await tx.get(post);
    if(!ref.exists||ref.data()?.deletedAt||ref.data()?.archived||ref.data()?.commentsOff)throw Error('CLOSED');
-   if(input.parentId){const current=await tx.get(post.collection('comments').doc(input.parentId));if(!current.exists||current.data()?.parentId)throw Error('NO_PARENT')}
+   if(input.parentId){const current=await tx.get(post.collection('comments').doc(input.parentId));if(!current.exists||current.data()?.parentId||current.data()?.deletedAt)throw Error('NO_PARENT')}
    tx.create(comment,{uid:checked.user.uid,handle:profile.data()?.handle||'',text:input.text,parentId:input.parentId||'',pinned:false,counters:{likes:0},createdAt:FieldValue.serverTimestamp()});
    tx.update(post,{'counters.comments':FieldValue.increment(1)});
   });

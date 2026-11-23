@@ -15,7 +15,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{id:string;c
   if(p.data()?.authorUid!==checked.user.uid)return errorResponse(403,'Not post owner');
   const result=await store.runTransaction(async tx=>{
    const c=await tx.get(comment);
-   if(!c.exists||c.data()?.parentId)return 'missing';
+   if(!c.exists||c.data()?.deletedAt||c.data()?.parentId)return 'missing';
    const existing=await tx.get(post.collection('comments').where('pinned','==',true).limit(2));
    if(existing.docs.some(d=>d.id!==commentId))return 'limit';
    tx.set(comment,{pinned:true},{merge:true});return 'ok';

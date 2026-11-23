@@ -18,7 +18,7 @@ async function update(req:NextRequest,{params}:{params:Promise<{id:string;commen
   if(!p.exists||p.data()?.deletedAt||p.data()?.archived||!(await canViewAuthor(checked.user.uid,String(p.data()?.authorUid||''))))return errorResponse(404,'Post unavailable');
   const response=await store.runTransaction(async tx=>{
    const [c,l]=await Promise.all([tx.get(comment),tx.get(like)]);
-   if(!c.exists)return null;
+   if(!c.exists||c.data()?.deletedAt)return null;
    const uid=String(c.data()?.uid||''),current=Math.max(0,Number(c.data()?.counters?.likes||0));
    if(remove&&l.exists){tx.delete(like);tx.update(comment,{'counters.likes':Math.max(0,current-1)});return {liked:false,notifyUid:''}}
    if(!remove&&!l.exists){tx.create(like,{uid:checked.user.uid,createdAt:FieldValue.serverTimestamp()});tx.update(comment,{'counters.likes':current+1});return {liked:true,notifyUid:uid}}
