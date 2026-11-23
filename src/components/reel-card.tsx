@@ -73,7 +73,7 @@ export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;mu
     <button type="button" className="cc-reel-mute" aria-label={muted?'Unmute Reel':'Mute Reel'} onClick={()=>onMute(!muted)}>{muted?<VolumeX size={19}/>:<Volume2 size={19}/>}</button>
     <div className="cc-reel-caption">
      <div className="cc-reel-author">
-      <Link href={'/profile/'+encodeURIComponent(reel.authorHandle)}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={34}/><strong>@{reel.authorHandle}</strong></Link>
+      <Link href={'/profile/'+encodeURIComponent(reel.authorHandle)}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={32}/><strong>@{reel.authorHandle}</strong></Link>
       {!reel.isMine&&<button type="button" onClick={()=>void followToggle()}>{follow==='active'?'Following':follow==='pending'?'Requested':'Follow'}</button>}
      </div>
      {reel.caption&&<p>{reel.caption}</p>}
