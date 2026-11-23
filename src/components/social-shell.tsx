@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users } from 'lucide-react';
+import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users, ChartNoAxesCombined } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
 import {StreamConnectionProvider} from './chat/stream-connection';
@@ -18,9 +18,10 @@ const links: NavItem[] = [
   {label:'Notifications',href:'/notifications',Icon:Heart},
   {label:'Create',href:'/home?compose=1',Icon:PlusSquare},
   {label:'Community',href:'/home?section=community',Icon:Users},
+  {label:'Dashboard',href:'/dashboard',Icon:ChartNoAxesCombined},
   {label:'Profile',href:'/profile/me',Icon:UserRound},
 ];
-const mobileLabels = new Set(['Home', 'Reels', 'Messages', 'Search', 'Notifications', 'Create', 'Profile']);
+const mobileLabels = new Set(['Home', 'Reels', 'Messages', 'Search', 'Notifications', 'Create', 'Profile', 'Dashboard']);
 function activeLink(pathname: string, item: NavItem, section: string) {
   if (item.label === 'Create') return false;
   const sections:Record<string,string>={Reels:'reels',Messages:'chat',Search:'search',Notifications:'notifications',Community:'community'};

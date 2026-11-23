@@ -4,6 +4,7 @@ import './overrides.css';
 import './campus.css';
 import './live.css';
 import './audit-overlays.css';
+import './dashboard-upgrade.css';
 export const metadata: Metadata = { title: 'CampusConnect — Your Campus. Your People.', description: 'CampusConnect: student social community.', applicationName: 'CampusConnect' };
 export const viewport: Viewport = { colorScheme: 'dark', themeColor: '#080a0e' };
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) { return <html lang="en"><body>{children}</body></html>; }
