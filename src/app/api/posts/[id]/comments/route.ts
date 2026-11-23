@@ -6,6 +6,7 @@ import {guard} from '@/lib/server/guard';
 import {RATE_LIMITS} from '@/lib/server/rate-limit';
 import {canViewAuthor} from '@/lib/server/privacy';
 import {z} from 'zod';
+import {notify} from '@/lib/server/notify';
 export const runtime='nodejs';
 const schema=z.object({text:z.string().trim().min(1).max(1000)});
 export async function GET(request:NextRequest,{params}:{params:Promise<{id:string}>}){
@@ -36,10 +37,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
    t.create(comment,{uid:user.uid,handle:profile.data()?.handle,text:parsed.data.text,createdAt:FieldValue.serverTimestamp()});
    t.set(post,{counters:{comments:FieldValue.increment(1)}},{merge:true});
   });
-  if(ownerUid&&ownerUid!==user.uid){
-   const owner=await store.collection('users').doc(ownerUid).get();
-   if(owner.exists&&owner.data()?.settings?.notifications?.comments!==false)await owner.ref.collection('notifications').add({type:'comment',actorUid:user.uid,actorHandle:profile.data()?.handle??'Member',postId:id,createdAt:FieldValue.serverTimestamp()});
-  }
+  if(ownerUid)await notify({recipientUid:ownerUid,actorUid:user.uid,type:'comment',postId:id,commentId:comment.id}).catch(()=>{});
   return NextResponse.json({ok:true,id:comment.id},{headers:safeHeaders});
  }catch{return errorResponse(503,'Unable to comment')}
 }

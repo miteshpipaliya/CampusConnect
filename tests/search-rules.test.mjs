@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {normalizeSearch,normalizeTag,validSearch} from '../src/lib/core/search-rules.ts';
+test('search terms normalized safely',()=>{assert.equal(normalizeSearch('  HeLLo   World '),'hello world');assert.equal(normalizeTag(' #Campus_2026 !'),'campus_2026');assert.equal(validSearch('x'),false);assert.equal(validSearch('mitesh'),true)})
