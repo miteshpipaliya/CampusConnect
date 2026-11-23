@@ -34,16 +34,17 @@ export async function GET(req:NextRequest){
   const avatars=await hydrateAvatars(ids,user.uid);
   const mediaIds=[...new Set(selected.map(d=>String(d.data().mediaId||'')))],media=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];
   const urls=await mintUrls(media.filter(d=>d.exists).map(d=>({id:d.id,...(d.data()??{})})),{viewerUid:user.uid});
-  const [likes,saves,follows]=await Promise.all([
+  const [likes,saves,reposts,follows]=await Promise.all([
    selected.length?store.getAll(...selected.map(d=>d.ref.collection('likes').doc(user.uid))):Promise.resolve([]),
    selected.length?store.getAll(...selected.map(d=>store.collection('users').doc(user.uid).collection('saves').doc(d.id))):Promise.resolve([]),
+   selected.length?store.getAll(...selected.map(d=>store.collection('reposts').doc(user.uid+'_'+d.id))):Promise.resolve([]),
    ids.length?store.getAll(...ids.map(uid=>store.collection('follows').doc(user.uid+'_'+uid))):Promise.resolve([])
   ]);
   const relation=new Map(ids.map((uid,i)=>[uid,follows[i]?.data()?.status||'none']));
   const reels=selected.map((d,i)=>{
    const x=d.data(),id=String(x.mediaId||''),uid=String(x.authorUid||'');
    return {id:d.id,authorUid:uid,authorHandle:avatars[uid]?.handle||String(x.authorHandle||''),authorName:avatars[uid]?.name||'Student',avatarUrl:avatars[uid]?.avatarUrl??null,
-    caption:String(x.caption||''),mediaId:id,mediaUrl:urls[id]?.url??null,createdAt:x.createdAt?.toMillis?.()??0,likes:Number(x.counters?.likes||0),comments:Number(x.counters?.comments||0),reposts:Number(x.counters?.reposts||0),views:Number(x.counters?.views||0),liked:likes[i]?.exists??false,saved:saves[i]?.exists??false,followStatus:relation.get(uid)||'none'};
+    isMine:uid===user.uid,caption:String(x.caption||''),mediaId:id,mediaUrl:urls[id]?.url??null,createdAt:x.createdAt?.toMillis?.()??0,likes:Number(x.counters?.likes||0),comments:Number(x.counters?.comments||0),reposts:Number(x.counters?.reposts||0),views:Number(x.counters?.views||0),liked:likes[i]?.exists??false,saved:saves[i]?.exists??false,reposted:reposts[i]?.exists??false,followStatus:relation.get(uid)||'none'};
   });
   return NextResponse.json({reels,nextCursor:selected.length>=limit&&last?last.id:null},{headers:safeHeaders});
  }catch(error){console.error('Reel feed failed',error instanceof Error?error.name:'error');return errorResponse(503,'Reels unavailable')}
