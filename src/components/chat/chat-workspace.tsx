@@ -45,7 +45,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   [inboxError,setInboxError]=useState(''),[notice,setNotice]=useState(''),[inboxLoading,setInboxLoading]=useState(true);
  const {client,status}=useStreamConnection();
  const active=useRef(peer),sequence=useRef(0),inboxSeq=useRef(0),readKeys=useRef(new Map<string,string>()),
-  lastTyping=useRef(0),typingTimer=useRef<ReturnType<typeof setTimeout>|null>(null),
+  lastTyping=useRef(0),typingTimer=useRef<ReturnType<typeof setTimeout>|null>(null),sendingLock=useRef(false),
   bottom=useRef<HTMLDivElement|null>(null),draftInput=useRef<HTMLTextAreaElement|null>(null);
  active.current=peer;
 
@@ -162,7 +162,8 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    ch.on('reaction.new',updated),ch.on('reaction.deleted',updated),ch.on('message.read',updated),
    ch.on('typing.start',event=>{if(event.user?.id===peerUid&&live){setTyping(true);if(expires)clearTimeout(expires);expires=setTimeout(()=>{if(live)setTyping(false)},6000)}}),
    ch.on('typing.stop',event=>{if(event.user?.id===peerUid&&live){setTyping(false);if(expires)clearTimeout(expires)}}),
-   client.on('user.presence.changed',event=>{if(live&&event.user?.id===peerUid)setOnline(event.user.online===true)})
+   client.on('user.presence.changed',event=>{if(live&&event.user?.id===peerUid)setOnline(event.user.online===true)}),
+   client.on('user.updated',event=>{if(live&&event.user?.id===peerUid)setOnline(event.user.online===true)})
   ];
   return()=>{live=false;if(expires)clearTimeout(expires);subscriptions.forEach(s=>s.unsubscribe());release();setOnline(false);setTyping(false)};
  },[client,status,peer,peerUid,channelId,refreshConversation]);
@@ -191,8 +192,11 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
  },[directoryQuery,newMessage]);
 
  const markTyping=(value:boolean)=>{
-  if(!peer||status!=='connected')return;
-  void requestJson('/api/chat',{action:'typing',recipientHandle:peer,typing:value}).catch(()=>{});
+  if(!peer||!channelId||!client||status!=='connected')return;
+  // Send typing directly on the authorized watched Stream channel. This avoids
+  // a full Next.js/Firestore/Stream round-trip on every keystroke.
+  const channel=client.channel('messaging',channelId);
+  void (value?channel.keystroke():channel.stopTyping()).catch(()=>{});
  };
  const changeDraft=(value:string)=>{
   setDraft(value);
@@ -204,21 +208,35 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
  };
  const sendText=async(text:string)=>{
   const handle=peer;const value=text.trim();
-  if(!handle||!value||sending)return;
-  setSending(true);setError('');setNotice('');
-  const optimisticId='cc-optimistic-'+Date.now().toString(36);
+  if(!handle||!value||sendingLock.current)return;
+  sendingLock.current=true;setSending(true);setError('');setNotice('');
+  const optimisticId='cc-optimistic-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
+  const currentReply=replyTo;
+  // Clear the composer immediately; message appears locally without waiting for
+  // Stream, while the server keeps authority over the real delivery result.
+  setDraft('');setReplyTo(null);markTyping(false);
   const tmp:Message={id:optimisticId,text:value,senderUid:myUid,createdAt:new Date().toISOString(),seen:false};
   setMessages(prev=>mergeChronologicalMessages(prev,[tmp]));
   try{
-   await requestJson('/api/chat',{action:'send',recipientHandle:handle,text:value,...(replyTo?{quotedMessageId:replyTo.id}:{})});
-   setDraft('');setReplyTo(null);markTyping(false);setNotice('Sent');
-   void refreshConversation(handle,true).catch(()=>{});
-   void refreshInbox().catch(()=>{});
+   const sent=await requestJson<{ok:boolean;messageId?:string}>('/api/chat',{action:'send',recipientHandle:handle,text:value,...(currentReply?{quotedMessageId:currentReply.id}:{})});
+   if(active.current===handle&&sent.messageId){
+    setMessages(prev=>{
+     const exists=prev.some(m=>m.id===sent.messageId);
+     return exists?prev.filter(m=>m.id!==optimisticId):prev.map(m=>m.id===optimisticId?{...m,id:sent.messageId!}:m);
+    });
+   }
+   if(active.current===handle){
+    void refreshConversation(handle,true).catch(()=>{});
+    void refreshInbox().catch(()=>{});
+   }
   }catch(e){
-   setMessages(prev=>prev.filter(m=>m.id!==optimisticId));
-   setDraft(current=>current||value);
-   setError(e instanceof Error?e.message:'Unable to send message');
-  }finally{setSending(false)}
+   if(active.current===handle){
+    setMessages(prev=>prev.filter(m=>m.id!==optimisticId));
+    setDraft(current=>current||value);
+    setReplyTo(current=>current||currentReply);
+    setError(e instanceof Error?e.message:'Unable to send message');
+   }
+  }finally{sendingLock.current=false;setSending(false)}
  };
  const submit=(event:FormEvent)=>{event.preventDefault();void sendText(draft)};
  const keyDown=(event:KeyboardEvent<HTMLTextAreaElement>)=>{
@@ -275,7 +293,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     {inboxLoading&&<p className="cc-dm-muted">Loading conversations…</p>}
     {!inboxLoading&&visible.length===0&&<p className="cc-dm-muted">{search?'No matches.':tab==='unread'?'No unread messages.':'Select a campus member above to start a chat.'}</p>}
     {visible.map(c=><button key={c.handle} type="button" className={'cc-dm-person'+(peer===c.handle?' selected':'')} onClick={()=>selectPeer(c.handle)}>
-     <Avatar user={c} size={44}/><span className="cc-dm-person-text"><strong>{c.name||c.handle}</strong><small>{c.preview||'Send a message'}</small></span>
+     <Avatar user={c} size={44}/><span className="cc-dm-person-text"><strong>{c.name||c.handle}</strong><small className={typing&&c.handle===peer?'cc-dm-green-typing':''}>{typing&&c.handle===peer?'● Typing…':c.preview||'Send a message'}</small></span>
      <span className="cc-dm-person-meta"><time dateTime={c.updatedAt||undefined}>{formattedTime(c.updatedAt,true)}</time>{(c.unreadCount??0)>0&&<b aria-label={c.unreadCount+' unread messages'}>{c.unreadCount}</b>}</span>
     </button>)}
    </div>
@@ -285,7 +303,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     <button type="button" className="cc-dm-back" onClick={()=>selectPeer('')} aria-label="Back to conversations"><ChevronLeft size={24}/></button>
     <Link href={'/profile/'+encodeURIComponent(peer)} className="cc-dm-peer-profile">
      <Avatar user={{name:peerName||selected?.name||peer,handle:peer,avatarMediaId:selected?.avatarMediaId??null,avatarUrl:selected?.avatarUrl??null}} size={44} activityAllowed={presenceAllowed} online={online&&status==='connected'}/>
-     <span><strong>{peerName||selected?.name||peer}</strong><small>@{peer}{typing?' · Typing…':presenceAllowed&&status==='connected'?(online?' · Online':' · Offline'):''}</small></span>
+     <span><strong>{peerName||selected?.name||peer}</strong><small className={typing?'cc-dm-green-typing':''}>@{peer}{typing?' · Typing…':presenceAllowed&&status==='connected'?(online?' · Online':' · Offline'):''}</small></span>
     </Link>
     <div className="cc-dm-thread-actions"><span aria-label={status==='connected'?'Chat connected':'Chat refresh active'} className={'cc-dm-connection'+(status==='connected'?' connected':'')}><span/>{status==='connected'?'Live':'Syncing'}</span>
      <button type="button" className="cc-dm-icon" title="Refresh messages" aria-label="Refresh messages" onClick={()=>void refreshConversation(peer,true).catch(e=>setError(String(e)))}><RefreshCw size={18}/></button>
@@ -318,6 +336,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     </article>)}
     <div ref={bottom}/>
    </div>
+   {typing&&<div className="cc-dm-typing-indicator" role="status" aria-live="polite"><span className="cc-dm-typing-dot"/> {peerName||peer} is typing…</div>}
    {error&&<p role="alert" className="cc-dm-thread-error">{error} <button type="button" onClick={()=>{setError('');void refreshConversation(peer,true).catch(()=>{})}}>Retry</button></p>}
    {notice&&<p role="status" className="cc-dm-status" onClick={()=>setNotice('')}>{notice}</p>}
    {replyTo&&<div className="cc-dm-reply"><span>Replying to: {replyTo.text.slice(0,90)||'attachment'}</span><button type="button" aria-label="Cancel reply" onClick={()=>setReplyTo(null)}><X size={16}/></button></div>}
