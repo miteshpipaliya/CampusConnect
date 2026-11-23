@@ -38,7 +38,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   [tab,setTab]=useState<'primary'|'unread'>('primary'),[messages,setMessages]=useState<Message[]>([]),[older,setOlder]=useState<Message[]>([]),
   [cursor,setCursor]=useState<string|null>(null),[loadingOlder,setLoadingOlder]=useState(false),
   [myUid,setMyUid]=useState(''),[peerName,setPeerName]=useState(''),[channelId,setChannelId]=useState(''),[peerUid,setPeerUid]=useState(''),
-  [typing,setTyping]=useState(false),[online,setOnline]=useState(false),[presenceAllowed,setPresenceAllowed]=useState(false),
+  [typing,setTyping]=useState(false),[online,setOnline]=useState(false),[channelWatching,setChannelWatching]=useState(false),[presenceAllowed,setPresenceAllowed]=useState(false),
   [draft,setDraft]=useState(''),[replyTo,setReplyTo]=useState<Message|null>(null),[selectedMessage,setSelectedMessage]=useState<string|null>(null),
   [emojiMode,setEmojiMode]=useState<'insert'|'sticker'|null>(null),[showPostPicker,setShowPostPicker]=useState(false),
   [sending,setSending]=useState(false),[loading,setLoading]=useState(Boolean(initialPeer)),[error,setError]=useState(''),
@@ -87,7 +87,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   if(active.current!==handle){
    sequence.current++;
    setMessages([]);setOlder([]);setCursor(null);setLoading(Boolean(handle));
-   setError('');setNotice('');setReplyTo(null);setSelectedMessage(null);setPeerName('');setChannelId('');setPeerUid('');setTyping(false);setOnline(false);
+   setError('');setNotice('');setReplyTo(null);setSelectedMessage(null);setPeerName('');setChannelId('');setPeerUid('');setTyping(false);setOnline(false);setChannelWatching(false);
   }
   active.current=handle;setPeer(handle);setSearch('');setNewMessage(false);setDirectoryQuery('');
   const target=handle?'/messages/'+encodeURIComponent(handle):'/messages';
@@ -125,11 +125,11 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    finally{inFlight=false}
   };
   void refreshConversation(peer).catch(e=>{if(live){setLoading(false);setError(e instanceof Error?e.message:'Unable to load conversation')}});
-  const timer=window.setInterval(tick,status==='connected'?15000:3000);
+  const timer=window.setInterval(tick,status==='connected'&&channelWatching?15000:3000);
   const onResume=()=>{void tick()};
   document.addEventListener('visibilitychange',onResume);window.addEventListener('online',onResume);
   return()=>{live=false;sequence.current++;window.clearInterval(timer);document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
- },[peer,status,refreshConversation]);
+ },[peer,status,channelWatching,refreshConversation]);
 
  useEffect(()=>{
   let live=true,inFlight=false;
@@ -152,10 +152,11 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
  useEffect(()=>{
   if(!client||status!=='connected'||!peer||!peerUid||!channelId)return;
   let live=true;let expires:ReturnType<typeof setTimeout>|null=null;
+  setChannelWatching(false);
   const ch=client.channel('messaging',channelId),release=ch.activate();
   void ch.watch({presence:true}).then(()=>{
-   if(live)setOnline(ch.state.members[peerUid]?.user?.online===true);
-  }).catch(()=>{if(live)setOnline(false)});
+   if(live){setChannelWatching(true);setOnline(ch.state.members[peerUid]?.user?.online===true)}
+  }).catch(()=>{if(live){setChannelWatching(false);setOnline(false)}});
   const updated=()=>{if(live)void refreshConversation(peer,true).catch(()=>{})};
   const subscriptions=[
    ch.on('message.new',updated),ch.on('message.deleted',updated),ch.on('message.updated',updated),
@@ -165,7 +166,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    client.on('user.presence.changed',event=>{if(live&&event.user?.id===peerUid)setOnline(event.user.online===true)}),
    client.on('user.updated',event=>{if(live&&event.user?.id===peerUid)setOnline(event.user.online===true)})
   ];
-  return()=>{live=false;if(expires)clearTimeout(expires);subscriptions.forEach(s=>s.unsubscribe());release();setOnline(false);setTyping(false)};
+  return()=>{live=false;if(expires)clearTimeout(expires);subscriptions.forEach(s=>s.unsubscribe());release();setOnline(false);setTyping(false);setChannelWatching(false)};
  },[client,status,peer,peerUid,channelId,refreshConversation]);
 
  useEffect(()=>{
@@ -192,7 +193,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
  },[directoryQuery,newMessage]);
 
  const markTyping=(value:boolean)=>{
-  if(!peer||!channelId||!client||status!=='connected')return;
+  if(!peer||!channelId||!client||status!=='connected'||!channelWatching)return;
   // Send typing directly on the authorized watched Stream channel. This avoids
   // a full Next.js/Firestore/Stream round-trip on every keystroke.
   const channel=client.channel('messaging',channelId);
@@ -200,7 +201,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
  };
  const changeDraft=(value:string)=>{
   setDraft(value);
-  if(status!=='connected'||!peer)return;
+  if(status!=='connected'||!channelWatching||!peer)return;
   const now=Date.now();
   if(now-lastTyping.current>2200){lastTyping.current=now;markTyping(true)}
   if(typingTimer.current)clearTimeout(typingTimer.current);
@@ -302,10 +303,10 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    {peer?<><header className="cc-dm-thread-header">
     <button type="button" className="cc-dm-back" onClick={()=>selectPeer('')} aria-label="Back to conversations"><ChevronLeft size={24}/></button>
     <Link href={'/profile/'+encodeURIComponent(peer)} className="cc-dm-peer-profile">
-     <Avatar user={{name:peerName||selected?.name||peer,handle:peer,avatarMediaId:selected?.avatarMediaId??null,avatarUrl:selected?.avatarUrl??null}} size={44} activityAllowed={presenceAllowed} online={online&&status==='connected'}/>
-     <span><strong>{peerName||selected?.name||peer}</strong><small className={typing?'cc-dm-green-typing':''}>@{peer}{typing?' · Typing…':presenceAllowed&&status==='connected'?(online?' · Online':' · Offline'):''}</small></span>
+     <Avatar user={{name:peerName||selected?.name||peer,handle:peer,avatarMediaId:selected?.avatarMediaId??null,avatarUrl:selected?.avatarUrl??null}} size={44} activityAllowed={presenceAllowed} online={online&&status==='connected'&&channelWatching}/>
+     <span><strong>{peerName||selected?.name||peer}</strong><small className={typing?'cc-dm-green-typing':''}>@{peer}{typing?' · Typing…':presenceAllowed&&status==='connected'&&channelWatching?(online?' · Online':' · Offline'):''}</small></span>
     </Link>
-    <div className="cc-dm-thread-actions"><span aria-label={status==='connected'?'Chat connected':'Chat refresh active'} className={'cc-dm-connection'+(status==='connected'?' connected':'')}><span/>{status==='connected'?'Live':'Syncing'}</span>
+    <div className="cc-dm-thread-actions"><span aria-label={status==='connected'&&channelWatching?'Chat connected':'Chat refresh active'} className={'cc-dm-connection'+(status==='connected'&&channelWatching?' connected':'')}><span/>{status==='connected'&&channelWatching?'Live':'Syncing'}</span>
      <button type="button" className="cc-dm-icon" title="Refresh messages" aria-label="Refresh messages" onClick={()=>void refreshConversation(peer,true).catch(e=>setError(String(e)))}><RefreshCw size={18}/></button>
      <Link href={'/profile/'+encodeURIComponent(peer)} aria-label="View member profile" className="cc-dm-icon"><MoreHorizontal size={22}/></Link>
     </div>
