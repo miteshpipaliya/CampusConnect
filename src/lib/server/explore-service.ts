@@ -23,17 +23,19 @@ export async function explorePage(viewer:string,opts:{cursor?:string|null;tag?:s
   const allowed=await canViewMany(viewer,snap.docs.map(d=>String(d.data().authorUid||'')));
   for(const d of snap.docs){
    lastScanned=d;const a=String(d.data().authorUid||'');
-   if(d.data().deletedAt||d.data().archived||muted.has(a)||!allowed.get(a)||typeof d.data().mediaId!=='string')continue;
+   if(d.data().deletedAt||d.data().archived||muted.has(a)||!allowed.get(a)||!((typeof d.data().mediaId==='string'&&d.data().mediaId)||(Array.isArray(d.data().media)&&typeof d.data().media[0]?.mediaId==='string')))continue;
    if(opts.text&&!String(d.data().caption||'').toLowerCase().includes(opts.text))continue;
    selected.push(d);if(selected.length>=limit)break;
   }
   if(snap.size<30)break;query=query.startAfter(snap.docs.at(-1)!);
  }
+ // 'top' ranks the current paginated result batch, not the full history.
  const authors=await hydrateAvatars(selected.map(d=>String(d.data().authorUid||'')),viewer);
- const mediaIds=[...new Set(selected.map(d=>String(d.data().mediaId||'')))],media=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];
+ const pickMedia=(x:FirebaseFirestore.DocumentData)=>String(x.mediaId||((Array.isArray(x.media)&&x.media[0]?.mediaId)||''));
+ const mediaIds=[...new Set(selected.map(d=>pickMedia(d.data())).filter(Boolean))],media=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];
  const urls=await mintUrls(media.filter(d=>d.exists).map(d=>({id:d.id,...(d.data()??{})})),{viewerUid:viewer});
  const mediaTypes=new Map(media.map(d=>[d.id,String(d.data()?.contentType||'')]));
- let posts=selected.map(d=>{const x=d.data(),id=String(x.mediaId||''),uid=String(x.authorUid||''),createdAt=x.createdAt?.toMillis?.()??0;
+ let posts=selected.map(d=>{const x=d.data(),id=pickMedia(x),uid=String(x.authorUid||''),createdAt=x.createdAt?.toMillis?.()??0;
   return {id:d.id,caption:String(x.caption||''),type:x.type==='reel'?'reel':'post',authorUid:uid,authorHandle:authors[uid]?.handle||String(x.authorHandle||''),avatarUrl:authors[uid]?.avatarUrl??null,mediaUrl:urls[id]?.url??null,mediaType:mediaTypes.get(id)||'',likes:Number(x.counters?.likes||0),comments:Number(x.counters?.comments||0),reposts:Number(x.counters?.reposts||0),saves:Number(x.counters?.saves||0),createdAt,mediaCount:Array.isArray(x.media)?x.media.length:1};
  });
  if(opts.sort==='top')posts=[...posts].sort((a,b)=>exploreScore(b,Date.now())-exploreScore(a,Date.now())||b.createdAt-a.createdAt);

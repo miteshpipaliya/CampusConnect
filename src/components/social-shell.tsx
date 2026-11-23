@@ -50,7 +50,7 @@ function Nav({ pathname, section, mobile = false, counts }: { pathname: string; 
         aria-current={active ? 'page' : undefined} aria-label={item.label} title={item.label}>
         <Icon size={mobile ? 23 : 25} strokeWidth={active ? 2.8 : 1.8} fill={active && item.label === 'Home' ? 'currentColor' : 'none'} aria-hidden="true" />
         <span>{item.label}</span>
-        {((item.label==='Notifications'?counts.unread:item.label==='Messages'?counts.unreadMessages:0)>0)&&<b aria-label="Unread notifications" style={{position:'absolute',top:0,right:0,minWidth:17,height:17,borderRadius:20,background:'#fa3659',color:'white',fontSize:10,lineHeight:'17px',textAlign:'center'}}>{Math.min(99,item.label==='Notifications'?counts.unread:counts.unreadMessages)}</b>}
+        {((item.label==='Notifications'?counts.unread:item.label==='Messages'?counts.unreadMessages:0)>0)&&<b aria-label="Unread notifications" style={{position:'absolute',top:0,right:0,minWidth:17,height:17,borderRadius:20,background:'#fa3659',color:'white',fontSize:10,lineHeight:'17px',textAlign:'center'}}>{(item.label==='Notifications'?counts.unread:counts.unreadMessages)>99?'99+':(item.label==='Notifications'?counts.unread:counts.unreadMessages)}</b>}
       </Link>;
     })}
   </nav>;

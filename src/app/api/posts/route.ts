@@ -97,7 +97,7 @@ export async function POST(request:NextRequest){
     transaction.create(newPost,{authorUid:user.uid,authorHandle:profile.data()!.handle,caption:input.caption,mediaId:media[0]?.mediaId||null,media:media.map(m=>({...m})),type:input.type,hashtags:tags,mentions,location:input.location||null,cropRatio:input.cropRatio||'1 / 1',filter:input.filter||'none',commentsOff:input.commentsOff||false,hideLikeCount:input.hideLikeCount||false,visibility:profile.data()!.privacy==='private'?'private':'campus',createdAt:FieldValue.serverTimestamp(),deletedAt:null,archived:false,counters:{likes:0,comments:0,reposts:0,saves:0,shares:0,views:0}});
    });
   }catch{return errorResponse(400,'Invalid media or unable to publish')}
-  if(tags.length){const batch=store.batch();for(const tag of tags)batch.set(store.collection('hashtags').doc(tag),{tag,count:FieldValue.increment(1),updatedAt:FieldValue.serverTimestamp()},{merge:true});await batch.commit().catch(()=>{})}
+  if(tags.length){const batch=store.batch();for(const tag of tags)batch.set(store.collection('hashtags').doc(tag),{tag,count:FieldValue.increment(1),postCount:FieldValue.increment(1),updatedAt:FieldValue.serverTimestamp()},{merge:true});await batch.commit().catch(()=>{})}
   for(const handle of mentions){
    try{const person=await store.collection('users').where('handle','==',handle).limit(1).get();const target=person.docs[0];if(!target||target.id===user.uid||target.data().deletedAt||await isBlockedEitherWay(user.uid,target.id))continue;
     await notify({recipientUid:target.id,actorUid:user.uid,type:'mention',postId:newPost.id}).catch(()=>{});

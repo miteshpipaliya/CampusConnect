@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {normalizeSearch,normalizeTag,validSearch} from '@/lib/core/search-rules';
-import {isBlockedEitherWay} from '@/lib/server/privacy';
+import {blockedEitherWayMany} from '@/lib/server/privacy';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {explorePage} from '@/lib/server/explore-service';
 export const runtime='nodejs';
@@ -16,7 +16,7 @@ export async function GET(req:NextRequest){
   if(type==='tags'){
    const tag=normalizeTag(q);if(!tag)return NextResponse.json({items:[]},{headers:safeHeaders});
    const snap=await store.collection('hashtags').orderBy('tag').startAt(tag).endAt(tag+'\uf8ff').limit(20).get();
-   return NextResponse.json({items:snap.docs.map(d=>({tag:d.id,postCount:Number(d.data().postCount||0)}))},{headers:safeHeaders});
+   return NextResponse.json({items:snap.docs.map(d=>({tag:d.id,postCount:Number(d.data().postCount??d.data().count??0)}))},{headers:safeHeaders});
   }
   if(type==='posts'){const results=await explorePage(user.uid,{...(raw.trim().startsWith('#')?{tag:normalizeTag(q)}:{text:q}),limit:'20'});return NextResponse.json(results,{headers:safeHeaders})}
   const refs=await Promise.all([
@@ -29,8 +29,8 @@ export async function GET(req:NextRequest){
   const people=[...new Map(refs.flatMap(s=>s.docs).map(d=>[d.id,d])).values()].slice(0,30);
   // Private profiles remain discoverable by handle/name, while blocked profiles do not.
   // Post, Story, Reel and media APIs enforce content visibility separately.
-  const blocked=await Promise.all(people.map(d=>isBlockedEitherWay(user.uid,d.id)));
-  const allowed=people.filter((d,i)=>!blocked[i]&&!d.data().deletedAt);
+  const blocked=await blockedEitherWayMany(user.uid,people.map(d=>d.id));
+  const allowed=people.filter(d=>!blocked.has(d.id)&&!d.data().deletedAt);
   const avatars=await hydrateAvatars(allowed.map(d=>d.id),user.uid);
   return NextResponse.json({items:allowed.map(d=>({uid:d.id,handle:avatars[d.id]?.handle||d.data().handle,name:avatars[d.id]?.name||d.data().name,avatarUrl:avatars[d.id]?.avatarUrl??null}))},{headers:safeHeaders});
  }catch{return errorResponse(503,'Search unavailable')}
