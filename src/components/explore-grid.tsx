@@ -22,7 +22,7 @@ export function ExploreGrid({tag,sort}:{tag?:string;sort?:string}){
   {loading&&<div className="cc-explore-skeleton">Loading campus posts…</div>}
   {error&&<p role="alert">{error} <button onClick={()=>void load(cursor??undefined)}>Retry</button></p>}
   {!loading&&!items.length&&<p>No accessible campus posts yet.</p>}
-  <div className="cc-explore-grid">{items.map((post,i)=><Link key={post.id} className={post.type==='reel'&&i%10===0?'cc-explore-tile cc-explore-large':'cc-explore-tile'} href={post.type==='reel'?'/reels':'/posts/'+encodeURIComponent(post.id)} aria-label={post.caption||'Open campus post'}>
+  <div className="cc-explore-grid">{items.map((post,i)=><Link key={post.id} className={post.type==='reel'&&i%10===0?'cc-explore-tile cc-explore-large':'cc-explore-tile'} href={'/posts/'+encodeURIComponent(post.id)} aria-label={post.caption||'Open campus post'}>
    {post.mediaUrl?(post.mediaType.startsWith('video/')?<video src={post.mediaUrl} preload="metadata" muted playsInline/>:<img loading="lazy" src={post.mediaUrl} alt={post.caption||'Campus post'}/>):<span>Media unavailable</span>}
    <span className="cc-explore-icon">{post.type==='reel'?<Clapperboard size={20}/>:post.mediaCount>1?<Images size={20}/>:null}</span>
    <span className="cc-explore-overlay">♥ {post.likes} &nbsp; ◉ {post.comments}</span>
