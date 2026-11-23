@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'upgrade/phase-*']
   push:
-    branches: [main]
+    branches: [main, 'upgrade/phase-*']
   workflow_dispatch:
 
 permissions:
