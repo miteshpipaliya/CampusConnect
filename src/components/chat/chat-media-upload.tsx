@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState,type ChangeEvent} from 'react';
 import {validateFileForPurpose} from '@/lib/core/content-rules';
 import {ImagePlus} from 'lucide-react';
+import {canProxyChatUpload} from '@/lib/core/chat-upload';
 
 type Props={recipientHandle:string;onSent:()=>Promise<void>;compact?:boolean};
 async function postJson(path:string,body:object,signal?:AbortSignal):Promise<Record<string,unknown>>{
@@ -13,13 +14,24 @@ async function postJson(path:string,body:object,signal?:AbortSignal):Promise<Rec
 async function uploadSigned(url:string,file:File,xhr:XMLHttpRequest,progress:(value:number)=>void):Promise<void>{
  return new Promise((resolve,reject)=>{
   xhr.open('PUT',url);
+  xhr.timeout=60000;
   xhr.setRequestHeader('Content-Type',file.type);
   xhr.upload.onprogress=event=>{if(event.lengthComputable)progress(Math.round(event.loaded/event.total*100))};
   xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve():reject(Error('Upload failed ('+xhr.status+'). Try again.'));
-  xhr.onerror=()=>reject(Error('Network error while uploading'));
+  xhr.onerror=()=>reject(Error('Browser could not reach the R2 upload URL (network or CORS)'));
+  xhr.ontimeout=()=>reject(Error('Direct R2 upload timed out'));
   xhr.onabort=()=>reject(Error('Upload canceled'));
   xhr.send(file);
  });
+}
+async function uploadSmallFallback(id:string,file:File,signal:AbortSignal):Promise<void>{
+ const response=await fetch('/api/media/upload?id='+encodeURIComponent(id),{
+  method:'PUT',credentials:'same-origin',headers:{'Content-Type':file.type},body:file,signal
+ });
+ if(!response.ok){
+  const detail:unknown=await response.json().catch(()=>null);
+  throw Error(detail&&typeof detail==='object'&&'error' in detail?String(detail.error):'Same-origin upload failed ('+response.status+')');
+ }
 }
 export function ChatMediaUpload({recipientHandle,onSent,compact=false}:Props){
  const [file,setFile]=useState<File|null>(null),[preview,setPreview]=useState<string|null>(null),[progress,setProgress]=useState(0),[error,setError]=useState(''),[busy,setBusy]=useState(false),[sending,setSending]=useState(false);
@@ -49,7 +61,17 @@ export function ChatMediaUpload({recipientHandle,onSent,compact=false}:Props){
    if(controller.signal.aborted)throw Error('Upload canceled');
    if(typeof reserved.uploadUrl!=='string'||typeof reserved.id!=='string')throw Error('Upload reservation failed');
    const request=new XMLHttpRequest();xhr.current=request;
-   await uploadSigned(reserved.uploadUrl,file,request,setProgress);
+   try{
+    await uploadSigned(reserved.uploadUrl,file,request,setProgress);
+   }catch(uploadError){
+    if(controller.signal.aborted)throw uploadError;
+    // Browsers reject direct presigned PUT when the bucket CORS policy is missing.
+    // Vercel can accept small files through an authenticated, same-origin route.
+    if(!canProxyChatUpload(file.size))throw Error('Direct media upload blocked. Check Cloudflare R2 CORS (allowed origin, PUT and Content-Type). Large files require direct upload.');
+    setProgress(0);
+    await uploadSmallFallback(reserved.id,file,controller.signal);
+    setProgress(100);
+   }
    xhr.current=null;
    if(controller.signal.aborted)throw Error('Upload canceled');
    await postJson('/api/media',{action:'confirm',id:reserved.id},controller.signal);
@@ -58,6 +80,7 @@ export function ChatMediaUpload({recipientHandle,onSent,compact=false}:Props){
    phase.current='send';setSending(true);
    await postJson('/api/chat',{action:'sendMedia',recipientHandle,mediaId:reserved.id});
    setFile(null);setProgress(0);
+   setError('');
    // A confirmed upload/send must not be reported as failed due to refresh errors.
    void onSent().catch(()=>{});
   }catch(cause){setError(controller.signal.aborted?'Upload canceled':cause instanceof Error?cause.message:'Attachment failed; retry the file')}
@@ -75,7 +98,7 @@ export function ChatMediaUpload({recipientHandle,onSent,compact=false}:Props){
     {preview&&(file.type.startsWith('video/')?<video aria-label="Selected video preview" src={preview} controls playsInline style={{width:100,maxHeight:130}}/>:<img src={preview} alt="Selected attachment preview" style={{width:100,maxHeight:130,objectFit:'contain'}}/>)}
     <div className="cc-dm-attachment-detail"><strong>{file.name}</strong><small>{(file.size/1048576).toFixed(1)} MB</small></div>
    </div>}
-   {busy&&<progress aria-label="Attachment upload progress" value={progress} max={100} style={{width:'100%'}}/>}
+   {busy&&<><progress aria-label="Attachment upload progress" value={progress} max={100} style={{width:'100%'}}/><small role="status">{sending?'Delivering media…':progress===0?'Preparing upload…':progress+'% uploaded'}</small></>}
    {error&&<p role="alert" className="cc-dm-upload-error">{error}</p>}
    <div className="cc-dm-attachment-buttons">
     {file&&<button type="button" onClick={()=>void send()} disabled={busy}>{sending?'Sending…':busy?'Uploading…':'Send attachment'}</button>}

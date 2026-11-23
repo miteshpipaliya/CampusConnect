@@ -456,3 +456,22 @@
 }
 @media(hover:none){.cc-dm-message-menu{opacity:1}}
 @media(prefers-reduced-motion:reduce){.cc-dm-message-menu{transition:none}}
+
+
+/* Chat delivery repair: keep the existing Instagram-style layout unchanged. */
+.cc-dm-final{--cc-surface:#0b0e13}
+.cc-dm-history{justify-content:flex-start!important;align-content:flex-start;gap:7px!important}
+.cc-dm-msg{position:relative!important;flex:0 0 auto!important;gap:2px!important;margin:0!important;min-height:0!important}
+.cc-dm-msg-body{flex:0 0 auto;line-height:1.4;min-height:0}
+.cc-dm-message-menu{position:absolute!important;inset:auto -38px auto auto;top:50%!important;transform:translateY(-50%);width:34px;height:34px;z-index:5;pointer-events:none}
+.cc-dm-msg.mine .cc-dm-message-menu{left:-38px;right:auto}
+.cc-dm-msg:hover .cc-dm-message-menu,.cc-dm-msg:focus-within .cc-dm-message-menu{pointer-events:auto}
+.cc-dm-message-menu:has(.cc-dm-menu-items){opacity:1;pointer-events:auto}
+.cc-dm-menu-items{bottom:auto!important;top:50%;transform:translateY(-50%)}
+.cc-dm-green-typing{color:#35d48f!important;font-weight:650}
+.cc-dm-typing-indicator{display:flex;align-items:center;gap:7px;flex:0 0 auto;padding:3px 22px 6px;color:#35d48f;font-size:12px;font-weight:650}
+.cc-dm-typing-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#35d48f;box-shadow:0 0 8px #35d48f88}
+.cc-dm-composer textarea{overflow-y:auto!important;scrollbar-width:none}
+.cc-dm-composer textarea::-webkit-scrollbar{display:none}
+.cc-dm-attachment-popover{overflow-wrap:anywhere}
+@media (hover:none){.cc-dm-message-menu{pointer-events:auto}}

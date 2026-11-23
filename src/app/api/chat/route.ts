@@ -1,4 +1,4 @@
-import {NextRequest,NextResponse} from 'next/server';
+import {NextRequest,NextResponse,after} from 'next/server';
 import {createHmac} from 'node:crypto';
 import {z} from 'zod';
 import {db} from '@/lib/server/services';
@@ -51,9 +51,9 @@ async function messageInChannel(messageId:string,channelId:string){
 }
 async function peer(handle:string){const snap=await db().collection('users').where('handle','==',handle.toLowerCase()).limit(1).get();return snap.docs[0]??null}
 function channelId(a:string,b:string){return createHmac('sha256',config().secret).update([a,b].sort().join(':')).digest('hex').slice(0,40)}
-async function ensureChannel(uid:string,otherUid:string,handle:string,otherName:string,before?:string,refreshOnly=false){
+async function ensureChannel(uid:string,otherUid:string,handle:string,otherName:string,before?:string,refreshOnly=false,alreadyCheckedBlocks=false){
  void handle;void otherName;
- if(await isBlockedEitherWay(uid,otherUid))throw Error('CHAT_BLOCKED');
+ if(!alreadyCheckedBlocks&&await isBlockedEitherWay(uid,otherUid))throw Error('CHAT_BLOCKED');
  // The first open and writes synchronize profiles. Lightweight refreshes must
  // not call two additional Stream user-upsert requests every three seconds.
  if(!refreshOnly)await Promise.all([syncStreamUser(uid),syncStreamUser(otherUid)]);
@@ -133,7 +133,10 @@ export async function POST(request:NextRequest){
   const quota=await checkRateLimit({key:'chat:'+input.action+':'+user.uid,limit:input.action==='typing'?120:(input.action==='send'||input.action==='sendMedia'||input.action==='shareContent')?30:60,windowSec:60});
   if(!quota.allowed)return errorResponse(429,'Too many chat requests');
   if(await isBlockedEitherWay(user.uid,other.id))return errorResponse(403,'CHAT_BLOCKED');
-  const {id,result}=await ensureChannel(user.uid,other.id,input.recipientHandle,other.data().name);
+  // Reuse the synchronized Stream user records; GET/first token connection handles upserts.
+  // Keep the server-side membership/channel query and Firestore block authorization.
+  const {id}=await ensureChannel(user.uid,other.id,input.recipientHandle,other.data().name,undefined,true,true);
+  let deliveredId:string|undefined;
   const path='/channels/messaging/'+id;
   if(input.action==='deleteForMe'||input.action==='unsend'||input.action==='reaction'){
    const message=await messageInChannel(input.messageId,id);
@@ -161,7 +164,8 @@ export async function POST(request:NextRequest){
     sentId=String(result.message?.id||'');
     if(!sentId)throw Error('STREAM_MESSAGE_ID_MISSING');
     await finishChatMedia(input.mediaId,id,sentId);
-    await notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sentId}).catch(()=>{});
+    deliveredId=sentId;
+    after(()=>notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sentId!}).catch(error=>console.error('Chat notification failed',error instanceof Error?error.message:'unknown')));
    }catch(error){
     if(sentId)await stream('/messages/'+encodeURIComponent(sentId),'DELETE').catch(()=>{});
     await releaseChatMedia(input.mediaId,id).catch(()=>{});
@@ -176,7 +180,10 @@ export async function POST(request:NextRequest){
    if(!allowed.get(authorUid)||!recipientAllowed.get(authorUid))return errorResponse(403,'Recipient cannot view this content');
    const kind=details?.type==='reel'?'reel':'post';
    const shared=await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,campusContentId:input.postId,campusContentType:kind}});
-   if(typeof shared.message?.id==='string')await notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:shared.message.id}).catch(()=>{});
+   if(typeof shared.message?.id==='string'){
+    deliveredId=shared.message.id;
+    after(()=>notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:shared.message.id}).catch(error=>console.error('Chat notification failed',error instanceof Error?error.message:'unknown')));
+   }
   }else if(input.action==='typing'){
    await stream(path+'/event','POST',{event:{type:input.typing?'typing.start':'typing.stop',user_id:user.uid}});
   }else if(input.action==='read'){
@@ -184,8 +191,11 @@ export async function POST(request:NextRequest){
   }else{
    if(input.quotedMessageId&&!(await messageInChannel(input.quotedMessageId,id)))return errorResponse(404,'Quoted message is unavailable');
    const sent=await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,...(input.quotedMessageId?{quoted_message_id:input.quotedMessageId}:{})}});
-   if(typeof sent.message?.id==='string')await notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sent.message.id}).catch(()=>{});
+   if(typeof sent.message?.id==='string'){
+    deliveredId=sent.message.id;
+    after(()=>notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:sent.message.id}).catch(error=>console.error('Chat notification failed',error instanceof Error?error.message:'unknown')));
+   }
   }
-  return NextResponse.json({ok:true},{headers:safeHeaders});
+  return NextResponse.json({ok:true,...(deliveredId?{messageId:deliveredId}:{})},{headers:safeHeaders});
  }catch(error){console.error('CampusConnect chat POST failed',{error:error instanceof Error?error.message:'unknown'});return errorResponse(503,'Stream chat operation failed')}
 }
