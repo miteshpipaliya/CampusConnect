@@ -39,9 +39,10 @@ export async function GET(req:NextRequest){
   const mediaIds=[...new Set(visible.flatMap(h=>h.storyDocs.map(d=>String(d.data()?.mediaId||''))).filter(Boolean))];
   const media=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];
   const signed=await mintUrls(media.filter(d=>d.exists).map(d=>({id:d.id,...(d.data()||{})})),{viewerUid:user.uid});
+  const mediaTypes=new Map(media.map(d=>[d.id,String(d.data()?.contentType||'image/jpeg')]));
   return NextResponse.json({items:visible.map(h=>{
    const cover=String(h.storyDocs[0]?.data()?.mediaId||'');
-   return {id:h.id,title:h.title,coverUrl:signed[cover]?.url??null,storyCount:h.storyDocs.length,order:h.order,...(user.uid===ownerUid?{storyIds:h.storyDocs.map(d=>d.id)}:{})};
+   return {id:h.id,title:h.title,coverUrl:signed[cover]?.url??null,coverContentType:mediaTypes.get(cover)||'image/jpeg',storyCount:h.storyDocs.length,order:h.order,...(user.uid===ownerUid?{storyIds:h.storyDocs.map(d=>d.id)}:{})};
   }).sort((a,b)=>a.order-b.order)},{headers:safeHeaders});
  }catch{return errorResponse(503,'Highlights unavailable')}
 }

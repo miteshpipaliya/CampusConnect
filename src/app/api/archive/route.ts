@@ -12,6 +12,7 @@ export async function GET(req:NextRequest){
   const mediaIds=archive.map(d=>d.data().mediaId).filter((x):x is string=>typeof x==='string');
   const media=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];
   const urls=await mintUrls(media.filter(d=>d.exists).map(d=>({id:d.id,...(d.data()??{})})),{viewerUid:user.uid});
-  return NextResponse.json({items:archive.map(d=>({id:d.id,caption:String(d.data().caption??''),mediaUrl:urls[d.data().mediaId]?.url??null,createdAt:d.data().createdAt?.toMillis?.()??0}))},{headers:safeHeaders});
+  const mediaTypes=new Map(media.map(d=>[d.id,String(d.data()?.contentType||'image/jpeg')]));
+  return NextResponse.json({items:archive.map(d=>({id:d.id,caption:String(d.data().caption??''),mediaUrl:urls[d.data().mediaId]?.url??null,contentType:mediaTypes.get(String(d.data().mediaId||''))||'image/jpeg',createdAt:d.data().createdAt?.toMillis?.()??0}))},{headers:safeHeaders});
  }catch{return errorResponse(503,'Story archive unavailable')}
 }
