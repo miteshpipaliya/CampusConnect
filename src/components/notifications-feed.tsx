@@ -4,7 +4,7 @@ import Link from 'next/link';import {Avatar} from './avatar';import {Bell,CheckC
 type Notification={id:string;type:string;actorUid:string;actorHandle:string;actorAvatarUrl:string|null;actorUids:string[];count:number;postId:string|null;storyId:string|null;createdAt:string|null;unread:boolean};
 function label(n:Notification){
  const actor='@'+(n.actorHandle||'member'),extra=n.count>1?' and '+(n.count-1)+' others':'';
- const action:Record<string,string>={like:'liked your post',comment:'commented on your post',reply:'replied to your comment',mention:'mentioned you',comment_like:'liked your comment',follow:'followed you',follow_request:'requested to follow you',follow_accept:'accepted your follow request',repost:'reposted your post',story_reply:'reacted or replied to your story',story_mention:'mentioned you in a story',share:'shared your post'};
+ const action:Record<string,string>={like:'liked your post',comment:'commented on your post',reply:'replied to your comment',mention:'mentioned you',comment_like:'liked your comment',follow:'followed you',follow_request:'requested to follow you',follow_accept:'accepted your follow request',repost:'reposted your post',story_reply:'replied to your story',story_reaction:'reacted to your story',story_mention:'mentioned you in a story',share:'shared your post'};
  return actor+extra+' '+(action[n.type]||'interacted with your content');
 }
 function dayGroup(n:Notification){
@@ -26,7 +26,7 @@ export function NotificationsFeed(){
  useEffect(()=>{void load()},[load]);
  const groups=useMemo(()=>Object.entries({New:items.filter(x=>dayGroup(x)==='New'),'This week':items.filter(x=>dayGroup(x)==='This week'),Earlier:items.filter(x=>dayGroup(x)==='Earlier')}),[items]);
  const mark=async(id?:string)=>{try{
-  const r=await fetch('/api/notifications/read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(id?{id}:{all:true})});
+  const r=await fetch('/api/notifications/read',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(id?{id}:{all:true})});
   if(!r.ok)throw Error('Unable to mark notifications read');
   setItems(old=>old.map(n=>!id||n.id===id?{...n,unread:false}:n));window.dispatchEvent(new Event('cc-notifications-updated'));
  }catch(e){setError(String(e))}};

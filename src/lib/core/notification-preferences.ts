@@ -5,7 +5,7 @@ export function preferenceFor(type:string):PreferenceKey{
  if(type==='follow'||type==='follow_request'||type==='follow_accept'||type==='follow_accepted')return 'follows';
  if(type==='mention'||type==='story_mention')return 'mentions';
  if(type==='repost')return 'reposts';
- if(type==='story_reply')return 'stories';
+ if(type==='story_reply'||type==='story_reaction')return 'stories';
  if(type==='share')return 'shares';
  return 'messages';
 }

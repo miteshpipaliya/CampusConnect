@@ -1,4 +1,4 @@
-export type NotificationEvent='like'|'comment'|'reply'|'mention'|'comment_like'|'follow'|'follow_request'|'follow_accept'|'repost'|'story_reply'|'story_mention'|'share';
+export type NotificationEvent='like'|'comment'|'reply'|'mention'|'comment_like'|'follow'|'follow_request'|'follow_accept'|'repost'|'story_reply'|'story_reaction'|'story_mention'|'share';
 export function notificationGroupKey(type:NotificationEvent,target:string,ms:number):string{
  const day=Math.floor(ms/86400000);
  return [type,target||'profile',day].join(':');

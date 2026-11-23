@@ -15,6 +15,6 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{id:string}>
  const actor=await story.doc.ref.firestore.collection('users').doc(checked.user.uid).get();
  const value=schema.parse(checked.input);
  await story.doc.ref.collection('reactions').doc(checked.user.uid).set({uid:checked.user.uid,emoji:value.emoji,actorHandle:String(actor.data()?.handle||''),createdAt:FieldValue.serverTimestamp()});
- await notify({recipientUid:story.authorUid,actorUid:checked.user.uid,type:'story_reply',storyId:id}).catch(()=>{});
+ await notify({recipientUid:story.authorUid,actorUid:checked.user.uid,type:'story_reaction',storyId:id}).catch(()=>{});
  return NextResponse.json({ok:true},{headers:safeHeaders});
 }
