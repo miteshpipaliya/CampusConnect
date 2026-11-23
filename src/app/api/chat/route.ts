@@ -10,6 +10,7 @@ import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {isBlockedEitherWay,canViewMany} from '@/lib/server/privacy';
 import {claimChatMedia,finishChatMedia,releaseChatMedia,revokeChatMedia} from '@/lib/server/chat-media';
 import {notifyChatMessage} from '@/lib/server/chat-notify';
+import {streamIso,streamReadByPeer} from '@/lib/core/stream-time';
 export const runtime='nodejs';
 
 /** Stream owns chat messages, receipts, and typing metadata. Firestore is used only to resolve campus identities. */
@@ -97,7 +98,7 @@ export async function GET(request:NextRequest){
    }));
    const byId=new Map(profiles.map(p=>[p.id,p]));
    const avatars=await hydrateAvatars(profiles.map(p=>p.id),user.uid);
-   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{peerUid:id!,channelId:c.channel?.id||'',handle:profile.handle,name:profile.name||profile.handle,unreadCount:Math.max(0,Number(c.unread_count||0)),preview:c.messages?.at(-1)?.text||'',updatedAt:c.messages?.at(-1)?.created_at||'',avatarMediaId:avatars[id!]?.avatarMediaId??null,avatarUrl:avatars[id!]?.avatarUrl??null}]});
+   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{peerUid:id!,channelId:c.channel?.id||'',handle:profile.handle,name:profile.name||profile.handle,unreadCount:Math.max(0,Number(c.unread_count||0)),preview:c.messages?.at(-1)?.text||'',updatedAt:streamIso(c.messages?.at(-1)?.created_at)||'',avatarMediaId:avatars[id!]?.avatarMediaId??null,avatarUrl:avatars[id!]?.avatarUrl??null}]});
    return NextResponse.json({conversations},{headers:safeHeaders});
   }
   const other=await peer(handle);if(!other||other.id===user.uid||other.data().deletedAt||await isBlockedEitherWay(user.uid,other.id))return errorResponse(404,'Member unavailable');
@@ -107,12 +108,12 @@ export async function GET(request:NextRequest){
   const hidden=await db().collection('users').doc(user.uid).collection('hiddenChatMessages').where('channelId','==',channelId(user.uid,other.id)).limit(500).get();
   const hiddenIds=new Set(hidden.docs.map(d=>d.id));
   const messages=(result.messages||[]).filter((m:{id:string;type?:string})=>!hiddenIds.has(m.id)&&m.type!=='deleted').map((m:{id:string;text?:string;user?:{id:string};created_at?:string;quoted_message_id?:string;reaction_counts?:Record<string,number>;latest_reactions?:Array<{user_id?:string;type?:string}>;campusMediaId?:string;campusMediaType?:string;custom?:{campusMediaId?:string;campusMediaType?:string;campusContentId?:string;campusContentType?:string};campusContentId?:string;campusContentType?:string})=>({
-   id:m.id,text:m.text||'',senderUid:m.user?.id||'',createdAt:m.created_at||null,
+   id:m.id,text:m.text||'',senderUid:m.user?.id||'',createdAt:streamIso(m.created_at),
    mediaId:m.campusMediaId??m.custom?.campusMediaId??null,mediaType:m.campusMediaType??m.custom?.campusMediaType??null,
    contentId:m.campusContentId??m.custom?.campusContentId??null,contentType:m.campusContentType??m.custom?.campusContentType??null,
    quotedMessageId:m.quoted_message_id??null,reactionCounts:m.reaction_counts??{},
    ownReactions:(m.latest_reactions||[]).filter(reaction=>reaction.user_id===user.uid).map(reaction=>reaction.type||'').filter(Boolean),
-   seen:Boolean((result.read||[]).find((x:{user?:{id:string};last_read?:string})=>x.user?.id===other.id&&x.last_read&&m.created_at&&x.last_read>=m.created_at))
+   seen:Boolean((result.read||[]).find((x:{user?:{id:string};last_read?:unknown})=>x.user?.id===other.id&&streamReadByPeer(m.created_at,x.last_read)))
   }));
   // Typing state is delivered by Stream's realtime events, not a users/query lookup.
   // Avoid rejecting the entire message history when optional presence metadata is unavailable.
