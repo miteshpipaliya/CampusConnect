@@ -5,6 +5,7 @@ import {authorizedStory} from '@/lib/server/story-service';
 import {sendStoryDM} from '@/lib/server/story-reply';
 import {db} from '@/lib/server/services';
 import {errorResponse,safeHeaders} from '@/lib/server/session';
+import {notify} from '@/lib/server/notify';
 export const runtime='nodejs';
 const schema=z.object({text:z.string().trim().min(1).max(1000)});
 export async function POST(req:NextRequest,{params}:{params:Promise<{id:string}>}){
@@ -21,6 +22,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{id:string}>
    if(relation.data()?.status!=='active')return errorResponse(403,'Story reply restricted');
   }
   const idSent=await sendStoryDM(checked.user.uid,story.authorUid,id,schema.parse(checked.input).text);
+  await notify({recipientUid:story.authorUid,actorUid:checked.user.uid,type:'story_reply',storyId:id}).catch(()=>{});
   return NextResponse.json({ok:true,messageId:idSent},{headers:safeHeaders});
  }catch{return errorResponse(503,'Story reply unavailable')}
 }
