@@ -90,7 +90,7 @@ export async function GET(request:NextRequest){
   if(!handle){
    // Only channels the signed-in member belongs to; do not expose the entire campus directory.
    const result=await stream('/channels','POST',{filter_conditions:{type:'messaging',members:{$in:[user.uid]}},sort:[{field:'last_message_at',direction:-1}],limit:30,state:true,watch:false});
-   const channels=(result.channels||[]) as Array<{channel?:{id?:string;members?:Array<{user_id?:string;user?:{id?:string}}>};members?:Array<{user_id?:string;user?:{id?:string}}>;messages?:Array<{text?:string;created_at?:string}>;unread_count?:number}>;
+   const channels=(result.channels||[]) as Array<{channel?:{id?:string;members?:Array<{user_id?:string;user?:{id?:string}}>};members?:Array<{user_id?:string;user?:{id?:string}}>;messages?:Array<{text?:string;created_at?:unknown;type?:string}>;unread_count?:number}>;
    const peerIds=[...new Set(channels.flatMap(c=>(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').filter(id=>id&&id!==user.uid)))];
    const profiles=await Promise.all(peerIds.map(async id=>{
     const [doc,blocked]=await Promise.all([db().collection('users').doc(id).get(),isBlockedEitherWay(user.uid,id)]);
@@ -98,7 +98,7 @@ export async function GET(request:NextRequest){
    }));
    const byId=new Map(profiles.map(p=>[p.id,p]));
    const avatars=await hydrateAvatars(profiles.map(p=>p.id),user.uid);
-   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{peerUid:id!,channelId:c.channel?.id||'',handle:profile.handle,name:profile.name||profile.handle,unreadCount:Math.max(0,Number(c.unread_count||0)),preview:c.messages?.at(-1)?.text||'',updatedAt:streamIso(c.messages?.at(-1)?.created_at)||'',avatarMediaId:avatars[id!]?.avatarMediaId??null,avatarUrl:avatars[id!]?.avatarUrl??null}]});
+   const conversations=channels.flatMap(c=>{const id=(c.channel?.members||c.members||[]).map(m=>m.user_id||m.user?.id||'').find(id=>id&&id!==user.uid);const profile=id?byId.get(id):null;if(!profile?.handle)return [];return [{peerUid:id!,channelId:c.channel?.id||'',handle:profile.handle,name:profile.name||profile.handle,unreadCount:Math.max(0,Number(c.unread_count||0)),preview:c.messages?.filter(m=>m.type!=='deleted').at(-1)?.text||'',updatedAt:streamIso(c.messages?.at(-1)?.created_at)||'',avatarMediaId:avatars[id!]?.avatarMediaId??null,avatarUrl:avatars[id!]?.avatarUrl??null}]});
    return NextResponse.json({conversations},{headers:safeHeaders});
   }
   const other=await peer(handle);if(!other||other.id===user.uid||other.data().deletedAt||await isBlockedEitherWay(user.uid,other.id))return errorResponse(404,'Member unavailable');
