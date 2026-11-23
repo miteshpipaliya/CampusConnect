@@ -9,7 +9,7 @@ export const runtime='nodejs';
 const schema=z.object({text:z.string().trim().min(1).max(1000)});
 export async function POST(req:NextRequest,{params}:{params:Promise<{id:string}>}){
  const checked=await guard(req,{write:true,schema,rateLimit:{key:'story-reply:{uid}',limit:30,windowSec:3600}});if(!checked.ok)return checked.response;
- const {id}=await params,story=await authorizedStory(checked.user.uid,id);
+ const {id}=await params,story=await authorizedStory(checked.user.uid,id,{allowHighlighted:true});
  if(!story)return errorResponse(404,'Story unavailable');
  if(story.owned)return errorResponse(400,'Cannot reply to your own story');
  try{
