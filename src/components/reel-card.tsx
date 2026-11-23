@@ -4,6 +4,7 @@ import Link from 'next/link';
 import {Avatar} from './avatar';
 import {Heart,MessageCircle,Bookmark,Repeat2,Volume2,VolumeX,Send,Play,Pause,Ellipsis} from 'lucide-react';
 import {safeVideoAspect} from '@/lib/core/reel-discovery';
+import {fitReelFrame} from '@/lib/core/reel-layout';
 import {ChatShareSheet} from './chat/chat-share-sheet';
 
 export type Reel={id:string;authorUid:string;authorHandle:string;authorName:string;avatarUrl:string|null;caption:string;mediaId:string;mediaUrl:string|null;contentType?:string;likes:number;comments:number;reposts:number;views:number;liked:boolean;saved:boolean;reposted:boolean;isMine:boolean;followStatus:string;createdAt:number};
@@ -11,8 +12,8 @@ type Action='like'|'save'|'repost';
 const format=(n:number)=>n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'K':String(Math.max(0,n));
 
 export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;muted:boolean;onMute:(v:boolean)=>void}){
- const player=useRef<HTMLVideoElement>(null),counted=useRef(false),lastTick=useRef(0),playedMs=useRef(0);
- const [paused,setPaused]=useState(false),[ratio,setRatio]=useState(9/16),[progress,setProgress]=useState(0);
+ const player=useRef<HTMLVideoElement>(null),stageRef=useRef<HTMLDivElement>(null),actionsRef=useRef<HTMLDivElement>(null),counted=useRef(false),lastTick=useRef(0),playedMs=useRef(0);
+ const [paused,setPaused]=useState(false),[ratio,setRatio]=useState(9/16),[progress,setProgress]=useState(0),[frame,setFrame]=useState<{width:number;height:number}|null>(null);
  const [liked,setLiked]=useState(reel.liked),[saved,setSaved]=useState(reel.saved),[reposted,setReposted]=useState(reel.reposted),[likes,setLikes]=useState(reel.likes);
  const [busy,setBusy]=useState(false),[share,setShare]=useState(false),[comments,setComments]=useState(false),[follow,setFollow]=useState(reel.followStatus),[error,setError]=useState(''),[notice,setNotice]=useState('');
  useEffect(()=>{const v=player.current;if(!v)return;if(active&&!paused&&!document.hidden)void v.play().catch(()=>{});else v.pause()},[active,paused]);
@@ -20,6 +21,26 @@ export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;mu
   document.addEventListener('visibilitychange',handler);return()=>document.removeEventListener('visibilitychange',handler)
  },[active,paused]);
  useEffect(()=>{setLiked(reel.liked);setSaved(reel.saved);setReposted(reel.reposted);setLikes(reel.likes)},[reel.liked,reel.saved,reel.reposted,reel.likes]);
+ // Fit the actual source aspect ratio into the available Reel workspace. Do not
+ // rely on calc(length * CSS variable), which can be treated as invalid width
+ // and leave the video at its tiny intrinsic size.
+ useEffect(()=>{
+  const stage=stageRef.current;if(!stage)return;
+  const measure=()=>{
+   const controls=actionsRef.current;
+   const gap=Number.parseFloat(window.getComputedStyle(stage).columnGap)||16;
+   const railWidth=controls?.getBoundingClientRect().width||62;
+   const width=Math.max(0,stage.clientWidth-railWidth-gap-12);
+   const height=Math.max(0,stage.clientHeight-20);
+   const next=fitReelFrame(width,height,ratio);
+   setFrame(prev=>prev?.width===next.width&&prev?.height===next.height?prev:next);
+  };
+  measure();
+  const observer=new ResizeObserver(measure);
+  observer.observe(stage);
+  if(actionsRef.current)observer.observe(actionsRef.current);
+  return()=>observer.disconnect();
+ },[ratio]);
  async function action(which:Action){
   if(busy)return;setBusy(true);setError('');const old=[liked,saved,reposted,likes] as const;
   if(which==='like'){setLiked(!liked);setLikes(x=>Math.max(0,x+(liked?-1:1)))}
@@ -60,9 +81,9 @@ export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;mu
   try{await navigator.clipboard.writeText(window.location.origin+'/posts/'+encodeURIComponent(reel.id));setNotice('Link copied')}
   catch{setError('Unable to copy the Reel link')}
  }
- const videoStyle={'--cc-reel-aspect':String(ratio)} as CSSProperties;
+ const videoStyle={aspectRatio:String(ratio),...(frame&&frame.width>0&&frame.height>0?{width:frame.width,height:frame.height}:{} )} as CSSProperties;
  return <article data-reel-card className="cc-reel-card" aria-label={'Reel by '+reel.authorHandle}>
-  <div className="cc-reel-stage">
+  <div className="cc-reel-stage" ref={stageRef}>
    <div className="cc-reel-video-box" style={videoStyle}>
     {reel.mediaUrl?<video ref={player} src={reel.mediaUrl} playsInline muted={muted} loop preload={active?'auto':'metadata'}
      disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
@@ -81,7 +102,7 @@ export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;mu
     </div>
     <div className="cc-reel-progress" role="progressbar" aria-label="Video playback progress" aria-valuenow={Math.round(progress*100)} aria-valuemin={0} aria-valuemax={100}><span style={{width:(progress*100)+'%'}}/></div>
    </div>
-   <div className="cc-reel-actions" aria-label="Reel actions">
+   <div className="cc-reel-actions" aria-label="Reel actions" ref={actionsRef}>
     <button type="button" onClick={()=>void action('like')} aria-label={liked?'Unlike Reel':'Like Reel'} aria-pressed={liked}><Heart fill={liked?'currentColor':'none'} size={27}/><small>{format(likes)}</small></button>
     <button type="button" onClick={()=>setComments(true)} aria-label="View comments"><MessageCircle size={27}/><small>{format(reel.comments)}</small></button>
     <button type="button" onClick={()=>void action('repost')} aria-pressed={reposted} aria-label={reposted?'Undo repost':'Repost'}><Repeat2 size={27}/><small>{format(reel.reposts+(reposted&&!reel.reposted?1:!reposted&&reel.reposted?-1:0))}</small></button>
