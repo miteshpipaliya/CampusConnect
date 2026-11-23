@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState,type ChangeEvent} from 'react';
 import {validateFileForPurpose} from '@/lib/core/content-rules';
 import {ImagePlus} from 'lucide-react';
+import {canProxyChatUpload} from '@/lib/core/chat-upload';
 
 type Props={recipientHandle:string;onSent:()=>Promise<void>;compact?:boolean};
 async function postJson(path:string,body:object,signal?:AbortSignal):Promise<Record<string,unknown>>{
@@ -66,7 +67,7 @@ export function ChatMediaUpload({recipientHandle,onSent,compact=false}:Props){
     if(controller.signal.aborted)throw uploadError;
     // Browsers reject direct presigned PUT when the bucket CORS policy is missing.
     // Vercel can accept small files through an authenticated, same-origin route.
-    if(file.size>3*1024*1024)throw Error('Direct media upload blocked. Check Cloudflare R2 CORS (allowed origin, PUT and Content-Type). Large files require direct upload.');
+    if(!canProxyChatUpload(file.size))throw Error('Direct media upload blocked. Check Cloudflare R2 CORS (allowed origin, PUT and Content-Type). Large files require direct upload.');
     setProgress(0);
     await uploadSmallFallback(reserved.id,file,controller.signal);
     setProgress(100);
