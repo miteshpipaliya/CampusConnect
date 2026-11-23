@@ -1,11 +1,34 @@
 'use client';
-import {useState} from 'react';
+import {useRef,useState} from 'react';
+import {Volume2,VolumeX,Play,Pause} from 'lucide-react';
 export type CarouselMedia={mediaId:string;url?:string|null;alt?:string;contentType?:string};
-export function MediaCarousel({items,ratio='1 / 1'}:{items:CarouselMedia[];ratio?:string}){
- const [index,setIndex]=useState(0),item=items[index];if(!item)return null;
- const src=item.url||'/api/media?id='+encodeURIComponent(item.mediaId);
- return <div tabIndex={0} aria-label="Post media carousel" onKeyDown={e=>{if(e.key==='ArrowLeft')setIndex(i=>Math.max(0,i-1));if(e.key==='ArrowRight')setIndex(i=>Math.min(items.length-1,i+1))}} style={{position:'relative',maxWidth:'100%'}}>
-  <div style={{aspectRatio:ratio,overflow:'hidden',display:'grid',placeItems:'center'}}>{item.contentType?.startsWith('video/')?<video src={src} controls playsInline style={{maxWidth:'100%',maxHeight:'100%'}}/>:<img src={src} alt={item.alt||'Campus post media'} loading="lazy" style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain'}}/>}</div>
-  {items.length>1&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><button aria-label="Previous media" disabled={index===0} onClick={()=>setIndex(i=>i-1)}>←</button><span>{index+1} / {items.length}</span><button aria-label="Next media" disabled={index===items.length-1} onClick={()=>setIndex(i=>i+1)}>→</button></div>}
+function InlineVideo({src}:{src:string}){
+ const player=useRef<HTMLVideoElement>(null),[playing,setPlaying]=useState(false),[muted,setMuted]=useState(true);
+ function toggle(){const video=player.current;if(!video)return;if(video.paused)void video.play().then(()=>setPlaying(true)).catch(()=>setPlaying(false));else{video.pause();setPlaying(false)}}
+ return <div className="cc-inline-video" style={{position:'relative',width:'100%',maxWidth:'100%',display:'grid',placeItems:'center',background:'#0d0f14'}}>
+  <video ref={player} src={src} playsInline muted={muted} preload="metadata"
+   disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
+   onContextMenu={e=>e.preventDefault()} onClick={toggle} onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)} onPlay={()=>setPlaying(true)}
+   style={{display:'block',width:'100%',height:'auto',maxHeight:'68dvh',objectFit:'contain',cursor:'pointer'}}/>
+  <button type="button" aria-label={playing?'Pause video':'Play video'} onClick={toggle} style={{position:'absolute',left:12,bottom:12,border:'0',borderRadius:30,padding:8,color:'#fff',background:'#0009',display:'grid',placeItems:'center'}}>
+   {playing?<Pause size={21}/>:<Play size={21}/>}</button>
+  <button type="button" aria-label={muted?'Unmute video':'Mute video'} onClick={()=>setMuted(v=>!v)} style={{position:'absolute',right:12,bottom:12,border:'0',borderRadius:30,padding:8,color:'#fff',background:'#0009',display:'grid',placeItems:'center'}}>
+   {muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button>
  </div>
+}
+export function MediaCarousel({items,ratio='1 / 1'}:{items:CarouselMedia[];ratio?:string}){
+ const [index,setIndex]=useState(0),item=items[index];
+ if(!item)return null;
+ const src=item.url||'/api/media?id='+encodeURIComponent(item.mediaId);
+ const video=Boolean(item.contentType?.startsWith('video/'));
+ return <div tabIndex={0} aria-label="Post media carousel" onKeyDown={e=>{if(e.key==='ArrowLeft')setIndex(i=>Math.max(0,i-1));if(e.key==='ArrowRight')setIndex(i=>Math.min(items.length-1,i+1))}} style={{position:'relative',maxWidth:'100%'}}>
+  <div style={{...(video?{}:{aspectRatio:ratio}),overflow:'hidden',display:'grid',placeItems:'center'}}>
+   {video?<InlineVideo key={item.mediaId} src={src}/>:<img src={src} alt={item.alt||'Campus post media'} loading="lazy" style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain'}}/>}
+  </div>
+  {items.length>1&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+   <button aria-label="Previous media" disabled={index===0} onClick={()=>setIndex(i=>i-1)}>←</button>
+   <span>{index+1} / {items.length}</span>
+   <button aria-label="Next media" disabled={index===items.length-1} onClick={()=>setIndex(i=>i+1)}>→</button>
+  </div>}
+ </div>;
 }
