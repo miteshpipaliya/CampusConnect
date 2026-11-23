@@ -1,2 +1,3 @@
-import Link from 'next/link';
-export default function NotReady(){return <section className="cc-live-empty"><h2>Feature not available yet</h2><p>This section is being connected to real campus accounts. No demo content is shown.</p><Link href="/home">Return to your live feed</Link></section>}
+import {SearchPanel} from '@/components/search-panel';import {ExploreGrid} from '@/components/explore-grid';
+import '@/app/explore-upgrade.css';
+export default function ExplorePage(){return <div className="cc-explore-page"><SearchPanel/><ExploreGrid/></div>}

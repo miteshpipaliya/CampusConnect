@@ -12,10 +12,10 @@ import { useRouter } from 'next/navigation';
 type NavItem = { label: string; href: string; Icon: LucideIcon };
 const links: NavItem[] = [
   {label:'Home',href:'/home',Icon:Home},
-  {label:'Reels',href:'/home?section=reels',Icon:Clapperboard},
+  {label:'Reels',href:'/reels',Icon:Clapperboard},
   {label:'Messages',href:'/messages',Icon:Send},
-  {label:'Search',href:'/home?section=search',Icon:Search},
-  {label:'Notifications',href:'/home?section=notifications',Icon:Heart},
+  {label:'Search',href:'/explore',Icon:Search},
+  {label:'Notifications',href:'/notifications',Icon:Heart},
   {label:'Create',href:'/home?compose=1',Icon:PlusSquare},
   {label:'Community',href:'/home?section=community',Icon:Users},
   {label:'Profile',href:'/profile/me',Icon:UserRound},
@@ -25,6 +25,9 @@ function activeLink(pathname: string, item: NavItem, section: string) {
   if (item.label === 'Create') return false;
   const sections:Record<string,string>={Reels:'reels',Messages:'chat',Search:'search',Notifications:'notifications',Community:'community'};
   if(item.label==='Messages')return pathname.startsWith('/messages')||section==='chat';
+  if(item.label==='Reels'&&pathname.startsWith('/reels'))return true;
+  if(item.label==='Search'&&pathname.startsWith('/explore'))return true;
+  if(item.label==='Notifications'&&pathname.startsWith('/notifications'))return true;
   if(sections[item.label])return section===sections[item.label];
   if(item.label==='Home')return pathname==='/home'&&section==='home';
   if (item.label === 'Profile') return pathname.startsWith('/profile');
