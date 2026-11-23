@@ -1,5 +1,6 @@
 'use client';
 import {Component,type ReactNode} from 'react';
+import Link from 'next/link';
 type Props={children:ReactNode};
 type State={failed:boolean};
 export class ChatErrorBoundary extends Component<Props,State>{
@@ -12,7 +13,7 @@ export class ChatErrorBoundary extends Component<Props,State>{
    <h2>Unable to display this conversation</h2>
    <p>The chat view encountered an error. Your conversation is not deleted.</p>
    <button type="button" onClick={()=>this.setState({failed:false})}>Try loading again</button>
-   <a href="/messages" style={{marginLeft:16}}>Return to messages</a>
+   <Link href="/messages" style={{marginLeft:16}}>Return to messages</Link>
   </section>;
  }
 }
