@@ -1,8 +1,9 @@
 'use client';
 import {useEffect,useRef,useState,type ChangeEvent} from 'react';
 import {validateFileForPurpose} from '@/lib/core/content-rules';
+import {ImagePlus} from 'lucide-react';
 
-type Props={recipientHandle:string;onSent:()=>Promise<void>};
+type Props={recipientHandle:string;onSent:()=>Promise<void>;compact?:boolean};
 async function postJson(path:string,body:object,signal?:AbortSignal):Promise<Record<string,unknown>>{
  const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body),...(signal?{signal}:{})});
  const data:Record<string,unknown>=await response.json().catch(()=>({}));
@@ -20,8 +21,9 @@ async function uploadSigned(url:string,file:File,xhr:XMLHttpRequest,progress:(va
   xhr.send(file);
  });
 }
-export function ChatMediaUpload({recipientHandle,onSent}:Props){
+export function ChatMediaUpload({recipientHandle,onSent,compact=false}:Props){
  const [file,setFile]=useState<File|null>(null),[preview,setPreview]=useState<string|null>(null),[progress,setProgress]=useState(0),[error,setError]=useState(''),[busy,setBusy]=useState(false),[sending,setSending]=useState(false);
+ const fileInput=useRef<HTMLInputElement|null>(null);
  const xhr=useRef<XMLHttpRequest|null>(null),abort=useRef<AbortController|null>(null),phase=useRef<'idle'|'upload'|'send'>('idle');
  useEffect(()=>()=>{abort.current?.abort();xhr.current?.abort()},[]);
  useEffect(()=>{
@@ -56,21 +58,30 @@ export function ChatMediaUpload({recipientHandle,onSent}:Props){
    phase.current='send';setSending(true);
    await postJson('/api/chat',{action:'sendMedia',recipientHandle,mediaId:reserved.id});
    setFile(null);setProgress(0);
-   await onSent();
+   // A confirmed upload/send must not be reported as failed due to refresh errors.
+   void onSent().catch(()=>{});
   }catch(cause){setError(controller.signal.aborted?'Upload canceled':cause instanceof Error?cause.message:'Attachment failed; retry the file')}
   finally{setBusy(false);setSending(false);xhr.current=null;abort.current=null;phase.current='idle'}
  };
- return <section aria-label="Media attachment" style={{padding:10,borderTop:'1px solid var(--cc-border,#7773)'}}>
-  <label style={{display:'inline-block',cursor:'pointer'}}>Attach a photo or video
-   <input aria-label="Choose photo or video" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" onChange={select} disabled={busy} style={{display:'block',maxWidth:'100%'}}/>
-  </label>
-  {file&&<div style={{marginTop:8,display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
-   {preview&&(file.type.startsWith('video/')?<video aria-label="Selected video preview" src={preview} controls playsInline style={{maxWidth:120,maxHeight:140}}/>:<img src={preview} alt="Selected attachment preview" style={{maxWidth:120,maxHeight:140,objectFit:'cover'}}/>)}
-   <div><strong>{file.name}</strong><small style={{display:'block'}}>{(file.size/1048576).toFixed(1)} MB</small></div>
-   <button type="button" onClick={()=>void send()} disabled={busy}>{busy?'Uploading…':'Send attachment'}</button>
-   <button type="button" disabled={sending} onClick={()=>{if(phase.current==='send')return;abort.current?.abort();xhr.current?.abort();setFile(null);setProgress(0)}}>{sending?'Sending…':busy?'Cancel upload':'Remove'}</button>
+ return <section className={compact?'cc-dm-media-control':'cc-dm-media-legacy'} aria-label="Media attachment">
+  {compact?<button type="button" className="cc-dm-composer-icon" title="Attach a photo or video" aria-label="Attach a photo or video" disabled={busy} onClick={()=>fileInput.current?.click()}><ImagePlus size={21} strokeWidth={1.9}/></button>:
+   <label style={{display:'inline-block',cursor:'pointer'}}>Attach a photo or video</label>}
+  <input ref={fileInput} aria-label="Choose photo or video" type="file"
+    accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+    onChange={select} disabled={busy}
+    className={compact?'cc-dm-hidden-file':'cc-dm-visible-file'}/>
+  {(file||busy||error)&&<div className={compact?'cc-dm-attachment-popover':'cc-dm-attachment-inline'} role="group" aria-label="Attachment preview">
+   {file&&<div className="cc-dm-attachment-content">
+    {preview&&(file.type.startsWith('video/')?<video aria-label="Selected video preview" src={preview} controls playsInline style={{width:100,maxHeight:130}}/>:<img src={preview} alt="Selected attachment preview" style={{width:100,maxHeight:130,objectFit:'contain'}}/>)}
+    <div className="cc-dm-attachment-detail"><strong>{file.name}</strong><small>{(file.size/1048576).toFixed(1)} MB</small></div>
+   </div>}
+   {busy&&<progress aria-label="Attachment upload progress" value={progress} max={100} style={{width:'100%'}}/>}
+   {error&&<p role="alert" className="cc-dm-upload-error">{error}</p>}
+   <div className="cc-dm-attachment-buttons">
+    {file&&<button type="button" onClick={()=>void send()} disabled={busy}>{sending?'Sending…':busy?'Uploading…':'Send attachment'}</button>}
+    {file&&<button type="button" disabled={sending} onClick={()=>{if(phase.current==='send')return;abort.current?.abort();xhr.current?.abort();setFile(null);setProgress(0);setError('')}}>{sending?'Sending…':busy?'Cancel upload':'Remove'}</button>}
+    {!file&&!busy&&<button type="button" onClick={()=>setError('')}>Close</button>}
+   </div>
   </div>}
-  {busy&&<progress aria-label="Attachment upload progress" value={progress} max={100} style={{width:'100%'}}/>}
-  {error&&<p role="alert" style={{color:'#ef4444'}}>{error} {file?'Select Send attachment to retry.':''}</p>}
  </section>;
 }
