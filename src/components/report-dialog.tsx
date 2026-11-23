@@ -1,12 +1,12 @@
 'use client';
 import {useState} from 'react';
 type TargetType='post'|'comment'|'user'|'story';
-export function ReportDialog({targetType,targetId,onClose}:{targetType:TargetType;targetId:string;onClose:()=>void}){
+export function ReportDialog({targetType,targetId,postId,onClose}:{targetType:TargetType;targetId:string;postId?:string;onClose:()=>void}){
  const [reason,setReason]=useState('spam'),[details,setDetails]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState(false);
  async function submit(){
   if(busy)return;setBusy(true);setError('');
   try{
-   const response=await fetch('/api/reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targetType,targetId,reason,details})});
+   const response=await fetch('/api/reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targetType,targetId,reason,details,...(postId?{postId}:{})})});
    const data=await response.json();if(!response.ok)throw Error(data.error||'Report could not be submitted');
    setSuccess(true);
   }catch(e){setError(e instanceof Error?e.message:'Unable to report')}finally{setBusy(false)}

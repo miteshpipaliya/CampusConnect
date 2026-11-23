@@ -10,7 +10,7 @@ const schema=z.object({
  targetType:z.enum(['post','comment','user','story']),
  targetId:z.string().regex(/^[A-Za-z0-9_-]{10,128}$/),
  reason:z.enum(REPORT_REASONS),
- details:z.string().trim().max(300).optional()
+ details:z.string().trim().max(300).optional(),postId:z.string().regex(/^[A-Za-z0-9_-]{10,100}$/).optional()
 }).strict();
 export async function POST(req:NextRequest){
  const checked=await guard(req,{write:true,schema,rateLimit:{key:'reports:{uid}',limit:5,windowSec:3600}});
@@ -29,7 +29,7 @@ export async function POST(req:NextRequest){
   const duplicate=await ref.get();
   if(duplicate.exists)return NextResponse.json({ok:true,alreadyReported:true},{headers:safeHeaders});
   try{
-   await ref.create({reporterUid:checked.user.uid,targetType:data.targetType,targetId:data.targetId,reason:data.reason,details:data.details||'',status:'open',createdAt:FieldValue.serverTimestamp()});
+   await ref.create({reporterUid:checked.user.uid,targetType:data.targetType,targetId:data.targetId,reason:data.reason,details:data.details||'',...(data.postId?{postId:data.postId}:{}),status:'open',createdAt:FieldValue.serverTimestamp()});
   }catch(error){
    if((error as {code?:unknown}).code===6)return NextResponse.json({ok:true,alreadyReported:true},{headers:safeHeaders});
    throw error;

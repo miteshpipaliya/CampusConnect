@@ -65,6 +65,6 @@ export function LivePostDetail({id}:{id:string}){
    <input required maxLength={1000} value={reply} onChange={e=>setReply(e.target.value)} aria-label="Write a comment" placeholder="Write a comment…"/>
    <button disabled={!reply.trim()||busy} type="submit">{replyTo?'Reply':'Post'}</button>
   </form>}</section>
-  {reportComment&&<ReportDialog targetType="comment" targetId={reportComment} onClose={()=>setReportComment(null)}/>}
+  {reportComment&&<ReportDialog targetType="comment" targetId={reportComment} postId={id} onClose={()=>setReportComment(null)}/>}
  </article>;
 }
