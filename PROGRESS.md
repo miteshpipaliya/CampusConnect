@@ -1,64 +1,41 @@
-# CampusConnect implementation progress
+# CampusConnect — implementation and audit progress
 
-## Latest release-readiness checkpoint (2026-11-22)
-- Integration PR: #22, branch `fix/campusconnect-release-readiness`; production `main` remains at `732fa10524b0f8fa737e4c20e1895fca3c8a167d`. **Do not merge or deploy automatically.**
-- GitHub Actions CI **passed** at `58695eaecec2c42e40b36bb1e83cb9fe228c7f3c`: `npm ci`, lint (27 nonfatal warnings), TypeScript, 53 unit tests, high/critical dependency audit (14 moderate findings remain), Next.js production build, and secret scan. This is evidence for THAT SHA only.
-- Newer branch changes after that pass: cancel-safe chat media workflow, attachment revocation before unsend, no unauthorized "Offline" status. Revalidate CI and preview for the exact final head before merging.
-- Vercel's last confirmed READY preview is `c549e07e2c3fc1aabb60cb89b8f7af8e2a96f56a`, not the latest code. Additional deployments hit `api-deployments-free-per-day`; no SHA-matched preview or live smoke test has been established for the current head.
-- Real Stream/R2 two-user, multi-device, privacy, media, notification and reconnection acceptance remains **unverified**. The Stream client-token feature flag must remain disabled pending Stream permissions review and full acceptance.
-- Prior content-pipeline Batches 0–7, Firestore indexes, UI/composer/social-graph scope and API integration coverage are NOT complete merely because CI is green. See `RELEASE_READINESS.md` for remaining gates.
-- All earlier checkpoints below are historical and may describe the work before later commits.
+Updated **2026-11-24**. Source of truth: GitHub branch code and CI results for the exact commit.
 
-Updated 2026-11-22. Source of truth: code and CI checks, not previous phase claims.
+## Current development branch
+- **Branch:** `12-adudit`, based on production `main` at `d8c77a2bbb9b391219467530907fe5f477491712`
+- **Review PR:** [#34](https://github.com/miteshpipaliya/CampusConnect/pull/34) (**draft, unmerged**)
+- **Production:** untouched by this audit. Do not deploy/merge it until index/Stream/R2/two-account acceptance and reviewer approval.
+- A prior audit commit `7beba1da18be35b492ecb387e14d0d1b64ca7bcf` passed GitHub CI and had a Ready Vercel preview. Newer commits must be validated independently.
 
-## Current work: content-pipeline batch 1
-- DONE: shared pure caption parsing with deduplicated/capped hashtags and mentions.
-- DONE: canonical media rules, QuickTime type validation, required duration metadata for story/reel videos.
-- DONE: pure composer publish eligibility and file validation with unit tests.
-- TODO: tooling lockfile regeneration, React Query provider, optimistic mutations.
-- TODO: transactional media claiming and duration inspection from actual object bytes.
-- TODO: composer editor, upload queue, overlays, cover picker, feed rendering.
-- TODO: post lifecycle and full social graph fan-out.
-- TODO: isolated two-account smoke tests and Firestore index deployment.
+## Scope matrix
+| Area | Code status in 12-adudit | External verification status |
+|---|---|---|
+| Phase 5 comments | Threaded replies, like, pin, delete, pagination, avatars and notifications implemented | Manual two-account checks not done |
+| Phase 5 saves | Named collections, count summary and paginated reads implemented | Manual check not done; collection counts scan capped |
+| Phase 5 post management | Caption tag updates, pin, hide likes, disable comments, archive/delete + feed cleanup implemented | Follow-feed cleanup capped; manual check needed |
+| Phase 5 reports/post modal | Report validation, owner/admin queue, modal permalink implemented | UI navigation and moderation acceptance needed |
+| Phase 6 story tray | Filter by followed authors before fetching, bounded queries with index fallback | Real campus >150-story test not done |
+| Phase 7 Reel views | Older single-video posts accepted after video-media authorization | Actual watch/session test not done |
+| Phase 8 search/explore | Hashtag legacy count fallback, batched blocks, carousel media | Tag index provisioning not verified; trending sort remains page-local |
+| Phase 9 notifications | Legacy-compatible scanned unread summary and 99+ navigation badge | High-volume read cost, unread and message counts need testing |
+| Phase 11 profiles | Followers/following/post stats, verified indicator, tagged/saved/pinned tabs, report/block | Firebase verification policy and private-profile tests pending |
+| Phase 11 dashboard | 7/30-day personal summary, daily profile visits, Story and Reel views | Live-counter reconciliation and historical backfill not done |
+| Phase 11 moderation | Firebase custom-claim guard, report queue, actions and audit log | Admin claim must be provisioned, owner-run permission tests |
+| Phase 4 chat hardening | Existing REST fallback, token-refresh callbacks, server blocking; new inline retry and isolated group routes | Multi-account Stream group creation/member permissions unverified |
+| Phase 12 demo/CSP | Removed old unused demo code, sample API and Unsplash image policy | Regression checks required for final head |
+| Phase 12 React Query/Playwright | **Not implemented**; dependencies absent from `package.json` and lockfile | Install dependencies with lockfile update in a reviewed PR before adding integrations |
+| Phase 12 CSS consolidation | **Not implemented** intentionally to avoid changing loaded route CSS cascade | Visual regression test first |
+| Phase 12 documentation | Updated README, ARCHITECTURE, SECURITY, KNOWN_RISKS, MANUAL_QA, DECISIONS | Review as part of PR #34 |
 
-## Known constraints
-The existing lockfile may be out of sync. Do not switch CI to npm ci until the regenerated lockfile is committed and npm ci passes. Phase 1-3 audit PR #19 was merged; its remaining work is not automatically complete. No new functionality is considered production verified until preview smoke tests and CI gates pass.
+## Release gates still open
+1. **Latest exact head:** read successful GitHub quality and secret scan and a matching Ready Vercel preview; do not infer from older builds.
+2. **Firestore:** verify declared indexes in staging, particularly `posts.hashtags+createdAt` and `stories.authorUid+expiresAt`, before high-volume testing. Tagged listing currently uses a single-field `mentions` query.
+3. **Real accounts:** run `docs/MANUAL_QA.md` with at least two users, including blocked/private/close-friends and distinct group members.
+4. **Stream:** review member-only permissions, group creation, rename, leave, token refresh, connection, presence, unread counts; keep `STREAM_CLIENT_TOKENS_ENABLED=false` until approved.
+5. **R2/CORS:** verify unsigned access fails, signed URLs expire, uploads and DM attachments work.
+6. **Dependencies:** install `@tanstack/react-query` and `@playwright/test` on `12-adudit` with an up-to-date lockfile. Add Playwright CI only after installing Chromium in CI.
+7. **Moderation:** ensure correct Firebase custom claim, test reports and all consequences using test accounts.
+8. **Deployment:** keep PR #34 draft and production unchanged until independent acceptance/approval.
 
-NEXT: Verify CI quality and Vercel preview for commit c510a1288dfea462b01f8e0a36ba172b62c9ecf8, fix any failures, then complete Batch 0 tooling and remaining Batches 1-7 via reviewed PRs.
-
-## Checkpoint 2026-11-22 (content pipeline)
-- DONE: pure media-access allow/deny matrix and claim-purpose matrix with regression tests.
-- DONE: transactional media-service claim helper used by post, reel, story publishing.
-- PENDING: latest CI quality + Vercel preview verification.
-- TODO: Batch 0 dependency lockfile and React Query provider, Batches 2-7 remaining scope, live two-account smoke tests.
-NEXT: Check GitHub Actions and Vercel preview for commit 4609b60718880c111b43579822f50f3e541cc4fc, fix errors, then implement media header duration validation and the rest of the uploaded spec; do not merge until all batches verified.
-
-## Checkpoint: media security continuation
-- DONE: central claimMedia with transaction-safe snapshot reuse; caption tags/mentions/location persisted; batch feed visibility; cleanup of unattached uploaded media; bounded MP4 duration parser with pure tests.
-- TODO: wire duration parser into confirmation (including WebM), finish tooling and React Query, client composer, rendering, social graph, identity, API integration tests, index deployment and smoke tests.
-NEXT: Inspect CI quality logs and Vercel preview for content branch; fix any failures. Wire MP4/WebM duration validation at confirm. Complete Batches 0-7 in separate verified PRs; merge only after green CI and preview.
-
-## 2026-11-22 duration confirmation integration
-- DONE: MP4/WebM bounded header duration parsing wired into media confirmation; mismatched or unreadable story/reel videos rejected; 409 for unfinished uploads.
-- NOTE: MP4 files whose moov atom is beyond the first 64KB will fail closed. WebM with unknown-size segments may fail closed. These formats need expanded fixture tests before production merge.
-- PENDING: full CI and Vercel preview checks for newest code; not production verified.
-NEXT: Read latest GitHub Actions quality results and Vercel preview for PR #20, fix TypeScript/test/build failures, then complete media-access batching and Batches 0-7 before any merge to main.
-
-## Checkpoint: WebM regression verification
-- Verified: GitHub Actions run 45021491746 for commit 47c97868 passed quality and secret-scan; Vercel preview for an earlier commit was Ready. This does not verify the current head.
-- DONE: WebM duration fixture and bounded unknown-size EBML segment support.
-- PENDING: current-head CI and preview; production unchanged.
-NEXT: Verify GitHub Actions quality and Vercel preview for head 71fffe3463f2193d919d320e606992e47fe3ce92; repair any failures. Implement remaining Batches 0-7, API tests and production smoke checks before merge.
-
-## Media URL authorization checkpoint
-- DONE: replace per-media Firestore fetches with getAll batches for post, story, avatar, block and close-friend checks; canViewMany called once for authors; pure maySignMedia decides access; fail closed on signing failures.
-- IMPORTANT: verify preview behavior for private avatars, close-friends stories, archived posts and blocked users. Newest commit is not yet verified.
-- CI: prior GitHub Actions run 45021491746 succeeded for old commit 47c97868 only. Do not infer current head is green.
-NEXT: Verify CI quality and Vercel preview for commit 99aafa6a1d1a197aa29f6dab194762b03a2c5576; fix errors and security regressions; implement tooling, composer, rendering, lifecycle, social graph, identity, and API tests before any main merge.
-
-## Release-readiness integration (2026-11-22; current)
-- PR #22 on `fix/campusconnect-release-readiness` preserves content-pipeline and messaging work without modifying `main`.
-- IMPLEMENTED IN SOURCE: Stream Chat SDK 10.2.0 client provider, authenticated token endpoint behind `STREAM_CLIENT_TOKENS_ENABLED`, real-time message/presence/typing/reactions listeners, server-backed sends, replies, private R2 chat media, post/Reel reference shares, bounded history pagination, inbox and notifications. These are NOT two-account verified.
-- CHECKED: regenerated lockfile is installed using `npm ci` in CI; previous runs completed typecheck, lint, tests, build and secret scan. Check the exact current commit before merging.
-- CORRECTED: Stream user-management REST paths, opt-in activity status, server partial update of Stream invisible status, older-message pagination and stale remote typing expiration.
-- OPEN: final commit CI and exact-SHA Vercel preview, full Stream permission review, dev Firestore indexes, authorized two-account E2E, unresolved main content/composer/social graph milestones. `main` must remain unchanged until approved.
+**Implemented source ≠ live tested ≠ production ready.**
