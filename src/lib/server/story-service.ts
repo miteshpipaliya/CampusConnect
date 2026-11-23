@@ -4,14 +4,14 @@ import {canViewAuthor} from './privacy';
 import {isStoryActive} from '../core/story-expiry';
 import {mintUrls} from './media-urls';
 
-export async function authorizedStory(viewerUid:string,id:string,opts:{allowArchive?:boolean}={}){
+export async function authorizedStory(viewerUid:string,id:string,opts:{allowArchive?:boolean;allowHighlighted?:boolean}={}){
  if(!/^[A-Za-z0-9_-]{10,100}$/.test(id))return null;
  const store=db(),doc=await store.collection('stories').doc(id).get();
  if(!doc.exists)return null;
  const data=doc.data()!,authorUid=String(data.authorUid||'');
  if(!authorUid||!(await canViewAuthor(viewerUid,authorUid)))return null;
  const owned=authorUid===viewerUid,active=isStoryActive(data,Date.now());
- if(!active&&!(opts.allowArchive&&owned))return null;
+ if(!active&&!(opts.allowArchive&&owned)&&!(opts.allowHighlighted&&data.highlight===true))return null;
  if(data.audience==='close'&&!owned){
   const relation=await store.collection('closeFriends').doc(authorUid+'_'+viewerUid).get();
   if(!relation.exists)return null;
