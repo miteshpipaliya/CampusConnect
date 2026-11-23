@@ -20,7 +20,7 @@ const links: NavItem[] = [
   {label:'Community',href:'/home?section=community',Icon:Users},
   {label:'Profile',href:'/profile/me',Icon:UserRound},
 ];
-const mobileLabels = new Set(['Home', 'Search', 'Reels', 'Create', 'Community', 'Profile']);
+const mobileLabels = new Set(['Home', 'Reels', 'Messages', 'Search', 'Notifications', 'Create', 'Profile']);
 function activeLink(pathname: string, item: NavItem, section: string) {
   if (item.label === 'Create') return false;
   const sections:Record<string,string>={Reels:'reels',Messages:'chat',Search:'search',Notifications:'notifications',Community:'community'};
@@ -41,7 +41,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
     <span className="cc-wordmark">Campus<span>Connect</span><small>BVM CAMPUS</small></span>
   </Link>;
 }
-function Nav({ pathname, section, mobile = false }: { pathname: string; section:string; mobile?: boolean }) {
+function Nav({ pathname, section, mobile = false, counts }: { pathname: string; section:string; mobile?: boolean; counts:{unread:number;unreadMessages:number} }) {
   return <nav className={mobile ? 'cc-mobile-nav' : 'cc-navigation'} aria-label={mobile ? 'Mobile navigation' : 'Main navigation'}>
     {links.filter((item) => !mobile || mobileLabels.has(item.label)).map((item) => {
       const active = activeLink(pathname, item, section);
@@ -50,6 +50,7 @@ function Nav({ pathname, section, mobile = false }: { pathname: string; section:
         aria-current={active ? 'page' : undefined} aria-label={item.label} title={item.label}>
         <Icon size={mobile ? 23 : 25} strokeWidth={active ? 2.8 : 1.8} fill={active && item.label === 'Home' ? 'currentColor' : 'none'} aria-hidden="true" />
         <span>{item.label}</span>
+        {((item.label==='Notifications'?counts.unread:item.label==='Messages'?counts.unreadMessages:0)>0)&&<b aria-label="Unread notifications" style={{position:'absolute',top:0,right:0,minWidth:17,height:17,borderRadius:20,background:'#fa3659',color:'white',fontSize:10,lineHeight:'17px',textAlign:'center'}}>{Math.min(99,item.label==='Notifications'?counts.unread:counts.unreadMessages)}</b>}
       </Link>;
     })}
   </nav>;
@@ -62,7 +63,15 @@ function Suggestions({handle}:{handle:string}){
 
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname=usePathname(),params=useSearchParams(),router=useRouter();
-  const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
+  const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home'),[counts,setCounts]=useState({unread:0,unreadMessages:0});
+  useEffect(()=>{let alive=true;const tick=async()=>{if(document.visibilityState==='hidden')return;
+   try{const response=await fetch('/api/notifications/summary',{cache:'no-store'});if(!response.ok)return;const data=await response.json();
+    if(alive)setCounts({unread:Number(data.unread||0),unreadMessages:Number(data.unreadMessages||0)})
+   }catch{}};
+   void tick();const id=setInterval(()=>void tick(),20000),changed=()=>{void tick()};
+   window.addEventListener('cc-notifications-updated',changed);document.addEventListener('visibilitychange',changed);
+   return()=>{alive=false;clearInterval(id);window.removeEventListener('cc-notifications-updated',changed);document.removeEventListener('visibilitychange',changed)};
+  },[]);
   useEffect(()=>{setSection(params.get('section')||'home')},[params]);
   useEffect(()=>{
    const cached=localStorage.getItem('cc-theme');
@@ -79,7 +88,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   return <StreamConnectionProvider><div className={'cc-app'+(pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
-      <Nav pathname={pathname} section={section} />
+      <Nav pathname={pathname} section={section} counts={counts}/>
 
     </aside>
     <main className="cc-main" id="main-content">
@@ -87,6 +96,6 @@ export default function SocialShell({ children }: { children: ReactNode }) {
       <div className="cc-page">{children}</div>
     </main>
     {!pathname.startsWith('/profile')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle}/>}
-    <Nav pathname={pathname} section={section} mobile />
+    <Nav pathname={pathname} section={section} counts={counts} mobile />
   </div></StreamConnectionProvider>;
 }
