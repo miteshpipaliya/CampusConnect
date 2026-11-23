@@ -51,7 +51,7 @@ export function LivePostDetail({id}:{id:string}){
  return <article className="cc-live-entry" style={{maxWidth:720,margin:'0 auto',padding:24}}>
   <header style={{display:'flex',alignItems:'center',gap:10}}><Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><Avatar user={{name:post.authorName,handle:post.authorHandle,avatarMediaId:post.avatarMediaId,avatarUrl:post.avatarUrl}} size={44}/></Link><Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><b>@{post.authorHandle}</b><small style={{display:'block'}}>{post.authorName}</small></Link></header>
   {post.media?.length?<MediaCarousel items={post.media}/>:post.mediaUrl&&(post.mediaContentType?.startsWith('video/')?<video controls playsInline src={post.mediaUrl} style={{maxWidth:'100%',maxHeight:650}}/>:<img src={post.mediaUrl} loading="lazy" alt={post.caption||'Campus post'} style={{width:'100%',objectFit:'contain'}}/>)}
-  <p>{post.caption}</p><PostActions id={post.id} caption={post.caption} authorUid={post.authorUid} hideLikeCount={post.hideLikeCount} commentsOff={post.commentsOff} pinned={post.pinned} onChanged={()=>void load()}/>
+  <p>{post.caption}</p><PostActions id={post.id} caption={post.caption} authorUid={post.authorUid} hideLikeCount={post.hideLikeCount??false} commentsOff={post.commentsOff??false} pinned={post.pinned??false} onChanged={()=>void load()}/>
   <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
    <button disabled={busy} onClick={()=>void action('like')}><Heart size={20} fill={post.liked?'currentColor':'none'}/> {post.hideLikeCount?'Like':post.likes}</button>
    <button disabled={busy} onClick={()=>void action('save')}><Bookmark size={20} fill={post.saved?'currentColor':'none'}/> {post.saved?'Saved':'Save'}</button>
