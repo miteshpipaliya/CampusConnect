@@ -50,10 +50,12 @@ async function messageInChannel(messageId:string,channelId:string){
 }
 async function peer(handle:string){const snap=await db().collection('users').where('handle','==',handle.toLowerCase()).limit(1).get();return snap.docs[0]??null}
 function channelId(a:string,b:string){return createHmac('sha256',config().secret).update([a,b].sort().join(':')).digest('hex').slice(0,40)}
-async function ensureChannel(uid:string,otherUid:string,handle:string,otherName:string,before?:string){
+async function ensureChannel(uid:string,otherUid:string,handle:string,otherName:string,before?:string,refreshOnly=false){
  void handle;void otherName;
  if(await isBlockedEitherWay(uid,otherUid))throw Error('CHAT_BLOCKED');
- await Promise.all([syncStreamUser(uid),syncStreamUser(otherUid)]);
+ // The first open and writes synchronize profiles. Lightweight refreshes must
+ // not call two additional Stream user-upsert requests every three seconds.
+ if(!refreshOnly)await Promise.all([syncStreamUser(uid),syncStreamUser(otherUid)]);
  const id=channelId(uid,otherUid);
  const result=await stream('/channels/messaging/'+id+'/query','POST',{data:{members:[uid,otherUid],created_by_id:uid},state:true,watch:false,messages:{limit:50,...(before?{id_lt:before}:{})}});
  return {id,result};
@@ -101,7 +103,7 @@ export async function GET(request:NextRequest){
   const other=await peer(handle);if(!other||other.id===user.uid||other.data().deletedAt||await isBlockedEitherWay(user.uid,other.id))return errorResponse(404,'Member unavailable');
   const before=request.nextUrl.searchParams.get('before')||undefined;
   if(before&&!/^[A-Za-z0-9_-]{1,200}$/.test(before))return errorResponse(400,'Invalid message cursor');
-  const {result}=await ensureChannel(user.uid,other.id,handle,other.data().name,before);
+  const {result}=await ensureChannel(user.uid,other.id,handle,other.data().name,before,request.nextUrl.searchParams.get('refresh')==='1');
   const hidden=await db().collection('users').doc(user.uid).collection('hiddenChatMessages').where('channelId','==',channelId(user.uid,other.id)).limit(500).get();
   const hiddenIds=new Set(hidden.docs.map(d=>d.id));
   const messages=(result.messages||[]).filter((m:{id:string;type?:string})=>!hiddenIds.has(m.id)&&m.type!=='deleted').map((m:{id:string;text?:string;user?:{id:string};created_at?:string;quoted_message_id?:string;reaction_counts?:Record<string,number>;latest_reactions?:Array<{user_id?:string;type?:string}>;campusMediaId?:string;campusMediaType?:string;custom?:{campusMediaId?:string;campusMediaType?:string;campusContentId?:string;campusContentType?:string};campusContentId?:string;campusContentType?:string})=>({
