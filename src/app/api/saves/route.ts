@@ -39,8 +39,9 @@ export async function GET(req:NextRequest){
   const media=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];
   const urls=await mintUrls(media.filter(d=>d.exists).map(d=>({id:d.id,...(d.data()||{})})),{viewerUid:user.uid});
   const savedName=new Map(selected.map(d=>[d.id,String(d.data().collectionName||'')]));
+  const types=new Map(media.map(d=>[d.id,String(d.data()?.contentType||'')]));
   return NextResponse.json({
-   items:visible.map(d=>({id:d.id,caption:d.data()?.caption??'',handle:d.data()?.authorHandle??'',collectionName:savedName.get(d.id)||null,mediaUrl:urls[d.data()?.mediaId]?.url??null})),
+   items:visible.map(d=>({id:d.id,caption:d.data()?.caption??'',handle:d.data()?.authorHandle??'',mediaId:d.data()?.mediaId??null,contentType:types.get(String(d.data()?.mediaId||''))||null,collectionName:savedName.get(d.id)||null,mediaUrl:urls[d.data()?.mediaId]?.url??null})),
    collections,nextCursor:visited.length&&selected.length>=limit?visited.at(-1)?.id??null:null,
    collectionsTruncated:inventory.size===500
   },{headers:safeHeaders});

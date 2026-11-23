@@ -7,3 +7,7 @@
 .cc-report-panel a{text-decoration:underline;color:#bab1ff}
 .cc-post-modal-panel{width:min(930px,97vw);padding:20px}
 .cc-post-modal-close{position:sticky;float:right;top:0;z-index:4;font-size:22px}
+
+.cc-profile-options{position:absolute;right:0;top:100%;z-index:10;min-width:210px;border:1px solid #424350;background:#1d1f28;border-radius:11px;padding:8px;display:grid;gap:5px}
+.cc-profile-options button{padding:9px;text-align:left;border:0;background:transparent;color:white;border-radius:7px}
+.cc-profile-options button:hover{background:#ffffff17}

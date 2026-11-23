@@ -33,7 +33,7 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{username
    followers:fallbackFollowers?fallbackFollowers.docs.filter(x=>x.data().status==='active').length:Number(stored.followers||0),
    following:fallbackFollowing?fallbackFollowing.docs.filter(x=>x.data().status==='active').length:Number(stored.following||0),
    reposts:Number(stored.reposts||0)};
-  const profile={handle,name,branch,division,bio:allowed?bio:'',avatarMediaId,avatarUrl,
+  const profile={uid:target.id,handle,name,branch,division,bio:allowed?bio:'',avatarMediaId,avatarUrl,
    ...(allowed?{relationshipStatus:relationshipVisibility==='campus'||self||(relationshipVisibility==='followers'&&viewerRelation==='active')?relationshipStatus:undefined}:{}),
    verified:verification};
   if(!allowed)return NextResponse.json({self:false,profile,verified:verification,viewerRelation,posts:[],tagged:[],reposts:[],highlights:[],private:isPrivateAccount(d),counters},{headers:safeHeaders});
