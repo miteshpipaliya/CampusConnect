@@ -277,6 +277,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   <aside className="cc-dm-people" aria-label="Conversations">
    <header className="cc-dm-people-head">
     <h1>{viewerHandle||'Messages'} <ChevronDown aria-hidden="true" size={17}/></h1>
+    <Link href="/messages/groups" title="Group chats" aria-label="Campus group chats" className="cc-dm-icon">Groups</Link>
     <button type="button" className="cc-dm-icon" title="New conversation" aria-label="New message" onClick={()=>setNewMessage(true)}><Edit3 size={22}/></button>
    </header>
    <nav aria-label="Conversation filters" className="cc-dm-tabs">
