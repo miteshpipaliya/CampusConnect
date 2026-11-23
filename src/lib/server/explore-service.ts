@@ -5,7 +5,7 @@ import {hydrateAvatars} from './avatar-hydration';
 import {mintUrls} from './media-urls';
 import {clampLimit} from '../core/cursor';
 import {exploreScore} from '../core/explore-ranking';
-export async function explorePage(viewer:string,opts:{cursor?:string|null;tag?:string;limit?:string|null;sort?:string}={}){
+export async function explorePage(viewer:string,opts:{cursor?:string|null;tag?:string;text?:string;limit?:string|null;sort?:string}={}){
  const store=db(),limit=clampLimit(opts.limit,18,30);
  let query=opts.tag?store.collection('posts').where('hashtags','array-contains',opts.tag).orderBy('createdAt','desc'):store.collection('posts').orderBy('createdAt','desc');
  if(opts.cursor){
@@ -24,6 +24,7 @@ export async function explorePage(viewer:string,opts:{cursor?:string|null;tag?:s
   for(const d of snap.docs){
    lastScanned=d;const a=String(d.data().authorUid||'');
    if(d.data().deletedAt||d.data().archived||muted.has(a)||!allowed.get(a)||typeof d.data().mediaId!=='string')continue;
+   if(opts.text&&!String(d.data().caption||'').toLowerCase().includes(opts.text))continue;
    selected.push(d);if(selected.length>=limit)break;
   }
   if(snap.size<30)break;query=query.startAfter(snap.docs.at(-1)!);
