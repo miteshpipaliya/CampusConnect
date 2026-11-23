@@ -4,26 +4,29 @@ import Link from 'next/link';
 import {Avatar} from './avatar';
 import {Heart,MessageCircle,Bookmark,Repeat2,Volume2,VolumeX,Share2,Play,Pause} from 'lucide-react';
 import {ChatShareSheet} from './chat/chat-share-sheet';
-export type Reel={id:string;authorUid:string;authorHandle:string;authorName:string;avatarUrl:string|null;caption:string;mediaId:string;mediaUrl:string|null;likes:number;comments:number;reposts:number;views:number;liked:boolean;saved:boolean;followStatus:string;createdAt:number};
+export type Reel={id:string;authorUid:string;authorHandle:string;authorName:string;avatarUrl:string|null;caption:string;mediaId:string;mediaUrl:string|null;likes:number;comments:number;reposts:number;views:number;liked:boolean;saved:boolean;reposted:boolean;isMine:boolean;followStatus:string;createdAt:number};
 type Action='like'|'save'|'repost';
 export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;muted:boolean;onMute:(v:boolean)=>void}){
  const player=useRef<HTMLVideoElement>(null),counted=useRef(false),lastTime=useRef(0),played=useRef(0);
- const [paused,setPaused]=useState(false),[liked,setLiked]=useState(reel.liked),[saved,setSaved]=useState(reel.saved),[likes,setLikes]=useState(reel.likes),[busy,setBusy]=useState(false),[share,setShare]=useState(false),[comments,setComments]=useState(false),[follow,setFollow]=useState(reel.followStatus),[error,setError]=useState('');
+ const [paused,setPaused]=useState(false),[liked,setLiked]=useState(reel.liked),[saved,setSaved]=useState(reel.saved),[reposted,setReposted]=useState(reel.reposted),[likes,setLikes]=useState(reel.likes),[busy,setBusy]=useState(false),[share,setShare]=useState(false),[comments,setComments]=useState(false),[follow,setFollow]=useState(reel.followStatus),[error,setError]=useState('');
  useEffect(()=>{const v=player.current;if(!v)return;if(active&&!paused&&document.visibilityState==='visible')void v.play().catch(()=>{});else v.pause()},[active,paused]);
  useEffect(()=>{const handler=()=>{if(document.hidden)player.current?.pause();else if(active&&!paused)void player.current?.play().catch(()=>{})};document.addEventListener('visibilitychange',handler);return()=>document.removeEventListener('visibilitychange',handler)},[active,paused]);
  async function action(which:Action){
   if(busy)return;setBusy(true);setError('');
-  const oldLike=liked,oldSaved=saved,oldCount=likes;
+  const oldLike=liked,oldSaved=saved,oldRepost=reposted,oldCount=likes;
   if(which==='like'){setLiked(!liked);setLikes(x=>x+(liked?-1:1))}
   if(which==='save')setSaved(!saved);
+  if(which==='repost')setReposted(!reposted);
   try{const url=which==='like'?'/api/posts/'+reel.id+'/likes':which==='save'?'/api/saves':'/api/reposts';
    const resp=await fetch(url,{method:which==='save'&&saved?'DELETE':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(which==='like'?{}:{postId:reel.id})});
-   if(!resp.ok)throw Error((await resp.json().catch(()=>({}))).error||'Unable to update');
-  }catch(e){setLiked(oldLike);setSaved(oldSaved);setLikes(oldCount);setError(String(e))}finally{setBusy(false)}
+   const result=await resp.json().catch(()=>({}));
+   if(!resp.ok)throw Error(result.error||'Unable to update');
+   if(which==='repost')setReposted(Boolean(result.reposted));
+  }catch(e){setLiked(oldLike);setSaved(oldSaved);setReposted(oldRepost);setLikes(oldCount);setError(String(e))}finally{setBusy(false)}
  }
  async function followToggle(){
-  const previous=follow;setFollow(previous==='active'?'none':'active');
-  try{const r=await fetch('/api/follow',{method:previous==='active'?'DELETE':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle:reel.authorHandle})});if(!r.ok)throw Error('Follow unavailable');const d=await r.json();setFollow(d.status||'none')}
+  const previous=follow,isFollowing=previous==='active'||previous==='pending';setFollow(isFollowing?'none':'active');
+  try{const r=await fetch('/api/follow',{method:isFollowing?'DELETE':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle:reel.authorHandle})});if(!r.ok)throw Error('Follow unavailable');const d=await r.json();setFollow(d.status||'none')}
   catch(e){setFollow(previous);setError(String(e))}
  }
  const progress=()=>{
@@ -37,13 +40,13 @@ export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;mu
    {paused&&<button className="cc-reel-play" aria-label="Resume video" onClick={()=>setPaused(false)}><Play/></button>}
    <button className="cc-reel-mute" aria-label={muted?'Unmute':'Mute'} onClick={()=>onMute(!muted)}>{muted?<VolumeX/>:<Volume2/>}</button>
    <div className="cc-reel-caption"><Link href={'/profile/'+encodeURIComponent(reel.authorHandle)}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={32}/> @{reel.authorHandle}</Link>
-    <button onClick={()=>void followToggle()}>{follow==='active'?'Following':follow==='pending'?'Requested':'Follow'}</button><p>{reel.caption}</p><small>Original audio</small></div>
+    {!reel.isMine&&<button onClick={()=>void followToggle()}>{follow==='active'?'Following':follow==='pending'?'Requested':'Follow'}</button>}<p>{reel.caption}</p><small>Original audio</small></div>
   </div>
   <div className="cc-reel-actions">
    <button onClick={()=>void action('like')} aria-label="Like Reel"><Heart fill={liked?'currentColor':'none'}/> <small>{likes}</small></button>
    <button onClick={()=>setComments(true)} aria-label="Comments"><MessageCircle/><small>{reel.comments}</small></button>
    <button onClick={()=>setShare(true)} aria-label="Share Reel"><Share2/></button>
-   <button onClick={()=>void action('repost')} aria-label="Repost"><Repeat2/></button>
+   <button onClick={()=>void action('repost')} aria-label={reposted?'Undo repost':'Repost'} style={{color:reposted?'#d2c0ff':undefined}}><Repeat2/></button>
    <button onClick={()=>void action('save')} aria-label="Save Reel"><Bookmark fill={saved?'currentColor':'none'}/></button>
    <button onClick={()=>setPaused(x=>!x)} aria-label={paused?'Play Reel':'Pause Reel'}>{paused?<Play/>:<Pause/>}</button>
   </div>
