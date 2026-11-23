@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {preferenceFor,acceptsNotification} from '../src/lib/core/notification-preferences.ts';
+test('notification preferences are enforced and backwards compatible',()=>{assert.equal(preferenceFor('story_reply'),'stories');assert.equal(acceptsNotification('like',{likes:false}),false);assert.equal(acceptsNotification('reply',{comments:false}),false);assert.equal(acceptsNotification('repost',{reposts:false}),false);assert.equal(acceptsNotification('story_reply',{}),true)})
