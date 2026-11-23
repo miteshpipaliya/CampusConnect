@@ -4,10 +4,10 @@ import Link from 'next/link';
 type Props={children:ReactNode};
 type State={failed:boolean};
 export class ChatErrorBoundary extends Component<Props,State>{
- state:State={failed:false};
+ override state:State={failed:false};
  static getDerivedStateFromError():State{return {failed:true}}
- componentDidCatch(error:Error){console.error('Chat view exception',error.message)}
- render(){
+ override componentDidCatch(error:Error){console.error('Chat view exception',error.message)}
+ override render(){
   if(!this.state.failed)return this.props.children;
   return <section role="alert" className="cc-chat-recover" style={{maxWidth:600,margin:'auto',padding:32}}>
    <h2>Unable to display this conversation</h2>
