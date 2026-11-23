@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {reelScore} from '../src/lib/core/reel-ranking.ts';
+test('higher engagement increases score and older content decays',()=>{const a={likes:5,comments:3,views:20,createdAt:1000000};assert.ok(reelScore(a,1000000)>reelScore(a,1000000+86400000));assert.ok(reelScore({...a,likes:7},1000000)>reelScore(a,1000000))});
