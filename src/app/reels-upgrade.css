@@ -1,0 +1,21 @@
+.cc-reel-page{height:calc(100dvh - 6px);background:#08090f;color:#fff;max-width:none!important;overflow:hidden}
+.cc-reel-feed{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none}
+.cc-reel-card{height:100%;scroll-snap-align:start;position:relative;display:flex;justify-content:center;align-items:center;gap:14px;padding:12px;min-height:500px}
+.cc-reel-video-box{position:relative;height:100%;max-height:820px;aspect-ratio:9/16;max-width:calc(100% - 84px);background:#15151a;border-radius:15px;overflow:hidden}
+.cc-reel-video-box video{width:100%;height:100%;object-fit:contain;cursor:pointer}
+.cc-reel-mute,.cc-reel-play{position:absolute;right:15px;top:18px;color:white;background:#0006;border:0;border-radius:50%;padding:9px}
+.cc-reel-play{top:50%;left:50%;transform:translate(-50%,-50%);right:auto}
+.cc-reel-caption{position:absolute;bottom:15px;left:12px;right:12px;background:linear-gradient(transparent,#000a);padding:12px}
+.cc-reel-caption a{display:inline-flex;gap:8px;align-items:center;color:white;text-decoration:none}
+.cc-reel-caption button{margin-left:12px;background:transparent;color:white;border:1px solid #bbb;border-radius:9px;padding:5px}
+.cc-reel-caption p{max-height:90px;overflow:auto}
+.cc-reel-actions{display:flex;flex-direction:column;align-items:center;gap:16px}
+.cc-reel-actions button{border:0;background:none;color:white;display:flex;flex-direction:column;align-items:center;gap:4px}
+.cc-reel-actions small{font-size:11px}
+.cc-reel-end{text-align:center;color:#aeb4bd;padding:14px}
+.cc-reel-empty{display:grid;place-content:center;min-height:65vh;text-align:center;color:#aeb4bd}
+.cc-reel-comments{position:absolute;z-index:30;right:0;bottom:0;top:15%;width:min(440px,100%);background:#191922;border-radius:14px;padding:14px;display:flex;flex-direction:column}
+.cc-reel-comments header{display:flex;justify-content:space-between}.cc-reel-comment-list{flex:1;overflow-y:auto}
+.cc-reel-comments form{display:flex;gap:5px}.cc-reel-comments input{flex:1;min-width:0;background:#333;color:#fff;border:0;padding:10px}
+.cc-reel-error{background:#542e3c;color:#fff;padding:7px}
+@media(max-width:700px){.cc-reel-page{height:calc(100dvh - 62px)}.cc-reel-card{gap:4px;padding:4px;min-height:0}.cc-reel-video-box{max-width:calc(100% - 56px)}.cc-reel-actions{gap:10px}.cc-reel-actions svg{width:22px}}
