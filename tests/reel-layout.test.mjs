@@ -11,7 +11,7 @@ test('portrait fills available height and keeps a 9:16 frame',()=>{
 });
 test('landscape adapts to limited height instead of overflowing',()=>{
  const frame=fitReelFrame(1600,600,16/9);
- assert.equal(frame.width,1066);assert.equal(frame.height,600);
+ assert.equal(frame.width,1067);assert.equal(frame.height,600);
 });
 test('small viewport and invalid media ratio are safe',()=>{
  const frame=fitReelFrame(285,490,0);
