@@ -26,7 +26,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
    id:post.id,authorUid,caption:String(d.caption||''),authorHandle:String(d.authorHandle||avatars[authorUid]?.handle||'student'),
    authorName:avatars[authorUid]?.name||'',avatarMediaId:avatars[authorUid]?.avatarMediaId??null,avatarUrl:avatars[authorUid]?.avatarUrl??null,
    mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null,media:allMedia.map(m=>({...m,contentType:mediaDocs.find(d=>d.id===m.mediaId)?.data()?.contentType||'',url:mediaUrls[m.mediaId]?.url??null})),
-   mediaContentType:media?.data()?.contentType??null,likes:Number(d.counters?.likes||0),comments:Number(d.counters?.comments||0),
+   mediaContentType:media?.data()?.contentType??null,hideLikeCount:d.hideLikeCount===true,commentsOff:d.commentsOff===true,pinned:d.pinned===true,likes:Number(d.counters?.likes||0),comments:Number(d.counters?.comments||0),
    liked:liked.exists,saved:saved.exists
   }},{headers:safeHeaders});
  }catch{return errorResponse(503,'Post unavailable')}
