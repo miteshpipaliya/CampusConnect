@@ -44,7 +44,7 @@ export function NotificationsFeed(){
   {loading&&<p role="status">Loading your notifications…</p>}
   {error&&<p role="alert">{error} <button onClick={()=>void load()}>Retry</button></p>}
   {notice&&<p role="status">{notice}</p>}
-  {!loading&&items.length===0&&<div className="cc-notifications-empty"><Bell size={40}/><h2>Nothing new yet</h2><p>When students interact with your posts and stories, you'll see it here.</p></div>}
+  {!loading&&items.length===0&&<div className="cc-notifications-empty"><Bell size={40}/><h2>Nothing new yet</h2><p>When students interact with your posts and stories, you&apos;ll see it here.</p></div>}
   {groups.map(([section,group])=>group.length>0&&<div key={section} className="cc-notification-group"><h2>{section}</h2>{group.map(n=>{
    const href=n.postId?'/posts/'+encodeURIComponent(n.postId):n.storyId?'/home':'/profile/'+encodeURIComponent(n.actorHandle||'me');
    const time=Date.parse(n.createdAt||''),relative=Number.isFinite(time)?new Date(time).toLocaleDateString([], {month:'short',day:'numeric'}):'';
