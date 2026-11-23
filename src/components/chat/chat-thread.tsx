@@ -41,6 +41,7 @@ export function ChatThread({handle}:{handle:string}){
  // WebSockets provide immediate changes when enabled; authenticated polling
  // recovers missed events and also works when the socket feature flag is off.
  useEffect(()=>{
+  if(loading)return;
   let active=true,inFlight=false;
   const tick=async()=>{
    if(!active||!shouldRefreshChat({visible:document.visibilityState==='visible',online:navigator.onLine,inFlight}))return;
@@ -53,7 +54,7 @@ export function ChatThread({handle}:{handle:string}){
   document.addEventListener('visibilitychange',resume);
   window.addEventListener('online',resume);
   return()=>{active=false;window.clearInterval(timer);document.removeEventListener('visibilitychange',resume);window.removeEventListener('online',resume)};
- },[refresh,status]);
+ },[refresh,status,loading]);
  const loadOlder=async()=>{
   if(loadingOlder||!nextCursor)return;
   setLoadingOlder(true);setError('');

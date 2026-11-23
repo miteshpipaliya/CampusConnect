@@ -32,6 +32,7 @@ export function ChatInbox(){
   return()=>{abort.abort();requestVersion.current++};
  },[refresh]);
  useEffect(()=>{
+  if(loading)return;
   let active=true,inFlight=false;
   const tick=async()=>{
    if(!active||!shouldRefreshChat({visible:document.visibilityState==='visible',online:navigator.onLine,inFlight}))return;
@@ -42,7 +43,7 @@ export function ChatInbox(){
   document.addEventListener('visibilitychange',resume);
   window.addEventListener('online',resume);
   return()=>{active=false;window.clearInterval(timer);document.removeEventListener('visibilitychange',resume);window.removeEventListener('online',resume)};
- },[refresh,status]);
+ },[refresh,status,loading]);
  useEffect(()=>{
   if(!client||status!=='connected')return;
   const changed=()=>{void refresh().catch(()=>{})};
