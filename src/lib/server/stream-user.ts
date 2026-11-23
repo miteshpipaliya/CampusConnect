@@ -22,7 +22,14 @@ export async function syncStreamUser(uid:string):Promise<{synced:boolean;user:{i
  const endpoint=new URL('https://chat.stream-io-api.com/api/v2/users');
  endpoint.searchParams.set('api_key',apiKey);
  const response=await fetch(endpoint.toString(),{method:'POST',headers:{'Content-Type':'application/json',Authorization:jwt,'stream-auth-type':'jwt'},body:JSON.stringify({users:{[uid]:user}}),cache:'no-store'});
- if(!response.ok){console.error('Stream sync rejected',{status:response.status});return {synced:false,user}}
+ if(!response.ok){
+  const data:unknown=await response.json().catch(()=>null);
+  const detail=data&&typeof data==='object'?data as {code?:unknown;message?:unknown}:null;
+  // Log only the HTTP status and Stream's bounded error classification, never tokens.
+  console.error('Stream sync rejected',{status:response.status,code:typeof detail?.code==='number'?detail.code:null,
+   reason:typeof detail?.message==='string'?detail.message.slice(0,160):'unknown'});
+  return {synced:false,user};
+ }
  return {synced:true,user};
 }
 
