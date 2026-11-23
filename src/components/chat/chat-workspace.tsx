@@ -117,7 +117,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
  useEffect(()=>{
   if(!peer)return;
   let live=true,inFlight=false;
-  setLoading(true);setError('');
+  setError('');
   const tick=async()=>{
    if(!live||inFlight||document.visibilityState==='hidden'||!navigator.onLine)return;
    inFlight=true;
