@@ -34,7 +34,8 @@ export function StreamConnectionProvider({children}:{children:ReactNode}){
     const initial=await getCredentials();
     if(!live)return;
     const {StreamChat:StreamChatClass}=await import('stream-chat');
-    const chat=StreamChatClass.getInstance(initial.apiKey);
+    if(!live)return;
+    const chat=new StreamChatClass(initial.apiKey);
     socket=chat;
     // stream-chat v10 removed connection.changed; observe the socket's reactive health instead.
     const unsubscribe=chat.wsConnection.state.subscribeWithSelector(
@@ -55,6 +56,8 @@ export function StreamConnectionProvider({children}:{children:ReactNode}){
     if(!live){await chat.disconnectUser();return}
     setSession({client:chat,userId:initial.user.id,status:'connected'});
    }catch(error){
+    stopConnection?.();stopConnection=null;
+    if(socket){const failed=socket;socket=null;await failed.disconnectUser().catch(()=>{})}
     if(!live)return;
     const reason=error instanceof Error?error.message:'CHAT_CONNECTION_FAILED';
     setSession({client:null,userId:null,status:reason==='STREAM_DISABLED'?'disabled':reason==='SESSION_EXPIRED'?'disconnected':'error'});
@@ -65,7 +68,8 @@ export function StreamConnectionProvider({children}:{children:ReactNode}){
    if(!live||document.visibilityState!=='visible'||!socket)return;
    try{
     const response=await fetch('/api/auth',{cache:'no-store',credentials:'same-origin'});
-    if(!response.ok){
+    const auth=response.ok?await response.json().catch(()=>null):null;
+    if(!response.ok||auth?.user?.uid!==socket.userID){
      stopConnection?.();stopConnection=null;
      await socket.disconnectUser();
      socket=null;
@@ -74,9 +78,11 @@ export function StreamConnectionProvider({children}:{children:ReactNode}){
    }catch{/* Temporary connectivity errors are handled by Stream reconnect. */}
   };
   document.addEventListener('visibilitychange',verifyOnFocus);
+  window.addEventListener('online',verifyOnFocus);
   return ()=>{
    live=false;
    document.removeEventListener('visibilitychange',verifyOnFocus);
+   window.removeEventListener('online',verifyOnFocus);
    stopConnection?.();
    if(socket)void socket.disconnectUser();
   };

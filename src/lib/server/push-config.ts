@@ -1,0 +1,2 @@
+import 'server-only';
+export function pushConfig(){if(process.env.FCM_PUSH_ENABLED!=='true')return null;const projectId=process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,apiKey=process.env.NEXT_PUBLIC_FIREBASE_API_KEY,appId=process.env.NEXT_PUBLIC_FIREBASE_APP_ID,messagingSenderId=process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,vapidKey=process.env.FIREBASE_WEB_PUSH_VAPID_KEY;if(!projectId||projectId!==process.env.FIREBASE_PROJECT_ID||!apiKey||!appId||!messagingSenderId||!vapidKey)return null;return {firebase:{projectId,apiKey,appId,messagingSenderId},vapidKey}}

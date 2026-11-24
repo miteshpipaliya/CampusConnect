@@ -1,6 +1,7 @@
 import 'server-only';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getMessaging } from 'firebase-admin/messaging';
 import { getFirestore } from 'firebase-admin/firestore';
 import {getStorage} from './storage';
 
@@ -15,6 +16,7 @@ function app(){
 }
 export const auth=()=>getAuth(app());
 export const db=()=>getFirestore(app());
+export const messaging=()=>getMessaging(app());
 export function identityKey(){
  // Read on the server only. Never import this module into any client component.
  const key=process.env.NEXT_PUBLIC_FIREBASE_API_KEY;

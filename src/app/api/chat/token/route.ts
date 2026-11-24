@@ -21,7 +21,7 @@ export async function POST(request:NextRequest){
   const token=unsigned+'.'+createHmac('sha256',secret).update(unsigned).digest('base64url');
   return NextResponse.json({token,apiKey,user,expiresAt:expires},{headers:safeHeaders});
  }catch(error){
-  console.error('Chat token endpoint failed',error instanceof Error?error.message:'unknown');
+  console.error('Chat token endpoint failed',error instanceof Error?error.name:'unknown');
   return errorResponse(503,'Chat service unavailable');
  }
 }

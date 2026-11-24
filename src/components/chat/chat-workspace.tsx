@@ -7,6 +7,7 @@ import {mergeChronologicalMessages} from '@/lib/core/chat-pagination';
 import {ChatMediaUpload} from './chat-media-upload';
 import {ChatSharedContentCard} from './chat-shared-content-card';
 import {ChatPostPicker} from './chat-post-picker';
+import {inboxTime} from '@/lib/core/chat-activity';
 import {useStreamConnection} from './stream-connection';
 
 type Member={uid:string;handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null};
@@ -29,9 +30,11 @@ function formattedTime(value:string|null|undefined,short=false){
  if(!Number.isFinite(time))return '';
  return short?new Date(time).toLocaleDateString([], {month:'short',day:'numeric'}):new Date(time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 }
+function TypingDots(){return <span className="cc-live-typing">Typing<span aria-hidden="true"><i/><i/><i/></span></span>}
 const emojiChoices=['❤️','😂','🔥','🥰','👍','✨','🎉','😊','🙌','💜'];
 
 export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
+ const [clock,setClock]=useState(Date.now),[inboxTyping,setInboxTyping]=useState<Record<string,boolean>>({});
  const [peer,setPeer]=useState(initialPeer),[viewerHandle,setViewerHandle]=useState(''),
   [conversations,setConversations]=useState<Conversation[]>([]),[directory,setDirectory]=useState<Member[]>([]),
   [search,setSearch]=useState(''),[directoryQuery,setDirectoryQuery]=useState(''),[newMessage,setNewMessage]=useState(false),
@@ -53,7 +56,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   const version=++inboxSeq.current;
   const d=await requestJson<{conversations:Conversation[]}>('/api/chat');
   if(version!==inboxSeq.current)return;
-  const items=Array.isArray(d.conversations)?d.conversations:[];
+  const items=(Array.isArray(d.conversations)?d.conversations:[]).sort((a,b)=>(Date.parse(b.updatedAt)||0)-(Date.parse(a.updatedAt)||0));
   setConversations(previous=>JSON.stringify(previous)===JSON.stringify(items)?previous:items);
   setInboxError('');setInboxLoading(false);
  },[]);
@@ -78,10 +81,10 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    const latest=[...incoming].reverse().find(m=>m.senderUid!==data.myUid);
    if(latest&&readKeys.current.get(handle)!==latest.id){
     readKeys.current.set(handle,latest.id);
-    void requestJson('/api/chat',{action:'read',recipientHandle:handle}).catch(()=>readKeys.current.delete(handle));
+    void requestJson('/api/chat',{action:'read',recipientHandle:handle}).then(()=>{window.dispatchEvent(new Event('cc-notifications-updated'));window.dispatchEvent(new Event('cc-chat-read'));void refreshInbox().catch(()=>{})}).catch(()=>readKeys.current.delete(handle));
    }
   }
- },[]);
+ },[refreshInbox]);
 
  const selectPeer=useCallback((handle:string)=>{
   if(active.current!==handle){
@@ -125,10 +128,10 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    finally{inFlight=false}
   };
   void refreshConversation(peer).catch(e=>{if(live){setLoading(false);setError(e instanceof Error?e.message:'Unable to load conversation')}});
-  const timer=window.setInterval(tick,status==='connected'&&channelWatching?15000:3000);
+  const timer=status==='connected'&&channelWatching?null:window.setInterval(tick,3000);
   const onResume=()=>{void tick()};
   document.addEventListener('visibilitychange',onResume);window.addEventListener('online',onResume);
-  return()=>{live=false;sequence.current++;window.clearInterval(timer);document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
+  return()=>{live=false;sequence.current++;if(timer!==null)window.clearInterval(timer);document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
  },[peer,status,channelWatching,refreshConversation]);
 
  useEffect(()=>{
@@ -137,15 +140,15 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    if(!live||inFlight||document.visibilityState==='hidden'||!navigator.onLine)return;
    inFlight=true;try{await refreshInbox()}catch(e){if(live)setInboxError(e instanceof Error?e.message:'Inbox refresh unavailable')}finally{inFlight=false}
   };
-  const timer=window.setInterval(tick,status==='connected'?20000:6000);
+  const timer=status==='connected'?null:window.setInterval(tick,6000);
   document.addEventListener('visibilitychange',tick);
-  return()=>{live=false;window.clearInterval(timer);document.removeEventListener('visibilitychange',tick)};
+  return()=>{live=false;if(timer!==null)window.clearInterval(timer);document.removeEventListener('visibilitychange',tick)};
  },[refreshInbox,status]);
 
  useEffect(()=>{
   if(!client||status!=='connected')return;
   const changed=()=>{void refreshInbox().catch(()=>{})};
-  const subscriptions=[client.on('notification.message_new',changed),client.on('message.new',changed),client.on('message.deleted',changed)];
+  const subscriptions=[client.on('notification.message_new',changed),client.on('message.new',changed),client.on('message.deleted',changed),client.on('message.updated',changed),client.on('channel.updated',changed),client.on('notification.mark_read',changed),client.on('notification.added_to_channel',changed),client.on('connection.recovered',changed)];
   return()=>subscriptions.forEach(s=>s.unsubscribe());
  },[client,status,refreshInbox]);
 
@@ -161,13 +164,13 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   const subscriptions=[
    ch.on('message.new',updated),ch.on('message.deleted',updated),ch.on('message.updated',updated),
    ch.on('reaction.new',updated),ch.on('reaction.deleted',updated),ch.on('message.read',updated),
-   ch.on('typing.start',event=>{if(event.user?.id===peerUid&&live){setTyping(true);if(expires)clearTimeout(expires);expires=setTimeout(()=>{if(live)setTyping(false)},6000)}}),
+   ch.on('typing.start',event=>{if(presenceAllowed&&event.user?.id===peerUid&&live){setTyping(true);if(expires)clearTimeout(expires);expires=setTimeout(()=>{if(live)setTyping(false)},6000)}}),
    ch.on('typing.stop',event=>{if(event.user?.id===peerUid&&live){setTyping(false);if(expires)clearTimeout(expires)}}),
    client.on('user.presence.changed',event=>{if(live&&event.user?.id===peerUid)setOnline(event.user.online===true)}),
    client.on('user.updated',event=>{if(live&&event.user?.id===peerUid)setOnline(event.user.online===true)})
   ];
   return()=>{live=false;if(expires)clearTimeout(expires);subscriptions.forEach(s=>s.unsubscribe());release();setOnline(false);setTyping(false);setChannelWatching(false)};
- },[client,status,peer,peerUid,channelId,refreshConversation]);
+ },[client,status,peer,peerUid,channelId,refreshConversation,presenceAllowed]);
 
  useEffect(()=>{
   if(!peerUid){setPresenceAllowed(false);return}
@@ -192,8 +195,11 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   return()=>{live=false;ctrl.abort();window.clearTimeout(timeout)};
  },[directoryQuery,newMessage]);
 
+ useEffect(()=>{const t=setInterval(()=>setClock(Date.now()),30000);return()=>clearInterval(t)},[]);
+ const watchKeys=useMemo(()=>conversations.filter(c=>c.channelId&&c.peerUid).map(c=>c.channelId+':'+c.peerUid).sort().join(','),[conversations]);
+ useEffect(()=>{if(!client||status!=='connected'||!watchKeys)return;let live=true;const releases:Array<()=>void>=[],timers=new Map<string,ReturnType<typeof setTimeout>>();const rows=watchKeys.split(',').map(x=>x.split(':')).filter(x=>x.length===2);void requestJson<{allowed:Record<string,boolean>}>('/api/chat/presence?uids='+encodeURIComponent(rows.map(x=>x[1]).join(','))).then(d=>{if(!live)return;for(const [id,uid] of rows){if(!id||!uid||!d.allowed[uid])continue;const ch=client.channel('messaging',id),release=ch.activate();releases.push(release);const change=(value:boolean)=>{if(!live)return;setInboxTyping(old=>({...old,[id]:value}));const old=timers.get(id);if(old)clearTimeout(old);if(value)timers.set(id,setTimeout(()=>{if(live)setInboxTyping(old=>({...old,[id]:false}))},6000))};const a=ch.on('typing.start',ev=>{if(ev.user?.id===uid)change(true)}),b=ch.on('typing.stop',ev=>{if(ev.user?.id===uid)change(false)});releases.push(()=>a.unsubscribe(),()=>b.unsubscribe());void ch.watch({presence:false}).catch(()=>{})}}).catch(()=>{});return()=>{live=false;releases.forEach(fn=>fn());timers.forEach(clearTimeout);setInboxTyping({})}},[client,status,watchKeys]);
  const markTyping=(value:boolean)=>{
-  if(!peer||!channelId||!client||status!=='connected'||!channelWatching)return;
+  if(!peer||!channelId||!client||status!=='connected'||!channelWatching||!presenceAllowed)return;
   // Send typing directly on the authorized watched Stream channel. This avoids
   // a full Next.js/Firestore/Stream round-trip on every keystroke.
   const channel=client.channel('messaging',channelId);
@@ -203,8 +209,9 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   setDraft(value);
   if(status!=='connected'||!channelWatching||!peer)return;
   const now=Date.now();
-  if(now-lastTyping.current>2200){lastTyping.current=now;markTyping(true)}
+  if(value.trim()&&now-lastTyping.current>2200){lastTyping.current=now;markTyping(true)}
   if(typingTimer.current)clearTimeout(typingTimer.current);
+  if(!value.trim()){markTyping(false);return}
   typingTimer.current=setTimeout(()=>markTyping(false),3000);
  };
  const sendText=async(text:string)=>{
@@ -295,8 +302,8 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     {inboxLoading&&<p className="cc-dm-muted">Loading conversations…</p>}
     {!inboxLoading&&visible.length===0&&<p className="cc-dm-muted">{search?'No matches.':tab==='unread'?'No unread messages.':'Select a campus member above to start a chat.'}</p>}
     {visible.map(c=><button key={c.handle} type="button" className={'cc-dm-person'+(peer===c.handle?' selected':'')} onClick={()=>selectPeer(c.handle)}>
-     <Avatar user={c} size={44}/><span className="cc-dm-person-text"><strong>{c.name||c.handle}</strong><small className={typing&&c.handle===peer?'cc-dm-green-typing':''}>{typing&&c.handle===peer?'● Typing…':c.preview||'Send a message'}</small></span>
-     <span className="cc-dm-person-meta"><time dateTime={c.updatedAt||undefined}>{formattedTime(c.updatedAt,true)}</time>{(c.unreadCount??0)>0&&<b aria-label={c.unreadCount+' unread messages'}>{c.unreadCount}</b>}</span>
+     <Avatar user={c} size={44}/><span className="cc-dm-person-text"><strong>{c.name||c.handle}</strong><small className={(typing&&c.handle===peer)||inboxTyping[c.channelId||'']?'cc-dm-green-typing':''}>{(typing&&c.handle===peer)||inboxTyping[c.channelId||'']?<TypingDots/>:c.preview||'Send a message'}</small></span>
+     <span className="cc-dm-person-meta"><time dateTime={c.updatedAt||undefined}>{inboxTime(c.updatedAt,clock)}</time>{(c.unreadCount??0)>0&&<b aria-label={c.unreadCount+' unread messages'}>{c.unreadCount}</b>}</span>
     </button>)}
    </div>
   </aside>
@@ -305,7 +312,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     <button type="button" className="cc-dm-back" onClick={()=>selectPeer('')} aria-label="Back to conversations"><ChevronLeft size={24}/></button>
     <Link href={'/profile/'+encodeURIComponent(peer)} className="cc-dm-peer-profile">
      <Avatar user={{name:peerName||selected?.name||peer,handle:peer,avatarMediaId:selected?.avatarMediaId??null,avatarUrl:selected?.avatarUrl??null}} size={44} activityAllowed={presenceAllowed} online={online&&status==='connected'&&channelWatching}/>
-     <span><strong>{peerName||selected?.name||peer}</strong><small className={typing?'cc-dm-green-typing':''}>@{peer}{typing?' · Typing…':presenceAllowed&&status==='connected'&&channelWatching?(online?' · Online':' · Offline'):''}</small></span>
+     <span><strong>{peerName||selected?.name||peer}</strong><small className={typing?'cc-dm-green-typing':''}>{typing&&presenceAllowed?<TypingDots/>:<>{'@'+peer}{presenceAllowed&&status==='connected'&&channelWatching?(online?' · Online':' · Offline'):''}</>}</small></span>
     </Link>
     <div className="cc-dm-thread-actions"><span aria-label={status==='connected'&&channelWatching?'Chat connected':'Chat refresh active'} className={'cc-dm-connection'+(status==='connected'&&channelWatching?' connected':'')}><span/>{status==='connected'&&channelWatching?'Live':'Syncing'}</span>
      <button type="button" className="cc-dm-icon" title="Refresh messages" aria-label="Refresh messages" onClick={()=>void refreshConversation(peer,true).catch(e=>setError(String(e)))}><RefreshCw size={18}/></button>
@@ -338,7 +345,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     </article>)}
     <div ref={bottom}/>
    </div>
-   {typing&&<div className="cc-dm-typing-indicator" role="status" aria-live="polite"><span className="cc-dm-typing-dot"/> {peerName||peer} is typing…</div>}
+   {typing&&presenceAllowed&&<div className="cc-dm-typing-indicator" role="status" aria-live="polite"><TypingDots/></div>}
    {status==='error'&&<p role="alert" className="cc-dm-thread-error">Couldn&apos;t connect. Messages still refresh. <button type="button" onClick={retry}>Retry live connection</button></p>}
   {error&&<p role="alert" className="cc-dm-thread-error">{error} <button type="button" onClick={()=>{setError('');void refreshConversation(peer,true).catch(()=>{})}}>Retry</button></p>}
    {notice&&<p role="status" className="cc-dm-status" onClick={()=>setNotice('')}>{notice}</p>}
@@ -349,7 +356,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    </div>}
    <form className="cc-dm-composer" onSubmit={submit}>
     <button type="button" className="cc-dm-composer-icon" aria-label="Choose emoji" title="Emoji" onClick={()=>setEmojiMode(emojiMode==='insert'?null:'insert')}><Smile size={22}/></button>
-    <textarea ref={draftInput} aria-label="Message" rows={1} maxLength={2000} placeholder="Message…" value={draft} onChange={e=>changeDraft(e.target.value)} onKeyDown={keyDown}/>
+    <textarea ref={draftInput} aria-label="Message" rows={1} maxLength={2000} placeholder="Message…" value={draft} onChange={e=>changeDraft(e.target.value)} onKeyDown={keyDown} onBlur={()=>markTyping(false)}/>
     <ChatMediaUpload compact recipientHandle={peer} onSent={async()=>{await refreshConversation(peer,true);void refreshInbox().catch(()=>{})}}/>
     <button type="button" className="cc-dm-composer-icon" aria-label="Send an emoji sticker" title="Emoji sticker" onClick={()=>setEmojiMode(emojiMode==='sticker'?null:'sticker')}><Sticker size={22}/></button>
     <button type="button" className="cc-dm-composer-icon" aria-label="Share a post or Reel" title="Share a post" onClick={()=>setShowPostPicker(true)}><Share2 size={21}/></button>

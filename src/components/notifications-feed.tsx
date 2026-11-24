@@ -1,63 +1,32 @@
 'use client';
-import {useCallback,useEffect,useMemo,useState} from 'react';
-import Link from 'next/link';import {Avatar} from './avatar';import {Bell,CheckCheck} from 'lucide-react';
-type Notification={id:string;type:string;actorUid:string;actorHandle:string;actorAvatarUrl:string|null;actorUids:string[];count:number;postId:string|null;storyId:string|null;createdAt:string|null;unread:boolean};
-function label(n:Notification){
- const actor='@'+(n.actorHandle||'member'),extra=n.count>1?' and '+(n.count-1)+' others':'';
- const action:Record<string,string>={like:'liked your post',comment:'commented on your post',reply:'replied to your comment',mention:'mentioned you',comment_like:'liked your comment',follow:'followed you',follow_request:'requested to follow you',follow_accept:'accepted your follow request',repost:'reposted your post',story_reply:'replied to your story',story_reaction:'reacted to your story',story_mention:'mentioned you in a story',share:'shared your post'};
- return actor+extra+' '+(action[n.type]||'interacted with your content');
-}
-function dayGroup(n:Notification){
- if(n.unread)return 'New';
- const ms=Date.parse(n.createdAt||'');if(!Number.isFinite(ms))return 'Earlier';
- return Date.now()-ms<7*86400000?'This week':'Earlier';
-}
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import Link from 'next/link';
+import {Avatar} from './avatar';
+import {Bell} from 'lucide-react';
+import {compactTime,matchesNotification,notificationAction,notificationSection,type NotificationFilter} from '@/lib/core/notification-presentation';
+type Actor={uid:string;handle:string;avatarUrl:string|null};
+type Notification={id:string;type:string;actorUid:string;actorHandle:string;actorAvatarUrl:string|null;actors?:Actor[];count:number;postId:string|null;storyId:string|null;createdAt:string|null;unread:boolean;targetKind:string;thumbUrl:string|null;thumbContentType:string;followStatus:string};
+const filters:NotificationFilter[]=['All','People you follow','Comments','Follows','Mentions','Messages'];
+const sections=['Today','This week','This month','Earlier'];
 export function NotificationsFeed(){
- const [items,setItems]=useState<Notification[]>([]),[cursor,setCursor]=useState<string|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
- const load=useCallback(async(next?:string)=>{
-  setError('');setBusy(true);
-  try{
-   const response=await fetch('/api/notifications'+(next?'?cursor='+encodeURIComponent(next):''),{cache:'no-store'});
-   const data=await response.json();if(!response.ok)throw Error(data.error||'Notifications unavailable');
-   const incoming:Notification[]=Array.isArray(data.items)?data.items:[];
-   setItems(old=>next?[...new Map([...old,...incoming].map(x=>[x.id,x])).values()]:incoming);setCursor(typeof data.nextCursor==='string'?data.nextCursor:null);
-  }catch(e){setError(e instanceof Error?e.message:'Notifications unavailable')}finally{setBusy(false);setLoading(false)}
- },[]);
- useEffect(()=>{void load()},[load]);
- const groups=useMemo(()=>Object.entries({New:items.filter(x=>dayGroup(x)==='New'),'This week':items.filter(x=>dayGroup(x)==='This week'),Earlier:items.filter(x=>dayGroup(x)==='Earlier')}),[items]);
- const mark=async(id?:string)=>{try{
-  const r=await fetch('/api/notifications/read',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(id?{id}:{all:true})});
-  if(!r.ok)throw Error('Unable to mark notifications read');
-  setItems(old=>old.map(n=>!id||n.id===id?{...n,unread:false}:n));window.dispatchEvent(new Event('cc-notifications-updated'));
- }catch(e){setError(String(e))}};
- const respond=async(n:Notification,action:'accept'|'decline')=>{try{
-  const r=await fetch('/api/follow-requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:n.actorUid,action})});
-  if(!r.ok)throw Error((await r.json()).error||'Unable to respond');
-  setNotice(action==='accept'?'Follow request accepted':'Follow request declined');await mark(n.id);
- }catch(e){setError(String(e))}};
- const followBack=async(n:Notification)=>{try{
-  const r=await fetch('/api/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle:n.actorHandle})});if(!r.ok)throw Error('Unable to follow');
-  setNotice('Follow status updated');await mark(n.id);
- }catch(e){setError(String(e))}};
- return <section className="cc-notifications-page" aria-label="Campus notifications">
-  <header><div><h1>Notifications</h1><p>See activity from your campus community.</p></div><button onClick={()=>void mark()}><CheckCheck size={17}/> Mark all as read</button></header>
-  {loading&&<p role="status">Loading your notifications…</p>}
-  {error&&<p role="alert">{error} <button onClick={()=>void load()}>Retry</button></p>}
-  {notice&&<p role="status">{notice}</p>}
-  {!loading&&items.length===0&&<div className="cc-notifications-empty"><Bell size={40}/><h2>Nothing new yet</h2><p>When students interact with your posts and stories, you&apos;ll see it here.</p></div>}
-  {groups.map(([section,group])=>group.length>0&&<div key={section} className="cc-notification-group"><h2>{section}</h2>{group.map(n=>{
-   const href=n.postId?'/posts/'+encodeURIComponent(n.postId):n.storyId?'/home':'/profile/'+encodeURIComponent(n.actorHandle||'me');
-   const time=Date.parse(n.createdAt||''),relative=Number.isFinite(time)?new Date(time).toLocaleDateString([], {month:'short',day:'numeric'}):'';
-   return <article key={n.id} className={'cc-notification-row'+(n.unread?' unread':'')}>
-    <Link href={href} onClick={()=>void mark(n.id)} className="cc-notification-main">
-     <Avatar user={{name:n.actorHandle,handle:n.actorHandle,avatarUrl:n.actorAvatarUrl}} size={44}/>
-     <span><strong>{label(n)}</strong><small>{relative}</small></span>
-     {n.unread&&<b className="cc-notification-dot" aria-label="Unread"/>}
-    </Link>
-    {n.type==='follow_request'&&<div className="cc-notification-actions"><button onClick={()=>void respond(n,'accept')}>Confirm</button><button onClick={()=>void respond(n,'decline')}>Delete</button></div>}
-    {n.type==='follow'&&<button onClick={()=>void followBack(n)} className="cc-follow-back">Follow back</button>}
-   </article>;
-  })}</div>)}
-  {cursor&&<button className="cc-notifications-more" disabled={busy} onClick={()=>void load(cursor)}>{busy?'Loading…':'Load older notifications'}</button>}
- </section>;
+ const [items,setItems]=useState<Notification[]>([]),[cursor,setCursor]=useState<string|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[filter,setFilter]=useState<NotificationFilter>('All'),[resolved,setResolved]=useState<Record<string,string>>({});
+ const root=useRef<HTMLElement>(null),pending=useRef(new Set<string>()),inFlight=useRef(new Set<string>()),timer=useRef<ReturnType<typeof setTimeout>|null>(null),request=useRef(false),initialized=useRef(false);
+ const load=useCallback(async(next?:string)=>{if(request.current)return;request.current=true;if(next)setBusy(true);try{
+ const r=await fetch('/api/notifications'+(next?'?cursor='+encodeURIComponent(next):''),{cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error||'Notifications unavailable');
+ const incoming:Notification[]=Array.isArray(d.items)?d.items:[];
+ setItems(old=>{const map=new Map(old.map(n=>[n.id,n]));for(const n of incoming)map.set(n.id,pending.current.has(n.id)||inFlight.current.has(n.id)?{...n,unread:false}:n);return [...map.values()].sort((a,b)=>Date.parse(b.createdAt||'')-Date.parse(a.createdAt||''))});
+ if(next||!initialized.current)setCursor(d.nextCursor||null);initialized.current=true;setError('');
+ }catch(e){setError(e instanceof Error?e.message:'Notifications unavailable')}finally{request.current=false;setLoading(false);setBusy(false)}},[]);
+ const flush=useCallback(async()=>{timer.current=null;const ids=[...pending.current].slice(0,100);if(!ids.length)return;ids.forEach(id=>{pending.current.delete(id);inFlight.current.add(id)});try{const r=await fetch('/api/notifications/read',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});if(!r.ok)throw Error('Unable to mark notifications read');window.dispatchEvent(new Event('cc-notifications-updated'))}catch{setItems(old=>old.map(n=>ids.includes(n.id)?{...n,unread:true}:n));setError('Could not update read status. Refresh to retry.')}finally{ids.forEach(id=>inFlight.current.delete(id))}},[]);
+ const mark=useCallback((id:string)=>{if(pending.current.has(id)||inFlight.current.has(id))return;pending.current.add(id);setItems(old=>old.map(n=>n.id===id?{...n,unread:false}:n));if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(()=>void flush(),200)},[flush]);
+ useEffect(()=>{void load();const tick=()=>{if(!document.hidden&&navigator.onLine)void load()};const t=setInterval(tick,5000);document.addEventListener('visibilitychange',tick);window.addEventListener('focus',tick);window.addEventListener('cc-notifications-updated',tick);return()=>{clearInterval(t);document.removeEventListener('visibilitychange',tick);window.removeEventListener('focus',tick);window.removeEventListener('cc-notifications-updated',tick)}},[load]);
+ const visible=useMemo(()=>items.filter(n=>notificationAction(n.type,n.targetKind)&&matchesNotification(filter,n.type,resolved[n.actorUid]||n.followStatus)),[items,filter,resolved]);
+ useEffect(()=>{const timers=new Map<Element,ReturnType<typeof setTimeout>>();const stop=(node:Element)=>{const t=timers.get(node);if(t)clearTimeout(t);timers.delete(node)};const io=new IntersectionObserver(entries=>{for(const entry of entries){stop(entry.target);if(entry.intersectionRatio>=.6&&!document.hidden){const id=(entry.target as HTMLElement).dataset.notificationId;if(id)timers.set(entry.target,setTimeout(()=>{if(!document.hidden)mark(id)},800))}}},{threshold:[0,.6]});root.current?.querySelectorAll('[data-unread="true"]').forEach(node=>io.observe(node));return()=>{io.disconnect();timers.forEach(clearTimeout)}},[visible,mark]);
+ useEffect(()=>()=>{if(timer.current){clearTimeout(timer.current);void flush()}},[flush]);
+ const follow=async(n:Notification,action?:'accept'|'decline')=>{try{const r=await fetch(action?'/api/follow-requests':'/api/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(action?{uid:n.actorUid,action}:{handle:n.actorHandle})});const d=await r.json();if(!r.ok)throw Error(d.error||'Follow unavailable');setResolved(old=>({...old,[n.actorUid]:action?action==='accept'?'accepted':'declined':d.status||'active'}));mark(n.id)}catch(e){setError(String(e))}};
+ return <section ref={root} className="cc-notifications-page cc-notifications-v2" aria-label="Campus notifications"><header><h1>Notifications</h1></header><nav className="cc-notification-filters" aria-label="Notification filters">{filters.map(f=><button key={f} aria-pressed={f===filter} onClick={()=>setFilter(f)}>{f}</button>)}</nav>
+ {loading&&<p role="status">Loading notifications…</p>}{error&&<p role="alert">{error} <button onClick={()=>void load()}>Retry</button></p>}
+ {!loading&&!visible.length&&<div className="cc-notifications-empty"><Bell size={35}/><p>No notifications here.</p></div>}
+ {sections.map(section=>{const rows=visible.filter(n=>notificationSection(n.createdAt)===section);return rows.length>0&&<div className="cc-notification-group" key={section}><h2>{section}</h2>{rows.map(n=>{const actors=n.actors?.length?n.actors:[{uid:n.actorUid,handle:n.actorHandle,avatarUrl:n.actorAvatarUrl}],state=resolved[n.actorUid]||n.followStatus,href=['message','chat_message','story_reply'].includes(n.type)?'/messages/'+encodeURIComponent(n.actorHandle):n.postId?'/posts/'+encodeURIComponent(n.postId):n.storyId?'/home':'/profile/'+encodeURIComponent(n.actorHandle);return <article key={n.id} data-notification-id={n.id} data-unread={n.unread} className="cc-notification-row"><Link className="cc-notification-main" href={href} onClick={()=>{if(n.unread)mark(n.id)}}><span className="cc-notification-avatars">{actors.map(a=><Avatar key={a.uid} user={{handle:a.handle,avatarUrl:a.avatarUrl}} size={44}/>)}</span><span className="cc-notification-text"><b>{actors.map(a=>a.handle).join(', ')}</b>{n.count>actors.length?' and '+(n.count-actors.length)+' others':''} {notificationAction(n.type,n.targetKind)} <time>{compactTime(n.createdAt)}</time></span></Link>{n.type==='follow'?<button className="cc-follow-back" disabled={state==='active'||state==='pending'} onClick={()=>void follow(n)}>{state==='active'?'Following':state==='pending'?'Requested':'Follow Back'}</button>:n.type==='follow_request'?<div className="cc-notification-actions">{state==='accepted'||state==='declined'?<small>{state}</small>:<><button onClick={()=>void follow(n,'accept')}>Confirm</button><button onClick={()=>void follow(n,'decline')}>Delete</button></>}</div>:n.thumbUrl&&<Link href={href} aria-label="View content" className="cc-notification-thumb">{n.thumbContentType.startsWith('video/')?<video muted playsInline preload="metadata" src={n.thumbUrl}/>:<img src={n.thumbUrl} alt="" width={44} height={44} loading="lazy" decoding="async"/>}</Link>}</article>})}</div>})}
+ {cursor&&<button className="cc-notifications-more" disabled={busy} onClick={()=>void load(cursor)}>{busy?'Loading…':'Load older notifications'}</button>}</section>
 }

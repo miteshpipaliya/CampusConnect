@@ -1,0 +1,1 @@
+export function profileContentKind(post:{type?:unknown;mediaId?:unknown;media?:unknown},contentType:unknown):'post'|'reel'{if(post.type==='reel')return 'reel';if(post.type==='post')return 'post';const count=Array.isArray(post.media)?post.media.length:post.mediaId?1:0;return count===1&&typeof contentType==='string'&&contentType.startsWith('video/')?'reel':'post'}

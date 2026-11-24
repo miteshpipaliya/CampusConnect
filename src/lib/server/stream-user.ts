@@ -1,8 +1,7 @@
 import 'server-only';
 import {createHmac} from 'node:crypto';
 import {db} from './services';
-import {presignGet} from './storage';
-/** Stream users receive a signed R2 avatar URL; token creation refreshes expiring URLs. */
+/** Stream identity contains no media bearer URLs. CampusConnect resolves avatars through its viewer-authorized API. */
 export async function syncStreamUser(uid:string):Promise<{synced:boolean;user:{id:string;name:string;username:string;image:string;invisible:boolean}}>{
  const apiKey=process.env.STREAM_API_KEY?.trim(),secret=process.env.STREAM_API_SECRET?.trim();
  if(!apiKey||!secret)return {synced:false,user:{id:uid,name:'Student',username:'',image:'',invisible:true}};
@@ -10,12 +9,6 @@ export async function syncStreamUser(uid:string):Promise<{synced:boolean;user:{i
  if(!snap.exists||snap.data()?.deletedAt)return {synced:false,user:{id:uid,name:'Student',username:'',image:'',invisible:true}};
  const d=snap.data()!,name=String(d.name||d.handle||'Student');
  const user={id:uid,name,username:String(d.handle||''),image:'',invisible:d.settings?.activityStatus!==true};
- if(typeof d.avatarMediaId==='string'){
-  const media=await db().collection('media').doc(d.avatarMediaId).get();
-  if(media.exists&&media.data()?.status==='uploaded'&&media.data()?.ownerUid===uid&&typeof media.data()?.key==='string'){
-   user.image=await presignGet(media.data()!.key,3600*12);
-  }
- }
  const encode=(v:object)=>Buffer.from(JSON.stringify(v)).toString('base64url');
  const payload=encode({alg:'HS256',typ:'JWT'})+'.'+encode({server:true});
  const jwt=payload+'.'+createHmac('sha256',secret).update(payload).digest('base64url');
@@ -24,10 +17,9 @@ export async function syncStreamUser(uid:string):Promise<{synced:boolean;user:{i
  const response=await fetch(endpoint.toString(),{method:'POST',headers:{'Content-Type':'application/json',Authorization:jwt,'stream-auth-type':'jwt'},body:JSON.stringify({users:{[uid]:user}}),cache:'no-store'});
  if(!response.ok){
   const data:unknown=await response.json().catch(()=>null);
-  const detail=data&&typeof data==='object'?data as {code?:unknown;message?:unknown}:null;
+  const detail=data&&typeof data==='object'?data as {code?:unknown}:null;
   // Log only the HTTP status and Stream's bounded error classification, never tokens.
-  console.error('Stream sync rejected',{status:response.status,code:typeof detail?.code==='number'?detail.code:null,
-   reason:typeof detail?.message==='string'?detail.message.slice(0,160):'unknown'});
+  console.error('Stream sync rejected',{status:response.status,code:typeof detail?.code==='number'?detail.code:null});
   return {synced:false,user};
  }
  return {synced:true,user};
