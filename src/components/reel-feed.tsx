@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {ChevronUp,ChevronDown} from 'lucide-react';
 import {ReelCard,type Reel} from './reel-card';
 import {dedupeReels} from '@/lib/core/reel-views';
+import {useReelVolume} from '@/lib/client/use-reel-volume';
 import {windowRange} from '@/lib/core/reel-window';
 const REFRESH_MS=8000;
 type Page={reels:Reel[];nextCursor:string|null};
@@ -10,7 +11,7 @@ type Page={reels:Reel[];nextCursor:string|null};
 export function ReelFeed(){
  const [reels,setReels]=useState<Reel[]>([]),[cursor,setCursor]=useState<string|null>(null),
  [loading,setLoading]=useState(true),[more,setMore]=useState(false),[active,setActive]=useState(0),
- [muted,setMuted]=useState(true),[error,setError]=useState(''),[newReels,setNewReels]=useState(false);
+ [error,setError]=useState(''),[newReels,setNewReels]=useState(false);
  const scroller=useRef<HTMLDivElement>(null),end=useRef<HTMLDivElement>(null),fetching=useRef(false);
  const itemsRef=useRef<Reel[]>([]);itemsRef.current=reels;
  const load=useCallback(async(next?:string)=>{
@@ -27,8 +28,8 @@ export function ReelFeed(){
   }catch(e){setError(e instanceof Error?e.message:'Reels unavailable')}
   finally{fetching.current=false;setLoading(false);setMore(false)}
  },[]);
- useEffect(()=>{void load();try{setMuted(sessionStorage.getItem('cc:reels:muted')!=='false')}catch{}},[load]);
- const changeMute=useCallback((value:boolean)=>{setMuted(value);try{sessionStorage.setItem('cc:reels:muted',String(value))}catch{}},[]);
+ const {volume,changeVolume}=useReelVolume();
+ useEffect(()=>{void load()},[load]);
  const refresh=useCallback(async()=>{
   if(fetching.current||document.visibilityState!=='visible')return;
   try{
@@ -101,7 +102,7 @@ export function ReelFeed(){
   <div className="cc-reel-feed" ref={scroller} onScroll={onScroll}>
    {loading&&!reels.length?<div className="cc-reel-empty">Loading campus Reels…</div>:
     !reels.length&&!error?<div className="cc-reel-empty">No campus Reels yet. Publish a video to start the feed.</div>:
-    reels.map((reel,index)=><ReelCard key={reel.id} reel={reel} active={index===active} muted={muted} onMute={changeMute} mounted={index>=range.start&&index<=range.end} preloadNext={index===active+1}/>)}
+    reels.map((reel,index)=><ReelCard key={reel.id} reel={reel} active={index===active} volume={volume} onVolume={changeVolume} mounted={index>=range.start&&index<=range.end} preloadNext={index===active+1}/>)}
    <div ref={end} className="cc-reel-end">{more?'Loading more Reels…':!cursor&&reels.length>0?'You are all caught up':''}</div>
   </div>
   {reels.length>1&&<nav className="cc-reel-nav" aria-label="Navigate Reels">

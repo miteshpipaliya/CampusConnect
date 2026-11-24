@@ -1,8 +1,10 @@
 'use client';
 import {useEffect,useRef,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
+import {playWithSound} from '@/lib/client/play-with-sound';
+import {VolumeControl} from './volume-control';
 import {Avatar} from './avatar';
-import {Heart,MessageCircle,Bookmark,Repeat2,Volume2,VolumeX,Send,Play,Ellipsis,MapPin,BadgeCheck} from 'lucide-react';
+import {Heart,MessageCircle,Bookmark,Repeat2,Send,Play,Ellipsis,MapPin,BadgeCheck} from 'lucide-react';
 import {safeVideoAspect} from '@/lib/core/reel-discovery';
 import {fitReelFrame} from '@/lib/core/reel-layout';
 import {clampCaption} from '@/lib/core/caption-clamp';
@@ -13,15 +15,12 @@ export type Reel={id:string;authorUid:string;authorHandle:string;authorName:stri
 type Action='like'|'save'|'repost';
 const format=(n:number)=>n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'K':String(Math.max(0,n));
 
-export function ReelCard({reel,active,muted,onMute,mounted=true,preloadNext=false}:{reel:Reel;active:boolean;muted:boolean;onMute:(v:boolean)=>void;mounted?:boolean;preloadNext?:boolean}){
+export function ReelCard({reel,active,volume,onVolume,mounted=true,preloadNext=false}:{reel:Reel;active:boolean;volume:number;onVolume:(v:number)=>void;mounted?:boolean;preloadNext?:boolean}){
  const player=useRef<HTMLVideoElement>(null),stageRef=useRef<HTMLDivElement>(null),actionsRef=useRef<HTMLDivElement>(null),counted=useRef(false),lastTick=useRef(0),playedMs=useRef(0);
  const [paused,setPaused]=useState(false),[ratio,setRatio]=useState(()=>safeVideoAspect(reel.width??0,reel.height??0)),[progress,setProgress]=useState(0),[frame,setFrame]=useState<{width:number;height:number}|null>(null);
  const [liked,setLiked]=useState(reel.liked),[saved,setSaved]=useState(reel.saved),[reposted,setReposted]=useState(reel.reposted),[likes,setLikes]=useState(reel.likes);
  const [busy,setBusy]=useState(false),[share,setShare]=useState(false),[comments,setComments]=useState(false),[follow,setFollow]=useState(reel.followStatus),[error,setError]=useState(''),[notice,setNotice]=useState(''),[expanded,setExpanded]=useState(false),[menu,setMenu]=useState(false),[removed,setRemoved]=useState(false);
- useEffect(()=>{const v=player.current;if(!v)return;if(active&&!paused&&!document.hidden)void v.play().catch(()=>{});else v.pause()},[active,paused,mounted]);
- useEffect(()=>{const handler=()=>{if(document.hidden){player.current?.pause();lastTick.current=0}else if(active&&!paused)void player.current?.play().catch(()=>{})};
-  document.addEventListener('visibilitychange',handler);return()=>document.removeEventListener('visibilitychange',handler)
- },[active,paused]);
+ useEffect(()=>{const v=player.current;if(!v)return;let stop:(()=>void)|undefined;const update=()=>{stop?.();stop=undefined;if(active&&!paused&&!document.hidden)stop=playWithSound(v,volume);else{v.pause();v.muted=true;lastTick.current=0}};update();document.addEventListener('visibilitychange',update);return()=>{document.removeEventListener('visibilitychange',update);stop?.();v.pause()}},[active,paused,mounted,volume,reel.mediaUrl]);
  useEffect(()=>{setLiked(reel.liked);setSaved(reel.saved);setReposted(reel.reposted);setLikes(reel.likes)},[reel.liked,reel.saved,reel.reposted,reel.likes]);
  // Fit the actual source aspect ratio into the available Reel workspace. Do not
  // rely on calc(length * CSS variable), which can be treated as invalid width
@@ -76,23 +75,22 @@ export function ReelCard({reel,active,muted,onMute,mounted=true,preloadNext=fals
   lastTick.current=now;
   if(!counted.current&&playedMs.current>=3000){
    counted.current=true;
-   void fetch('/api/posts/'+reel.id+'/view',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({watchMs:Math.floor(playedMs.current)})}).catch(()=>{counted.current=false});
+   void fetch('/api/posts/'+reel.id+'/view',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({watchMs:Math.floor(playedMs.current)})}).then(r=>{if(!r.ok)counted.current=false}).catch(()=>{counted.current=false});
   }
  }
- useEffect(()=>{const video=player.current;return()=>{if(video){video.pause();video.removeAttribute('src');video.load()}}},[mounted,reel.mediaUrl]);
  const caption=clampCaption(reel.caption);
  if(removed)return <article data-reel-card className="cc-reel-card"><p>Reel removed.</p></article>;
  const videoStyle={aspectRatio:String(ratio),...(frame&&frame.width>0&&frame.height>0?{width:frame.width,height:frame.height}:{} )} as CSSProperties;
  return <article data-reel-card className="cc-reel-card" aria-label={'Reel by '+reel.authorHandle}>
   <div className="cc-reel-stage" ref={stageRef}>
    <div className="cc-reel-video-box" style={videoStyle}>
-    {mounted&&reel.mediaUrl?<video ref={player} src={reel.mediaUrl} playsInline muted={muted} loop preload={active||preloadNext?'auto':'none'}
+    {mounted&&reel.mediaUrl?<video ref={player} src={reel.mediaUrl} playsInline loop preload={active||preloadNext?'auto':'none'}
      disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
      onContextMenu={e=>e.preventDefault()} onTimeUpdate={onTimeUpdate} onPause={()=>{lastTick.current=0}}
      onLoadedMetadata={e=>setRatio(safeVideoAspect(e.currentTarget.videoWidth,e.currentTarget.videoHeight))}
      onClick={()=>setPaused(v=>!v)} onDoubleClick={()=>{if(!liked)void action('like')}} onError={()=>setError('This Reel could not be loaded. Retry by refreshing the page.')}/>:mounted?<p>Video unavailable</p>:null}
     {paused&&<button type="button" className="cc-reel-play" aria-label="Resume Reel" onClick={()=>setPaused(false)}><Play size={28} fill="white"/></button>}
-    <button type="button" className="cc-reel-mute" aria-label={muted?'Unmute Reel':'Mute Reel'} onClick={()=>onMute(!muted)}>{muted?<VolumeX size={19}/>:<Volume2 size={19}/>}</button>
+    {active&&<VolumeControl volume={volume} onChange={onVolume}/>}
     <div className="cc-reel-caption">
      <div className="cc-reel-author">
       <Link href={'/profile/'+encodeURIComponent(reel.authorHandle)}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={32}/><strong>@{reel.authorHandle}</strong>{reel.verified&&<BadgeCheck size={15} aria-label="Verified"/>}</Link>

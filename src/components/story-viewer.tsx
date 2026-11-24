@@ -2,7 +2,8 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
-import {Pause,Play,Volume2,VolumeX,X,ChevronLeft,ChevronRight,Heart,Send,Users,Ellipsis} from 'lucide-react';
+import {Pause,Play,X,ChevronLeft,ChevronRight,Heart,Send,Users,Ellipsis} from 'lucide-react';
+import {playWithSound} from '@/lib/client/play-with-sound';
 import {Avatar} from './avatar';
 import {relativeTime} from '@/lib/core/feed-presentation';
 type Viewer={uid:string;handle:string;name:string;avatarUrl:string|null};
@@ -16,7 +17,7 @@ async function json<T>(url:string,body?:object):Promise<T>{
 }
 export function StoryViewer({handle,highlightId}:{handle:string;highlightId?:string}){
  const router=useRouter(),video=useRef<HTMLVideoElement>(null),started=useRef(0),elapsed=useRef(0),touchX=useRef(0);
- const [groups,setGroups]=useState<Group[]>([]),[g,setG]=useState(0),[s,setS]=useState(0),[progress,setProgress]=useState(0),[paused,setPaused]=useState(false),[muted,setMuted]=useState(true),[error,setError]=useState(''),[loading,setLoading]=useState(true),[reply,setReply]=useState(''),[sending,setSending]=useState(false),[views,setViews]=useState<number|null>(null);
+ const [groups,setGroups]=useState<Group[]>([]),[g,setG]=useState(0),[s,setS]=useState(0),[progress,setProgress]=useState(0),[paused,setPaused]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(true),[reply,setReply]=useState(''),[sending,setSending]=useState(false),[views,setViews]=useState<number|null>(null);
  const [people,setPeople]=useState<Viewer[]>([]),[peopleOpen,setPeopleOpen]=useState(false),[options,setOptions]=useState(false),[liked,setLiked]=useState(false),[ready,setReady]=useState(false);
  const group=groups[g],story=group?.stories[s];
  useEffect(()=>{
@@ -46,8 +47,8 @@ export function StoryViewer({handle,highlightId}:{handle:string;highlightId?:str
  useEffect(()=>{elapsed.current=0;setProgress(0)},[story?.id]);
  useEffect(()=>{
   const element=video.current;if(!element)return;
-  if(paused||peopleOpen||options)element.pause();
-  else if(document.visibilityState==='visible')void element.play().catch(()=>{});
+  if(paused||peopleOpen||options||document.hidden){element.pause();return}
+  return playWithSound(element,1);
  },[paused,storyId,peopleOpen,options]);
  useEffect(()=>{
   if(!story||paused||!ready||peopleOpen||options)return;
@@ -94,11 +95,10 @@ export function StoryViewer({handle,highlightId}:{handle:string;highlightId?:str
   <div className="cc-story-progress">{group.stories.map((entry,i)=><span key={entry.id}><b style={{width:(i<s?100:i===s?progress*100:0)+'%'}}/></span>)}</div>
   <header><Link href={'/profile/'+encodeURIComponent(group.handle)}><Avatar user={{handle:group.handle,name:group.name,avatarUrl:group.avatarUrl}} size={32}/><b>{group.handle}</b><small>{relativeTime(story.createdAt)}</small></Link>
    <button type="button" aria-label={paused?'Resume story':'Pause story'} onClick={()=>setPaused(v=>!v)}>{paused?<Play/>:<Pause/>}</button>
-   <button type="button" aria-label={muted?'Unmute story':'Mute story'} onClick={()=>setMuted(v=>!v)}>{muted?<VolumeX/>:<Volume2/>}</button>
    <button aria-label="Story options" onClick={()=>setOptions(v=>!v)}><Ellipsis/></button><Link href={highlightId?'/profile/'+encodeURIComponent(group.handle):'/home'} aria-label="Close stories"><X/></Link>
   </header>
   <div className="cc-story-media" onPointerDown={e=>{touchX.current=e.clientX;setPaused(true)}} onPointerUp={e=>{const dx=e.clientX-touchX.current;setPaused(false);if(Math.abs(dx)>60)advance(dx<0?1:-1)}} onPointerCancel={()=>setPaused(false)}>
-   {story.mediaUrl?story.contentType.startsWith('video/')?<video key={story.id} ref={video} playsInline muted={muted} src={story.mediaUrl||undefined} onLoadedData={()=>setReady(true)} onError={()=>setError('Story media unavailable')} autoPlay onEnded={()=>advance(1)}/>:<img src={story.mediaUrl||undefined} onLoad={()=>setReady(true)} onError={()=>setError('Story media unavailable')} alt={story.caption||'Campus story'}/>:<p>Media unavailable</p>}
+   {story.mediaUrl?story.contentType.startsWith('video/')?<video key={story.id} ref={video} playsInline src={story.mediaUrl||undefined} onLoadedData={()=>setReady(true)} onError={()=>setError('Story media unavailable')} onEnded={()=>advance(1)}/>:<img src={story.mediaUrl||undefined} onLoad={()=>setReady(true)} onError={()=>setError('Story media unavailable')} alt={story.caption||'Campus story'}/>:<p>Media unavailable</p>}
    {story.overlay?.text&&<strong className="cc-story-overlay" style={{color:story.overlay.color||'#fff',left:Math.round((story.overlay.x??.5)*100)+'%',top:Math.round((story.overlay.y??.5)*100)+'%'}}>{story.overlay.text}</strong>}
    <button type="button" aria-label="Previous story" className="cc-story-left" onClick={()=>advance(-1)}><ChevronLeft/></button>
    <button type="button" aria-label="Next story" className="cc-story-right" onClick={()=>advance(1)}><ChevronRight/></button>
