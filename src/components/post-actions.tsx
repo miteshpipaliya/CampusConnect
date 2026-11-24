@@ -4,11 +4,11 @@ import {ChatShareSheet} from './chat/chat-share-sheet';
 import {ReportDialog} from './report-dialog';
 type Action='edit'|'archive'|'delete'|'hideLikes'|'commentsOff'|'pin';
 type Flags={hideLikeCount:boolean;commentsOff:boolean;pinned:boolean};
-export function PostActions({id,caption,authorUid,hideLikeCount=false,commentsOff=false,pinned=false,onChanged}:{id:string;caption:string;authorUid?:string|undefined;hideLikeCount?:boolean;commentsOff?:boolean;pinned?:boolean;onChanged?:()=>void}){
- const [mine,setMine]=useState(false),[open,setOpen]=useState(false),[share,setShare]=useState(false),[report,setReport]=useState(false),[edit,setEdit]=useState(false),[draft,setDraft]=useState(caption),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+export function PostActions({id,caption,authorUid,isMine,hideLikeCount=false,commentsOff=false,pinned=false,onChanged}:{id:string;caption:string;authorUid?:string|undefined;isMine?:boolean;hideLikeCount?:boolean;commentsOff?:boolean;pinned?:boolean;onChanged?:()=>void}){
+ const [mine,setMine]=useState(isMine??false),[open,setOpen]=useState(false),[share,setShare]=useState(false),[report,setReport]=useState(false),[edit,setEdit]=useState(false),[draft,setDraft]=useState(caption),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [flags,setFlags]=useState<Flags>({hideLikeCount,commentsOff,pinned});
  useEffect(()=>{setFlags({hideLikeCount,commentsOff,pinned})},[hideLikeCount,commentsOff,pinned]);
- useEffect(()=>{let alive=true;void fetch('/api/auth',{cache:'no-store'}).then(r=>r.json()).then(d=>{if(alive)setMine(Boolean(authorUid&&d.user?.uid===authorUid))}).catch(()=>{});return()=>{alive=false}},[authorUid]);
+ useEffect(()=>{if(isMine!==undefined){setMine(isMine);return}let alive=true;void fetch('/api/auth',{cache:'no-store'}).then(r=>r.json()).then(d=>{if(alive)setMine(Boolean(authorUid&&d.user?.uid===authorUid))}).catch(()=>{});return()=>{alive=false}},[authorUid,isMine]);
  async function manage(action:Action){
   if(action==='delete'&&!window.confirm('Delete this post from CampusConnect?'))return;
   setBusy(true);setError('');
@@ -21,10 +21,10 @@ export function PostActions({id,caption,authorUid,hideLikeCount=false,commentsOf
   }catch(e){setError(e instanceof Error?e.message:'Action failed')}finally{setBusy(false)}
  }
  async function copy(){try{await navigator.clipboard.writeText(window.location.origin+'/posts/'+encodeURIComponent(id));setNotice('Post link copied')}catch{setError('Unable to copy link')}}
- return <div style={{position:'relative',margin:'8px 0'}}>
-  <button type="button" aria-expanded={open} onClick={()=>setOpen(v=>!v)}>⋯ Options</button>
-  <button type="button" onClick={()=>setShare(v=>!v)}>Share</button>
-  {open&&<div style={{display:'grid',gap:8,padding:12,background:'#1c1c22',borderRadius:10,maxWidth:265}}>
+ return <div className="cc-post-menu-wrap">
+  <button type="button" aria-label="More options" aria-expanded={open} onClick={()=>setOpen(v=>!v)}>⋯</button>
+  
+  {open&&<div className="cc-post-menu-backdrop" onClick={()=>setOpen(false)}><div className="cc-post-menu-sheet" role="dialog" aria-label="Post options" onClick={e=>e.stopPropagation()}>
    {mine&&<><button disabled={busy} onClick={()=>{setEdit(true);setOpen(false)}}>Edit</button>
     <button disabled={busy} onClick={()=>void manage('pin')}>{flags.pinned?'Unpin from profile':'Pin to profile'}</button>
     <button disabled={busy} onClick={()=>void manage('hideLikes')}>{flags.hideLikeCount?'Show like counts':'Hide like counts'}</button>
@@ -33,8 +33,8 @@ export function PostActions({id,caption,authorUid,hideLikeCount=false,commentsOf
     <button disabled={busy} onClick={()=>void manage('delete')}>Delete</button></>}
    {!mine&&<button onClick={()=>{setReport(true);setOpen(false)}}>Report post</button>}
    <button onClick={()=>{setShare(true);setOpen(false)}}>Share</button>
-   <button onClick={()=>void copy()}>Copy link</button>
-  </div>}
+   <button onClick={()=>void copy()}>Copy link</button><button onClick={()=>setOpen(false)}>Cancel</button>
+  </div></div>}
   {edit&&<div style={{padding:12}}><label>Edit caption<textarea value={draft} maxLength={2200} onChange={e=>setDraft(e.target.value)}/></label><button disabled={busy||!draft.trim()} onClick={()=>void manage('edit')}>Save changes</button><button onClick={()=>setEdit(false)}>Cancel</button></div>}
   {share&&<ChatShareSheet postId={id} onClose={()=>setShare(false)}/>}
   {report&&<ReportDialog targetType="post" targetId={id} onClose={()=>setReport(false)}/>}

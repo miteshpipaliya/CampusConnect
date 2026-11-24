@@ -46,6 +46,8 @@ export async function GET(request:NextRequest){
   ]);
   const authorIds=[...new Set(selected.map(d=>String(d.data().authorUid||'')).filter(Boolean))];
   const users=authorIds.length?await store.getAll(...authorIds.map(id=>store.collection('users').doc(id))):[];
+  const relations=authorIds.length?await store.getAll(...authorIds.map(id=>store.collection('follows').doc(user.uid+'_'+id))):[];
+  const followStatus=new Map(authorIds.map((id,i)=>[id,String(relations[i]?.data()?.status||'none')]));
   const authors=new Map(users.filter(d=>d.exists).map(d=>[d.id,d.data()]));
   const mediaIds=[...new Set([
    ...selected.map(d=>d.data().mediaId),
@@ -55,6 +57,7 @@ export async function GET(request:NextRequest){
   const mediaSnaps=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];
   const mediaUrls=await mintUrls(mediaSnaps.filter(x=>x.exists).map(x=>({id:x.id,...(x.data()??{})})),{viewerUid:user.uid});
   const mediaTypes=new Map(mediaSnaps.map(x=>[x.id,String(x.data()?.contentType||'')]));
+  const dimensions=new Map(mediaSnaps.map(x=>[x.id,{width:Number(x.data()?.width)||null,height:Number(x.data()?.height)||null}]));
   const posts=await Promise.all(selected.map(async(d,i)=>{
    const data=d.data(),normalized=normalizeCounters(data.counters);
    let counters=normalized;
@@ -66,12 +69,12 @@ export async function GET(request:NextRequest){
    const mediaId=typeof data.mediaId==='string'?data.mediaId:null;
    const author=authors.get(String(data.authorUid||''));
    const avatarMediaId=typeof author?.avatarMediaId==='string'?author.avatarMediaId:null;
-   return {id:d.id,media:Array.isArray(data.media)?data.media.map((m:{mediaId:string;alt?:string})=>({...m,contentType:mediaTypes.get(m.mediaId)||'',url:mediaUrls[m.mediaId]?.url??null})):[],type:data.type||'post',caption:data.caption,cropRatio:data.cropRatio||'1 / 1',filter:data.filter||'none',location:data.location||null,hashtags:data.hashtags||[],mentions:data.mentions||[],pinned:data.pinned===true,hideLikeCount:data.hideLikeCount===true,commentsOff:data.commentsOff===true,authorHandle:data.authorHandle,authorUid:data.authorUid,mediaId,likes:counters.likes,comments:counters.comments,reposts:counters.reposts,liked:ownLikes[i]?.exists??false,saved:ownSaves[i]?.exists??false,avatarMediaId,avatarUrl:avatarMediaId?mediaUrls[avatarMediaId]?.url??null:null,mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null};
+   return {id:d.id,createdAt:data.createdAt?.toMillis?.()??0,isMine:data.authorUid===user.uid,followStatus:followStatus.get(String(data.authorUid))||'none',verified:author?.verified===true,shares:Number(data.counters?.shares||0),saves:Number(data.counters?.saves||0),width:mediaId?dimensions.get(mediaId)?.width??null:null,height:mediaId?dimensions.get(mediaId)?.height??null:null,media:Array.isArray(data.media)?data.media.map((m:{mediaId:string;alt?:string})=>({...m,...dimensions.get(m.mediaId),contentType:mediaTypes.get(m.mediaId)||'',url:mediaUrls[m.mediaId]?.url??null})):[],type:data.type||'post',caption:data.caption,cropRatio:data.cropRatio||'1 / 1',filter:data.filter||'none',location:data.location||null,hashtags:data.hashtags||[],mentions:data.mentions||[],pinned:data.pinned===true,hideLikeCount:data.hideLikeCount===true,commentsOff:data.commentsOff===true,authorHandle:data.authorHandle,authorUid:data.authorUid,mediaId,likes:counters.likes,comments:counters.comments,reposts:counters.reposts,liked:ownLikes[i]?.exists??false,saved:ownSaves[i]?.exists??false,avatarMediaId,avatarUrl:avatarMediaId?mediaUrls[avatarMediaId]?.url??null:null,mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null};
   }));
   const last=lastScanned;
   const lastMs=last?.data().createdAt?.toMillis?.();
   const nextCursor=last&&typeof lastMs==='number'?encodeCursor(lastMs,last.id):null;
-  return NextResponse.json({posts,nextCursor},{headers:safeHeaders});
+  return NextResponse.json({posts,nextCursor,viewerUid:user.uid},{headers:safeHeaders});
  }catch{return errorResponse(503,'Feed unavailable')}
 }
 export async function POST(request:NextRequest){

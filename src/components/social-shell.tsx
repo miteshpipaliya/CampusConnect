@@ -58,10 +58,11 @@ function Nav({ pathname, section, mobile = false, counts }: { pathname: string; 
     })}
   </nav>;
 }
+function FollowSuggestion({handle}:{handle:string}){const [status,setStatus]=useState('none'),[busy,setBusy]=useState(false);return <button className="cc-suggestion-follow" disabled={busy||status!=='none'} onClick={async()=>{setBusy(true);try{const r=await fetch('/api/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle})});const d=await r.json();if(r.ok)setStatus(d.status||'active')}finally{setBusy(false)}}}>{status==='pending'?'Requested':status==='active'?'Following':'Follow'}</button>}
 function Suggestions({handle}:{handle:string}){
  const [members,setMembers]=useState<Array<{handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null}>>([]);
- useEffect(()=>{let active=true;fetch('/api/chat?directory=1',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.members))setMembers(d.members.filter((m:{handle:string})=>m.handle&&m.handle!==handle).slice(0,8))}).catch(()=>{});return()=>{active=false}},[handle]);
- return <aside className="cc-suggestions"><div className="cc-me"><Avatar user={{handle}} size={44}/><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your campus account</small></div><Link href="/profile/me">View</Link></div><div className="cc-suggestion-heading">Campus members</div>{members.length?members.map(m=><div className="cc-suggested" key={m.handle}><Avatar user={{name:m.name,handle:m.handle,avatarMediaId:m.avatarMediaId??null,avatarUrl:m.avatarUrl??null}} size={44}/><div><Link href={'/profile/'+encodeURIComponent(m.handle)}><b>@{m.handle}</b></Link><small>{m.name}</small></div><Link href={'/messages/'+encodeURIComponent(m.handle)}>Message</Link></div>):<p style={{fontSize:12,color:'#aaa'}}>No other campus members found.</p>}</aside>;
+ useEffect(()=>{let active=true;fetch('/api/suggestions',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.members))setMembers(d.members.filter((m:{handle:string})=>m.handle&&m.handle!==handle).slice(0,8))}).catch(()=>{});return()=>{active=false}},[handle]);
+ return <aside className="cc-suggestions"><div className="cc-me"><Avatar user={{handle}} size={44}/><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your profile</small></div><Link href="/profile/me" >Profile</Link></div><div className="cc-suggestion-heading">Suggested for you</div>{members.length?members.map(m=><div className="cc-suggested" key={m.handle}><Avatar user={{name:m.name,handle:m.handle,avatarMediaId:m.avatarMediaId??null,avatarUrl:m.avatarUrl??null}} size={44}/><div><Link href={'/profile/'+encodeURIComponent(m.handle)}><b>@{m.handle}</b></Link><small>{m.name}</small></div><FollowSuggestion handle={m.handle}/></div>):<p style={{fontSize:12,color:'#aaa'}}>No other campus members found.</p>}</aside>;
 }
 
 export default function SocialShell({ children }: { children: ReactNode }) {
@@ -94,7 +95,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    if(!live)return;setChecked(true);queryClient.clear();if(x?.user?.profile?.handle&&x?.user?.uid){setUid(x.user.uid);setHandle(x.user.profile.handle)}else router.replace('/login');
   }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router,queryClient]);
   if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
-  return <StreamConnectionProvider key={uid}><div className={'cc-app'+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <StreamConnectionProvider key={uid}><div className={'cc-app'+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts}/>
@@ -106,5 +107,6 @@ export default function SocialShell({ children }: { children: ReactNode }) {
     </main>
     {!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle}/>}
     <Nav pathname={pathname} section={section} counts={counts} mobile />
+    {(pathname==='/home'||pathname.startsWith('/explore')||pathname.startsWith('/reels'))&&<Link href="/messages" className="cc-messages-pill"><Send size={23}/> Messages {counts.unreadMessages>0&&<b>{counts.unreadMessages>99?'99+':counts.unreadMessages}</b>}</Link>}
   </div></StreamConnectionProvider>;
 }

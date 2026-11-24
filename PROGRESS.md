@@ -49,3 +49,6 @@ Report authorization, UID notification cache keys, module feed cache removal, sh
 
 ## Regression repair and initial R3 controls
 Fixed actual CI failures (private avatar rule and shared media entrypoint source assertion), added composer location and flags, honored flags in feed, added saved collection navigation and pagination, and made shared response caching explicitly private. Full acceptance remains open.
+
+## Home UI upgrade
+Added account-keyed paginated feed, Instagram-inspired media and actions, story composer entry, suggestions follow, notification positioning and floating messages link. CI and signed-in visual acceptance pending.

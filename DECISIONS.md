@@ -21,3 +21,5 @@ Updated 2026-11-24.
 - R1: preserve original video aspect, full-width workspace, mount only active and neighboring videos; never touch production main during the new upgrade.
 
 - R2: use the same media signer for redirect and list endpoints; signed URLs cannot be revoked after issuance. Report authorization returns a generic unavailable response.
+
+- Home redesign is isolated from approved Reels source. Feed actions update local post state rather than polling and replacing the entire feed.

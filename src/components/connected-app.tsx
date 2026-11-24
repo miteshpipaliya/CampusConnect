@@ -1,18 +1,13 @@
 'use client';
 import { SocialPanels } from './social-panels';
-import {Avatar} from './avatar';
-import {PostActions} from './post-actions';
+import {FeedList} from './feed/feed-list';
 import {CreateComposer} from './create-composer';
-import {MediaCarousel,type CarouselMedia} from './media-carousel';
 import { isAllowedEmail } from '@/lib/student-email';
 import { LiveStories } from './live-stories';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect,useState, type FormEvent } from 'react';
-import { Heart,MessageCircle,Repeat2,Bookmark } from 'lucide-react';
 
-type Post={id:string;caption:string;media?:CarouselMedia[];authorUid?:string;authorHandle:string;mediaId:string|null;mediaUrl?:string|null;avatarMediaId?:string|null;avatarUrl?:string|null;likes:number;liked:boolean;saved?:boolean;comments:number;hideLikeCount?:boolean;commentsOff?:boolean;pinned?:boolean;location?:string|null};
-type Me={uid:string;email:string;profile:{handle:string;name:string;branch:string;division:string}|null};
 async function api<T>(path:string,method='GET',data?:object):Promise<T>{
  const r=await fetch(path,{method,cache:'no-store',credentials:'same-origin',
   ...(data?{headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{})});
@@ -101,37 +96,7 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
  </main>;
 }
 export function ConnectedFeed(){
- const params=useSearchParams();
- const [posts,setPosts]=useState<Post[]>([]);
- const [section,setSection]=useState('home');
- const [composeOpen,setComposeOpen]=useState(false);
- const [status,setStatus]=useState(''),[loading,setLoading]=useState(true);
- const [opened,setOpened]=useState<string|null>(null),[comments,setComments]=useState<Record<string,Array<{id:string;handle:string;text:string}>>>({}),[reply,setReply]=useState('');
- async function refresh(){const x=await api<{posts:Post[]}>('/api/posts');setPosts(x.posts)}
- useEffect(()=>{Promise.all([api<{user:Me}>('/api/auth'),api<{posts:Post[]}>('/api/posts')])
-  .then(([,feed])=>{setPosts(feed.posts)})
-  .catch(()=>setStatus('Sign in to view the live feed.')).finally(()=>setLoading(false));},[]);
- useEffect(()=>{const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh().catch(()=>{});},10000);return()=>window.clearInterval(timer)},[]);
- useEffect(()=>{const selected=params.get('section')||'home';if(selected==='chat'){window.location.replace('/messages'+(params.get('with')?'/'+encodeURIComponent(params.get('with')!):''));return}setSection(['home','reels','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[params]);
- async function toggleLike(id:string){try{await api('/api/posts/'+id+'/likes','POST',{});await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Like failed')}}
- async function toggleSave(id:string,saved:boolean){try{await api('/api/saves',saved?'DELETE':'POST',{postId:id});await refresh();setStatus(saved?'Removed from saved posts':'Saved privately')}catch(e){setStatus(e instanceof Error?e.message:'Save failed')}}
- async function repost(id:string){try{const result=await api<{reposted:boolean}>('/api/reposts','POST',{postId:id});setStatus(result.reposted?'Added to your reposts':'Removed from reposts')}catch(e){setStatus(e instanceof Error?e.message:'Repost failed')}}
- async function openComments(id:string){if(opened===id){setOpened(null);return}try{const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));setOpened(id)}catch(e){setStatus(e instanceof Error?e.message:'Comments unavailable')}}
- async function sendComment(event:FormEvent<HTMLFormElement>,id:string){event.preventDefault();try{await api('/api/posts/'+id+'/comments','POST',{text:reply});setReply('');const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Comment failed')}}
- return <section className={'cc-connected-feed'+(section==='chat'?' cc-chat-view':'')}>{section!=='chat'&&<SocialPanels section={section}/>}
-  {status&&<p role="status">{status}</p>}
-  {composeOpen&&<CreateComposer onClose={()=>setComposeOpen(false)} onPublished={()=>{setStatus('Content published');void refresh()}}/>}
-  {(section==='home'||section==='community')&&<LiveStories/>}
-  {(section==='home'||section==='community')&&(loading&&!posts.length?<p className="cc-feed-skeleton" aria-label="Loading posts"/>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
-   <Link href={'/profile/'+encodeURIComponent(post.authorHandle)} style={{display:'flex',alignItems:'center',gap:8}}><Avatar user={{handle:post.authorHandle,avatarMediaId:post.avatarMediaId??null,avatarUrl:post.avatarUrl??null}} size={32}/><strong>@{post.authorHandle}</strong></Link>
-   {post.media?.length?<MediaCarousel items={post.media}/>:post.mediaId&&<img src={post.mediaUrl||'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
-   {post.location&&<small>{post.location}</small>}<p>{post.caption}</p><PostActions id={post.id} caption={post.caption} authorUid={post.authorUid} hideLikeCount={post.hideLikeCount??false} commentsOff={post.commentsOff??false} pinned={post.pinned??false} onChanged={()=>void refresh()}/>
-   <div><button type="button" onClick={()=>toggleLike(post.id)}><Heart size={20} fill={post.liked?'currentColor':'none'}/> {post.hideLikeCount?'Like':post.likes||0}</button>
-   <button type="button" onClick={()=>openComments(post.id)}><MessageCircle size={20}/> {post.comments||0}</button><button type="button" onClick={()=>repost(post.id)} aria-label="Toggle repost"><Repeat2 size={20}/> Repost</button><button type="button" aria-label={post.saved?'Remove saved post':'Save post'} onClick={()=>void toggleSave(post.id,Boolean(post.saved))}><Bookmark size={20} fill={post.saved?'currentColor':'none'}/> {post.saved?'Saved':'Save'}</button></div>
-   {opened===post.id&&<div className="cc-live-comments">
-    {(comments[post.id]||[]).map(c=><p key={c.id}><b>@{c.handle}</b> {c.text}</p>)}
-    {post.commentsOff?<p>Comments are turned off.</p>:<form onSubmit={e=>sendComment(e,post.id)}><input value={reply} onChange={e=>setReply(e.target.value)} maxLength={1000} placeholder="Write a comment" required/><button disabled={!reply.trim()}>Post</button></form>}
-   </div>}
-  </article>):<div className="cc-live-empty">No published posts yet. Be the first to share.</div>)}
- </section>;
+ const params=useSearchParams(),[section,setSection]=useState('home'),[composeOpen,setComposeOpen]=useState(false),[epoch,setEpoch]=useState(0);
+ useEffect(()=>{const s=params.get('section')||'home';if(s==='chat'){window.location.replace('/messages');return}setSection(s);if(params.get('compose')==='1')setComposeOpen(true)},[params]);
+ return <section className="cc-feed-col"><SocialPanels section={section}/>{composeOpen&&<CreateComposer onClose={()=>setComposeOpen(false)} onPublished={()=>setEpoch(n=>n+1)}/>} {(section==='home'||section==='community')&&<><LiveStories/><FeedList epoch={epoch}/></>}</section>
 }
