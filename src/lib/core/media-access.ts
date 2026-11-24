@@ -2,7 +2,7 @@ export type MediaAccessInput={owner:boolean;status:string;hasKey:boolean;avatar?
 export function maySignMedia(input:MediaAccessInput):boolean{
  if(input.status!=='uploaded'||!input.hasKey)return false;
  if(input.owner&&!input.avatar&&!input.story&&!input.post)return true;
- if(input.avatar?.active&&!input.avatar.blocked)return true;
+ if(input.avatar?.active&&!input.avatar.blocked&&input.avatar.visible!==false)return true;
  if(input.story?.active&&input.story.visible&&(!input.story.closeFriendsOnly||input.story.closeFriend))return true;
  if(input.post?.exists&&!input.post.deleted&&(!input.post.archived||input.post.author)&&input.post.visible)return true;
  return false;

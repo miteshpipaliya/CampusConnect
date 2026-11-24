@@ -46,3 +46,6 @@ Updated **2026-11-24**. Source of truth: GitHub branch code and CI results for t
 
 ## R2 security implementation
 Report authorization, UID notification cache keys, module feed cache removal, shared media URL authorization and TTL bounds added. Full route sweep and live two-account acceptance remain open; exact-head CI pending. R1 Avatar size type error corrected.
+
+## Regression repair and initial R3 controls
+Fixed actual CI failures (private avatar rule and shared media entrypoint source assertion), added composer location and flags, honored flags in feed, added saved collection navigation and pagination, and made shared response caching explicitly private. Full acceptance remains open.

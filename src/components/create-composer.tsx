@@ -6,6 +6,7 @@ type Kind='post'|'story'|'reel';
 type Item={file:File;key:string;id?:string;progress:number;error?:string;alt:string;url:string};
 export function CreateComposer({onClose,onPublished}:{onClose:()=>void;onPublished:()=>void}){
  const [overlayText,setOverlayText]=useState(''),[overlayColor,setOverlayColor]=useState('#ffffff'),[pollQuestion,setPollQuestion]=useState(''),[pollA,setPollA]=useState(''),[pollB,setPollB]=useState('');
+ const [location,setLocation]=useState(''),[hideLikeCount,setHideLikeCount]=useState(false),[commentsOff,setCommentsOff]=useState(false);
  const [kind,setKind]=useState<Kind|null>(null),[items,setItems]=useState<Item[]>([]),[caption,setCaption]=useState(''),[audience,setAudience]=useState<'all'|'close'>('all'),[ratio,setRatio]=useState('1 / 1'),[filter,setFilter]=useState('none'),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const abort=useRef<AbortController|null>(null);
  const itemsRef=useRef<Item[]>([]);
@@ -25,7 +26,7 @@ export function CreateComposer({onClose,onPublished}:{onClose:()=>void;onPublish
     uploaded.push({...item,id,progress:1});setItems(old=>old.map(i=>i.key===item.key?{...i,id,progress:1}:i));
    }
    const endpoint=kind==='story'?'/api/stories':'/api/posts';
-   const payload=kind==='story'?{mediaId:uploaded[0]!.id,caption:caption.slice(0,250),audience,...(overlayText.trim()?{overlay:{text:overlayText,color:overlayColor,x:0.5,y:0.5}}:{}),...(pollQuestion.trim()&&pollA.trim()&&pollB.trim()?{poll:{question:pollQuestion,options:[pollA,pollB]}}:{})}:{type:kind,caption,mediaId:uploaded[0]!.id,media:uploaded.map(i=>({mediaId:i.id,alt:i.alt})),cropRatio:ratio,filter};
+   const payload=kind==='story'?{mediaId:uploaded[0]!.id,caption:caption.slice(0,250),audience,...(overlayText.trim()?{overlay:{text:overlayText,color:overlayColor,x:0.5,y:0.5}}:{}),...(pollQuestion.trim()&&pollA.trim()&&pollB.trim()?{poll:{question:pollQuestion,options:[pollA,pollB]}}:{})}:{type:kind,caption,mediaId:uploaded[0]!.id,media:uploaded.map(i=>({mediaId:i.id,alt:i.alt})),...(kind==='post'?{cropRatio:ratio,filter}:{}),location,hideLikeCount,commentsOff};
    const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await response.json();
    if(!response.ok)throw Error(data.error||'Publish failed');items.forEach(i=>URL.revokeObjectURL(i.url));onPublished();onClose();if(kind==='reel'){window.dispatchEvent(new Event('campusconnect:reel-published'));window.location.assign('/reels?reel='+encodeURIComponent(String(data.id||'')))}
   }catch(e){setError(e instanceof Error?e.message:'Publish failed')}finally{setBusy(false);abort.current=null}
@@ -45,6 +46,8 @@ export function CreateComposer({onClose,onPublished}:{onClose:()=>void;onPublish
   <button disabled={busy} onClick={()=>{URL.revokeObjectURL(item.url);setItems(old=>old.filter((_,i)=>i!==index))}}>Remove</button><progress value={item.progress} max={1}/></div>)}
  </div>
  <label>Caption<textarea value={caption} maxLength={kind==='story'?250:2200} onChange={e=>setCaption(e.target.value)} placeholder="Write a caption with #hashtags and @mentions"/></label>
+ <small>{caption.length}/{kind==='story'?250:2200}</small>
+ {kind!=='story'&&<div style={{display:'grid',gap:8}}><label>Location<input value={location} maxLength={80} onChange={e=>setLocation(e.target.value)}/></label><label><input type="checkbox" checked={hideLikeCount} onChange={e=>setHideLikeCount(e.target.checked)}/> Hide like count</label><label><input type="checkbox" checked={commentsOff} onChange={e=>setCommentsOff(e.target.checked)}/> Turn off comments</label></div>}
  {kind==='story'&&<div style={{display:'grid',gap:8}}><label>Story text<input maxLength={150} value={overlayText} onChange={e=>setOverlayText(e.target.value)}/></label><label>Text color<input type="color" value={overlayColor} onChange={e=>setOverlayColor(e.target.value)}/></label><label>Poll question<input maxLength={100} value={pollQuestion} onChange={e=>setPollQuestion(e.target.value)}/></label><input aria-label="Poll option 1" maxLength={50} placeholder="Option 1" value={pollA} onChange={e=>setPollA(e.target.value)}/><input aria-label="Poll option 2" maxLength={50} placeholder="Option 2" value={pollB} onChange={e=>setPollB(e.target.value)}/></div>}
  {kind==='story'&&<label>Audience <select value={audience} onChange={e=>setAudience(e.target.value as 'all'|'close')}><option value="all">Everyone</option><option value="close">Close friends</option></select></label>}
  {error&&<p role="alert">{error}</p>}
