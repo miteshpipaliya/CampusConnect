@@ -58,7 +58,7 @@ export function GroupChatWorkspace({id}:{id?:string}){
   </>:<><h1>Campus group chats</h1>
    <section style={{display:'grid',gap:10,padding:14,border:'1px solid #333',borderRadius:12}}>
     <label>Group name<input value={name} onChange={e=>setName(e.target.value)} maxLength={60} placeholder="Project team"/></label>
-    <label>Members' handles (comma-separated, 2–8)<input value={members} onChange={e=>setMembers(e.target.value)} placeholder="student.one, student.two"/></label>
+    <label>Members&apos; handles (comma-separated, 2–8)<input value={members} onChange={e=>setMembers(e.target.value)} placeholder="student.one, student.two"/></label>
     <button disabled={busy||!name.trim()||!members.trim()} onClick={()=>void create()}>Create group</button>
    </section>
    {groups.map(g=><Link href={'/messages/groups/'+encodeURIComponent(g.id)} key={g.id} style={{display:'block',padding:14,borderBottom:'1px solid #333'}}><strong>{g.name}</strong><small style={{display:'block'}}>{g.memberUids.length} members</small></Link>)}
