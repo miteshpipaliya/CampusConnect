@@ -1,0 +1,1 @@
+export function BrandMark(){return <svg className="cc-brand-mark" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6"/><path d="M12 8.1a4.5 4.5 0 1 0 0 7.8M17.7 8.1a4.5 4.5 0 1 0 0 7.8"/></svg>}

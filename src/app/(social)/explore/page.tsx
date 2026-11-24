@@ -1,3 +1,3 @@
-import {SearchPanel} from '@/components/search-panel';import {ExploreGrid} from '@/components/explore-grid';
+import {ExploreSearchBar} from '@/components/explore/search-bar';import {ExploreGrid} from '@/components/explore-grid';
 import '@/app/explore-upgrade.css';
-export default function ExplorePage(){return <div className="cc-explore-page"><SearchPanel/><ExploreGrid/></div>}
+export default function ExplorePage(){return <section className="cc-explore-page"><ExploreSearchBar/><ExploreGrid/></section>}

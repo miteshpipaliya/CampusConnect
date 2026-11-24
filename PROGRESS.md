@@ -62,3 +62,5 @@ Profile separation, notifications presentation and batched seen handling, event-
 
 ## 1stepcloser UI/audio upgrade
 Single branch per owner request. Audio defaults to full volume; stories remove mute controls, reels and feed have sliders and browser autoplay fallback. Home has a single infinite feed. Original navigation SVGs, accurate rail width, badge layout, dismissible More menu and shared session UID. Mocked browser checks cover layout and volume property, not actual device audio or live providers. Main untouched.
+
+- Explore page, dropdown search, reel caption placement and monochrome shell mark implemented. Pending: automated CI/preview, real authenticated UI screenshots, legacy thumbnails and upload-time poster pipeline, PNG app icons.

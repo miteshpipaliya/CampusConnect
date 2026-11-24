@@ -11,3 +11,6 @@ export function fitReelFrame(availableWidth:number,availableHeight:number,source
  const fittedHeight=Math.min(availableHeight,fittedWidth/aspect);
  return {width:Math.max(1,Math.round(fittedWidth)),height:Math.max(1,Math.round(fittedHeight))};
 }
+
+/** Portrait captions use the left gutter only if there is sufficient space. */
+export function captionPlacement(ratio:number,viewportWidth:number,leftSpace=Infinity):'left'|'overlay'{return Number.isFinite(ratio)&&ratio>0&&ratio<.9&&viewportWidth>=721&&leftSpace>=260?'left':'overlay'}

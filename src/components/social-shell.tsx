@@ -9,7 +9,7 @@ import '@/app/shell-upgrade.css';
 import '@/app/notifications-upgrade.css';
 import '@/app/explore-upgrade.css';
 import {NotificationsFeed} from './notifications-feed';
-import {SearchPanel} from './search-panel';
+import {BrandMark} from './brand-mark';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {Send} from 'lucide-react';
 import {NavIcon} from './icons/nav-icons';
@@ -30,16 +30,16 @@ const mobileLabels=new Set(['Home','Reels','Messages','Search','Profile']);
 function Badge({count,label,mobile=false}:{count:number;label:string;mobile?:boolean}){const value=badgeLabel(count,mobile);return value?<b className="cc-nav-badge" aria-label={label} title={count+' '+label.toLowerCase()}>{value}</b>:null}
 function Brand({ compact = false }: { compact?: boolean }) {
   return <Link href="/home" className={'cc-brand' + (compact ? ' cc-brand-mobile' : '')} aria-label="CampusConnect home">
-    <span className="cc-logo" aria-hidden="true"><span style={{fontWeight:900,letterSpacing:"-0.12em"}}>C<span style={{color:"#c4a0ff"}}>C</span></span></span>
-    <span className="cc-wordmark">Campus<span>Connect</span><small>BVM CAMPUS</small></span>
+    <BrandMark/>
+    <span className="cc-wordmark">CampusConnect</span>
   </Link>;
 }
-function Nav({ pathname, section, mobile = false, counts, account, onPanel }: { pathname: string; section:string; mobile?: boolean; counts:{unread:number;unreadMessages:number};account?:{handle:string;avatarMediaId:string|null};onPanel?:(name:'notifications'|'search')=>void }) {
+function Nav({ pathname, section, mobile = false, counts, account, onPanel }: { pathname: string; section:string; mobile?: boolean; counts:{unread:number;unreadMessages:number};account?:{handle:string;avatarMediaId:string|null};onPanel?:(name:'notifications')=>void }) {
   return <nav className={mobile ? 'cc-mobile-nav' : 'cc-navigation'} aria-label={mobile ? 'Mobile navigation' : 'Main navigation'}>
     {links.filter((item) => !mobile || mobileLabels.has(item.label)).map((item) => {
       const active=navActive(pathname,item.label,section);
       return <Link key={item.label} href={item.href} scroll={false} className={'cc-nav-item' + (active ? ' is-active' : '')}
-        onClick={e=>{if(!mobile&&onPanel&&(item.label==='Notifications'||item.label==='Search')){e.preventDefault();onPanel(item.label==='Notifications'?'notifications':'search')}}} aria-current={active ? 'page' : undefined} aria-label={item.label}>
+        onClick={e=>{if(!mobile&&onPanel&&item.label==='Notifications'){e.preventDefault();onPanel('notifications')}}} aria-current={active ? 'page' : undefined} aria-label={item.label}>
         <i className="cc-nav-icon">{item.label==='Profile'&&account?<Avatar user={account} size={24} ring={active?'seen':'none'}/>:<NavIcon name={item.label} active={active}/>}</i>
         <span className="cc-nav-label">{item.label}</span>
         <Badge count={item.label==='Notifications'?counts.unread:item.label==='Messages'?counts.unreadMessages:0} label={item.label==='Messages'?'Unread conversations':'Unread notifications'} mobile={mobile}/>
@@ -58,7 +58,7 @@ function Suggestions({handle,avatarMediaId}:{handle:string;avatarMediaId:string|
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname=usePathname(),params=useSearchParams(),router=useRouter();
   const [avatarMediaId,setAvatarMediaId]=useState<string|null>(null),[menu,setMenu]=useState(false),[recent,setRecent]=useState<Array<{handle:string;avatarUrl:string|null;avatarMediaId:string|null}>>([]),[menuError,setMenuError]=useState('');
-  const [panel,setPanel]=useState<'notifications'|'search'|null>(null);
+  const [panel,setPanel]=useState<'notifications'|null>(null);
   const [liveUnread,setLiveUnread]=useState<number|null>(null);
   const [uid,setUid]=useState<string|null>(null);
   const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState(params.get('section')||'home');
@@ -91,7 +91,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape'){setMenu(false);setPanel(null)}};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
   useEffect(()=>{setPanel(null);setMenu(false)},[pathname,params]);
   if(!checked||!handle)return <LoadingSkeleton kind="shell"/>;
-  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} onPanel={name=>{setMenu(false);setPanel(old=>old===name?null:name)}}/>
@@ -102,9 +102,9 @@ export default function SocialShell({ children }: { children: ReactNode }) {
       <header className="cc-mobile-header"><Brand compact/><div className="cc-mobile-actions"><Link href="/home?compose=1" aria-label="Create"><NavIcon name="Create"/></Link><Link href="/notifications" aria-label="Notifications"><NavIcon name="Notifications"/><Badge count={counts.unread} label="Unread notifications" mobile/></Link><Link href="/messages" aria-label="Messages"><NavIcon name="Messages"/><Badge count={counts.unreadMessages} label="Unread conversations" mobile/></Link></div></header>
       <div className="cc-page">{children}</div>
     </main>
-    {!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
+    {!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
     <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} mobile />
-    {panel&&<SidePanel label={panel==='notifications'?'Notifications':'Search'} onClose={()=>setPanel(null)}>{panel==='notifications'?<NotificationsFeed/>:<SearchPanel/>}</SidePanel>}
+    {panel&&<SidePanel label="Notifications" onClose={()=>setPanel(null)}><NotificationsFeed/></SidePanel>}
     {(pathname==='/home'||pathname.startsWith('/explore')||pathname.startsWith('/reels'))&&<Link href="/messages" className="cc-messages-pill"><Send size={23}/> Messages <span className="cc-recent-avatars">{recent.map(m=><Avatar key={m.handle} user={{handle:m.handle,avatarUrl:m.avatarUrl,avatarMediaId:m.avatarMediaId}} size={24}/>)}</span><Badge count={counts.unreadMessages} label="Unread conversations"/></Link>}
   </div></StreamConnectionProvider></ShellSession.Provider>;
 }

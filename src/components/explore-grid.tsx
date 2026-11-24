@@ -1,31 +1,24 @@
 'use client';
-import {useCallback,useEffect,useRef,useState} from 'react';
-import Link from 'next/link';import {Clapperboard,Images} from 'lucide-react';
-export type ExploreItem={id:string;caption:string;type:string;authorHandle:string;mediaUrl:string|null;mediaType:string;likes:number;comments:number;mediaCount:number};
+import {useEffect,useRef} from 'react';
+import Link from 'next/link';
+import {Heart,MessageCircle,Images,Play,Image as ImageIcon} from 'lucide-react';
+import {useInfiniteQuery} from '@tanstack/react-query';
+import {useShellUid} from './shell-session';
+import {userKey} from '@/lib/queries';
+export type ExploreItem={id:string;caption:string;type:string;authorHandle:string;thumbUrl?:string|null;mediaUrl?:string|null;mediaType:string;likes:number;comments:number;mediaCount:number;width?:number|null;height?:number|null};
+type Page={items:ExploreItem[];nextCursor:string|null};
 export function ExploreGrid({tag,sort}:{tag?:string;sort?:string}){
- const [items,setItems]=useState<ExploreItem[]>([]),[cursor,setCursor]=useState<string|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('');
- const last=useRef<HTMLDivElement>(null),inflight=useRef(false);
- const load=useCallback(async(next?:string)=>{
-  if(inflight.current)return;inflight.current=true;setBusy(true);if(!next)setLoading(true);setError('');
-  const path=tag?'/api/explore/tags/'+encodeURIComponent(tag):'/api/explore';
-  const qs=new URLSearchParams();if(next)qs.set('cursor',next);if(sort)qs.set('sort',sort);
-  try{const r=await fetch(path+'?'+qs.toString(),{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Explore unavailable');
-   const incoming:ExploreItem[]=Array.isArray(d.items)?d.items:[];
-   setItems(old=>next?[...new Map([...old,...incoming].map(i=>[i.id,i])).values()]:incoming);setCursor(typeof d.nextCursor==='string'?d.nextCursor:null)
-  }catch(e){setError(e instanceof Error?e.message:'Unable to load Explore')}finally{inflight.current=false;setBusy(false);setLoading(false)}
- },[tag,sort]);
- useEffect(()=>{void load()},[load]);
- useEffect(()=>{const obs=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&cursor)void load(cursor)},{rootMargin:'450px'});
-  if(last.current)obs.observe(last.current);return()=>obs.disconnect()
- },[cursor,load]);
+ const uid=useShellUid(),last=useRef<HTMLDivElement>(null);
+ const query=useInfiniteQuery({queryKey:userKey(uid,'explore-grid',tag||'',sort||''),enabled:Boolean(uid),initialPageParam:'',queryFn:async({pageParam,signal})=>{const qs=new URLSearchParams();if(pageParam)qs.set('cursor',pageParam);if(sort)qs.set('sort',sort);const r=await fetch((tag?'/api/explore/tags/'+encodeURIComponent(tag):'/api/explore')+'?'+qs.toString(),{cache:'no-store',signal});if(!r.ok)throw Error('Explore unavailable');return r.json() as Promise<Page>},getNextPageParam:page=>page.nextCursor||undefined,staleTime:30000});
+ const {hasNextPage,isFetchingNextPage,fetchNextPage}=query;
+ useEffect(()=>{const node=last.current;if(!node)return;const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&hasNextPage&&!isFetchingNextPage)void fetchNextPage()},{rootMargin:'450px'});observer.observe(node);return()=>observer.disconnect()},[hasNextPage,isFetchingNextPage,fetchNextPage]);
+ const items=[...new Map((query.data?.pages.flatMap(p=>p.items)||[]).map(p=>[p.id,p])).values()];
  return <section className="cc-explore-section" aria-label={tag?'Hashtag posts':'Explore campus posts'}>
-  {loading&&<div className="cc-explore-skeleton">Loading campus posts…</div>}
-  {error&&<p role="alert">{error} <button onClick={()=>void load(cursor??undefined)}>Retry</button></p>}
-  {!loading&&!items.length&&<p>No accessible campus posts yet.</p>}
-  <div className="cc-explore-grid">{items.map((post,i)=><Link key={post.id} className={post.type==='reel'&&i%10===0?'cc-explore-tile cc-explore-large':'cc-explore-tile'} href={'/posts/'+encodeURIComponent(post.id)} aria-label={post.caption||'Open campus post'}>
-   {post.mediaUrl?(post.mediaType.startsWith('video/')?<video src={post.mediaUrl} preload="metadata" muted playsInline/>:<img loading="lazy" src={post.mediaUrl} alt={post.caption||'Campus post'}/>):<span>Media unavailable</span>}
-   <span className="cc-explore-icon">{post.type==='reel'?<Clapperboard size={20}/>:post.mediaCount>1?<Images size={20}/>:null}</span>
-   <span className="cc-explore-overlay">♥ {post.likes} &nbsp; ◉ {post.comments}</span>
-  </Link>)}</div><div ref={last} className="cc-explore-end">{busy&&!loading?'Loading more…':!cursor&&items.length?'You are all caught up':''}</div>
- </section>;
+ {query.isError&&<p role="alert">Explore unavailable. <button onClick={()=>void query.refetch()}>Retry</button></p>}
+ {!query.isPending&&!items.length&&!query.isError&&<p>No accessible campus posts yet.</p>}
+ <div className="cc-explore-grid">{query.isPending?Array.from({length:12},(_,i)=><div key={i} className="cc-explore-tile cc-explore-placeholder" aria-hidden="true"/>):items.map(post=>{const thumb=post.thumbUrl||(!post.mediaType.startsWith('video/')?post.mediaUrl:null);return <Link key={post.id} className="cc-explore-tile" href={post.type==='reel'?'/reels?start='+encodeURIComponent(post.id):'/posts/'+encodeURIComponent(post.id)} aria-label={post.authorHandle+': '+(post.caption||'Open campus post')}>
+ {thumb?<img src={thumb} width={post.width||300} height={post.height||400} loading="lazy" decoding="async" alt=""/>:<span className="cc-explore-no-preview" aria-label="Preview unavailable">{post.type==='reel'?<Play size={28}/>:<ImageIcon size={28}/>}</span>}
+ {post.type==='reel'?<span className="cc-explore-icon cc-explore-play" aria-label="Reel"><Play size={14} fill="currentColor"/></span>:post.mediaCount>1?<span className="cc-explore-icon" aria-label="Carousel"><Images size={22}/></span>:null}
+ <span className="cc-explore-overlay"><Heart size={20} fill="currentColor"/> {post.likes} <MessageCircle size={20} fill="currentColor"/> {post.comments}</span></Link>})}
+ </div><div ref={last} className="cc-explore-end">{isFetchingNextPage?<span aria-label="Fetching more posts" className="cc-explore-more-skeleton"/>:!hasNextPage&&items.length?'You are all caught up':''}</div></section>
 }

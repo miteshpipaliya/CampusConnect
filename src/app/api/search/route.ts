@@ -32,6 +32,6 @@ export async function GET(req:NextRequest){
   const blocked=await blockedEitherWayMany(user.uid,people.map(d=>d.id));
   const allowed=people.filter(d=>!blocked.has(d.id)&&!d.data().deletedAt);
   const avatars=await hydrateAvatars(allowed.map(d=>d.id),user.uid);
-  return NextResponse.json({items:allowed.map(d=>({uid:d.id,handle:avatars[d.id]?.handle||d.data().handle,name:avatars[d.id]?.name||d.data().name,avatarUrl:avatars[d.id]?.avatarUrl??null}))},{headers:safeHeaders});
+  return NextResponse.json({items:allowed.map(d=>({uid:d.id,handle:avatars[d.id]?.handle||d.data().handle,name:avatars[d.id]?.name||d.data().name,avatarUrl:avatars[d.id]?.avatarUrl??null,verified:avatars[d.id]?.verified===true}))},{headers:safeHeaders});
  }catch{return errorResponse(503,'Search unavailable')}
 }

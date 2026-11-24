@@ -20,18 +20,18 @@ import {routeTiming} from '@/lib/server/route-timing';
 export async function GET(req:NextRequest){return routeTiming('reels',()=>readRoute(req))}
 async function readRoute(req:NextRequest){
  const user=await session(req);if(!user)return errorResponse(401,'Sign in required');
- const cursor=req.nextUrl.searchParams.get('cursor');
+ const cursor=req.nextUrl.searchParams.get('cursor'),start=cursor?null:req.nextUrl.searchParams.get('start');
  const limit=clampLimit(req.nextUrl.searchParams.get('limit'),10,20);
- if(cursor&&!/^[A-Za-z0-9_-]{10,100}$/.test(cursor))return errorResponse(400,'Invalid cursor');
+ if((cursor&&!/^[A-Za-z0-9_-]{10,100}$/.test(cursor))||(start&&!/^[A-Za-z0-9_-]{10,100}$/.test(start)))return errorResponse(400,'Invalid cursor');
  try{
   const store=db();
   const mutedSnap=await store.collection('mutes').where('ownerUid','==',user.uid).limit(200).get();
   const muted=new Set(mutedSnap.docs.filter(d=>d.data().posts!==false).map(d=>String(d.data().targetUid||'')));
   let query=store.collection('posts').orderBy('createdAt','desc').orderBy(FieldPath.documentId(),'desc');
-  if(cursor){
-   const previous=await store.collection('posts').doc(cursor).get();
+  if(cursor||start){
+   const previous=await store.collection('posts').doc((cursor||start)!).get();
    if(!previous.exists||!previous.data()?.createdAt)return errorResponse(400,'Invalid cursor');
-   query=query.startAfter(previous);
+   query=cursor?query.startAfter(previous):query.startAt(previous);
   }
   const selected:Array<{doc:FirebaseFirestore.QueryDocumentSnapshot;media:FirebaseFirestore.DocumentSnapshot;mediaId:string}>=[];
   let lastScanned:FirebaseFirestore.QueryDocumentSnapshot|undefined;
@@ -59,6 +59,7 @@ async function readRoute(req:NextRequest){
    if(selected.length>=limit||snap.size<50)break;
    query=query.startAfter(snap.docs.at(-1)!);
   }
+  if(start&&selected[0]?.doc.id!==start)return errorResponse(404,'Reel unavailable');
   const authors=[...new Set(selected.map(s=>String(s.doc.data().authorUid||'')))];
   const uniqueMedia=[...new Map(selected.map(s=>[s.mediaId,s.media])).values()];
   const [avatars,signed,likes,saves,reposts,follows]=await Promise.all([

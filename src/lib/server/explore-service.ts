@@ -1,7 +1,7 @@
 import 'server-only';
 import {db} from './services';
 import {canViewMany} from './privacy';
-import {hydrateAvatars} from './avatar-hydration';
+import {profileContentKind} from '../core/profile-content-kind';
 import {mintUrls} from './media-urls';
 import {clampLimit} from '../core/cursor';
 import {exploreScore} from '../core/explore-ranking';
@@ -14,30 +14,30 @@ export async function explorePage(viewer:string,opts:{cursor?:string|null;tag?:s
   if(!last.exists)throw Error('INVALID_CURSOR');
   query=query.startAfter(last);
  }
+ const [snap,muteDocs]=await Promise.all([query.limit(120).get(),store.collection('mutes').where('ownerUid','==',viewer).limit(200).get()]);
+ const muted=new Set(muteDocs.docs.filter(d=>d.data().posts!==false).map(d=>String(d.data().targetUid||'')));
+ const allowed=await canViewMany(viewer,snap.docs.map(d=>String(d.data().authorUid||'')));
  const selected:FirebaseFirestore.QueryDocumentSnapshot[]=[];
  let lastScanned:FirebaseFirestore.QueryDocumentSnapshot|undefined;
- const muteDocs=await store.collection('mutes').where('ownerUid','==',viewer).limit(200).get();
- const muted=new Set(muteDocs.docs.filter(d=>d.data().posts!==false).map(d=>String(d.data().targetUid||'')));
- for(let batch=0;batch<4&&selected.length<limit;batch++){
-  const snap=await query.limit(30).get();if(snap.empty)break;
-  const allowed=await canViewMany(viewer,snap.docs.map(d=>String(d.data().authorUid||'')));
-  for(const d of snap.docs){
-   lastScanned=d;const a=String(d.data().authorUid||'');
-   if(d.data().deletedAt||d.data().archived||muted.has(a)||!allowed.get(a)||!((typeof d.data().mediaId==='string'&&d.data().mediaId)||(Array.isArray(d.data().media)&&typeof d.data().media[0]?.mediaId==='string')))continue;
-   if(opts.text&&!String(d.data().caption||'').toLowerCase().includes(opts.text))continue;
-   selected.push(d);if(selected.length>=limit)break;
-  }
-  if(snap.size<30)break;query=query.startAfter(snap.docs.at(-1)!);
+ for(const d of snap.docs){
+  lastScanned=d;const x=d.data(),uid=String(x.authorUid||'');
+  if(x.deletedAt||x.archived||muted.has(uid)||!allowed.get(uid)||!((typeof x.mediaId==='string'&&x.mediaId)||(Array.isArray(x.media)&&typeof x.media[0]?.mediaId==='string')))continue;
+  if(opts.text&&!String(x.caption||'').toLowerCase().includes(opts.text))continue;
+  selected.push(d);if(selected.length>=limit)break;
  }
- // 'top' ranks the current paginated result batch, not the full history.
- const authors=await hydrateAvatars(selected.map(d=>String(d.data().authorUid||'')),viewer);
  const pickMedia=(x:FirebaseFirestore.DocumentData)=>String(x.mediaId||((Array.isArray(x.media)&&x.media[0]?.mediaId)||''));
- const mediaIds=[...new Set(selected.map(d=>pickMedia(d.data())).filter(Boolean))],media=mediaIds.length?await store.getAll(...mediaIds.map(id=>store.collection('media').doc(id))):[];
- const urls=await mintUrls(media.filter(d=>d.exists).map(d=>({id:d.id,...(d.data()??{})})),{viewerUid:viewer});
- const mediaTypes=new Map(media.map(d=>[d.id,String(d.data()?.contentType||'')]));
- let posts=selected.map(d=>{const x=d.data(),id=pickMedia(x),uid=String(x.authorUid||''),createdAt=x.createdAt?.toMillis?.()??0;
-  return {id:d.id,caption:String(x.caption||''),type:x.type==='reel'?'reel':'post',authorUid:uid,authorHandle:authors[uid]?.handle||String(x.authorHandle||''),avatarUrl:authors[uid]?.avatarUrl??null,mediaUrl:urls[id]?.url??null,mediaType:mediaTypes.get(id)||'',likes:Number(x.counters?.likes||0),comments:Number(x.counters?.comments||0),reposts:Number(x.counters?.reposts||0),saves:Number(x.counters?.saves||0),createdAt,mediaCount:Array.isArray(x.media)?x.media.length:1};
+ const thumbId=(x:FirebaseFirestore.DocumentData)=>String((Array.isArray(x.media)&&x.media[0]?.thumbMediaId)||x.thumbMediaId||'');
+ const ids=[...new Set(selected.flatMap(d=>[pickMedia(d.data()),thumbId(d.data())]).filter(id=>id&&!id.includes('/')))];
+ const media=ids.length?await store.getAll(...ids.map(id=>store.collection('media').doc(id))):[];
+ const byId=new Map(media.map(d=>[d.id,d]));
+ // Only use image thumbnails that belong to the same authorized post; never sign a video for grid tiles.
+ const preview=(d:FirebaseFirestore.QueryDocumentSnapshot)=>{const x=d.data(),original=byId.get(pickMedia(x)),thumb=byId.get(thumbId(x));if(thumb?.exists&&thumb.data()?.postId===d.id&&String(thumb.data()?.contentType||'').startsWith('image/'))return thumb.id;return original?.exists&&String(original.data()?.contentType||'').startsWith('image/')?original.id:null};
+ const previewIds=[...new Set(selected.map(preview).filter((id):id is string=>Boolean(id)))];
+ const urls=await mintUrls(previewIds.flatMap(id=>{const doc=byId.get(id);return doc?.exists?[{id:doc.id,...doc.data()}]:[]}),{viewerUid:viewer});
+ let posts=selected.map(d=>{const x=d.data(),id=pickMedia(x),original=byId.get(id)?.data(),thumb=preview(d),createdAt=x.createdAt?.toMillis?.()??0;
+  const mediaType=String(original?.contentType||'');
+  return {id:d.id,caption:String(x.caption||''),type:profileContentKind(x,mediaType),authorUid:String(x.authorUid||''),authorHandle:String(x.authorHandle||''),thumbUrl:thumb?urls[thumb]?.url??null:null,mediaUrl:thumb?urls[thumb]?.url??null:null,mediaType,likes:x.hideLikeCount===true?0:Number(x.counters?.likes||0),comments:Number(x.counters?.comments||0),reposts:Number(x.counters?.reposts||0),saves:Number(x.counters?.saves||0),createdAt,mediaCount:Array.isArray(x.media)?x.media.length:1,width:Number(original?.width)||null,height:Number(original?.height)||null};
  });
- if(opts.sort==='top')posts=[...posts].sort((a,b)=>exploreScore(b,Date.now())-exploreScore(a,Date.now())||b.createdAt-a.createdAt);
- return {items:posts,nextCursor:selected.length===limit&&lastScanned?lastScanned.id:null};
+ if(opts.sort==='top'||(!opts.tag&&!opts.text))posts=[...posts].sort((a,b)=>exploreScore(b,Date.now())-exploreScore(a,Date.now())||b.createdAt-a.createdAt);
+ return {items:posts,nextCursor:lastScanned&&(lastScanned.id!==snap.docs.at(-1)?.id||snap.size===120)?lastScanned.id:null};
 }

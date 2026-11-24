@@ -112,3 +112,17 @@
  .cc-reel-menu{right:8px;bottom:80px}
  .cc-reel-comments{top:auto;bottom:0;right:0;width:100%;height:70dvh}
 }
+
+/* The author block is outside portrait videos, but stays on wide/mobile video. */
+.cc-reel-caption-overlay{background:linear-gradient(transparent,rgba(0,0,0,.65))}
+.cc-reel-caption .cc-reel-audio-line{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
+.cc-reel-caption p a{color:#7e99ff}
+.cc-reel-caption-overlay .cc-reel-author>button{border:1px solid #fff9;background:transparent;border-radius:8px;color:white;padding:5px 10px}
+@media(min-width:721px){
+.cc-reels-mode .cc-reel-stage.cc-reel-stage-left{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;column-gap:18px}
+.cc-reels-mode .cc-reel-stage-left .cc-reel-caption-left{position:static;grid-column:1;align-self:end;justify-self:end;width:100%;max-width:340px;background:none;padding:0 6px 24px 0;pointer-events:auto;color:var(--cc-shell-text,#f5f5f5)}
+.cc-reels-mode .cc-reel-stage-left .cc-reel-video-box{grid-column:2}
+.cc-reels-mode .cc-reel-stage-left .cc-reel-actions{grid-column:3;justify-self:start;align-self:stretch}
+.cc-reel-caption-left .cc-reel-author>button{border:0;background:transparent;color:#7e99ff;padding:0}
+.cc-reel-caption-left .cc-caption-more{color:inherit}
+}

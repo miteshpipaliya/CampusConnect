@@ -65,3 +65,13 @@
 
 /* Chat and profile reserve a permanent icon-only rail, including keyboard focus. */
 @media(min-width:721px){.cc-app.cc-shell-v2:is(.cc-chat-mode,.cc-profile-mode) .cc-sidebar{width:72px!important;min-width:72px!important;max-width:72px!important;box-shadow:none}.cc-app.cc-shell-v2:is(.cc-chat-mode,.cc-profile-mode) .cc-sidebar :is(.cc-nav-label,.cc-wordmark){display:none!important}}
+
+.cc-shell-v2 .cc-brand{color:var(--cc-shell-text);gap:12px;min-height:48px;align-items:center;text-decoration:none}
+.cc-shell-v2 .cc-brand-mark{display:block;width:24px;height:24px;flex:0 0 24px;opacity:.9;background:none;box-shadow:none}
+.cc-shell-v2 .cc-brand:hover .cc-brand-mark{opacity:1}
+.cc-shell-v2 .cc-brand .cc-wordmark{color:var(--cc-shell-text);font-size:20px;font-weight:600;letter-spacing:-.3px;white-space:nowrap}
+.cc-shell-v2 .cc-brand:focus-visible{outline:2px solid var(--cc-shell-link);outline-offset:2px;border-radius:8px}
+@media(max-width:720px){.cc-shell-v2 .cc-mobile-header .cc-brand .cc-wordmark{display:block;font-size:17px}}
+@media(max-width:359px){.cc-shell-v2 .cc-mobile-header .cc-brand .cc-wordmark{display:none}}
+.cc-shell-v2.cc-explore-mode .cc-main{padding:0;min-width:0}
+.cc-shell-v2.cc-explore-mode .cc-page{max-width:none;width:100%;padding:0;margin:0}

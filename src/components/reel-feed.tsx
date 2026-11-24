@@ -19,7 +19,8 @@ export function ReelFeed(){
   if(fetching.current)return;fetching.current=true;setError('');
   if(next)setMore(true);else if(!itemsRef.current.length)setLoading(true);
   try{
-   const response=await fetch('/api/reels?limit=10'+(next?'&cursor='+encodeURIComponent(next):''),{cache:'no-store'});
+   const start=new URLSearchParams(window.location.search).get('start');
+   const response=await fetch('/api/reels?limit=10'+(next?'&cursor='+encodeURIComponent(next):start?'&start='+encodeURIComponent(start):''),{cache:'no-store'});
    const result:unknown=await response.json().catch(()=>null);
    if(!response.ok||!result||typeof result!=='object')throw Error(result&&typeof result==='object'&&'error'in result?String(result.error):'Reels unavailable');
    const data=result as Page,items=Array.isArray(data.reels)?data.reels:[];
@@ -32,7 +33,7 @@ export function ReelFeed(){
  const {volume,changeVolume}=useReelVolume();
  useEffect(()=>{void load()},[load]);
  const refresh=useCallback(async()=>{
-  if(fetching.current||document.visibilityState!=='visible')return;
+  if(fetching.current||document.visibilityState!=='visible'||new URLSearchParams(window.location.search).has('start'))return;
   try{
    const response=await fetch('/api/reels?limit=10',{cache:'no-store'});
    if(!response.ok)return;
