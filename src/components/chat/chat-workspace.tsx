@@ -81,10 +81,10 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    const latest=[...incoming].reverse().find(m=>m.senderUid!==data.myUid);
    if(latest&&readKeys.current.get(handle)!==latest.id){
     readKeys.current.set(handle,latest.id);
-    void requestJson('/api/chat',{action:'read',recipientHandle:handle}).catch(()=>readKeys.current.delete(handle));
+    void requestJson('/api/chat',{action:'read',recipientHandle:handle}).then(()=>{window.dispatchEvent(new Event('cc-notifications-updated'));window.dispatchEvent(new Event('cc-chat-read'));void refreshInbox().catch(()=>{})}).catch(()=>readKeys.current.delete(handle));
    }
   }
- },[]);
+ },[refreshInbox]);
 
  const selectPeer=useCallback((handle:string)=>{
   if(active.current!==handle){

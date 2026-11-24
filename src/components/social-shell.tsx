@@ -81,8 +81,8 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   const [uid,setUid]=useState<string|null>(null);
   const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
   const queryClient=useQueryClient();
-  const summary=useQuery({queryKey:userKey(uid,'notification-summary'),enabled:checked&&Boolean(uid),queryFn:async({signal})=>{
-   const response=await fetch('/api/notifications/summary',{cache:'no-store',signal});
+  const summary=useQuery({queryKey:userKey(uid,'notification-summary',liveUnread===null?'fallback':'live'),enabled:checked&&Boolean(uid),queryFn:async({signal})=>{
+   const response=await fetch('/api/notifications/summary'+(liveUnread===null?'':'?messages=0'),{cache:'no-store',signal});
    if(!response.ok)throw Error('Notification summary unavailable');
    const data=await response.json();
    return {unread:Number(data.unread||0),unreadMessages:Number(data.unreadMessages||0)};

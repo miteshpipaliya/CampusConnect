@@ -29,3 +29,5 @@ Updated 2026-11-24.
 - Own story opens viewer while separate plus opens composer. Story media uses authenticated redirect to avoid stale 60-second signed links. View counts exclude owner.
 
 - Realtime upgrade: retain Firestore server authority; visible-tab five-second social notification fallback (not Firestore listeners). Stream events trigger authorized REST refresh. Optional generic FCM push via pinned Firebase CDN; device registrations owner-bound and expiring. Preserve production opt-in gate.
+
+- Notification summary uses aggregate counts for canonical read booleans, retains bounded fallback for older documents and skips Stream REST unread queries while a live authorized inbox is active. No new Firestore indexes required.
