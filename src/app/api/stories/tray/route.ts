@@ -69,7 +69,7 @@ export async function GET(req:NextRequest){
    let group=groups.get(authorUid);
    if(!group){group={authorUid,handle:avatars[authorUid]?.handle||String(data.authorHandle||''),name:avatars[authorUid]?.name||'Student',avatarUrl:avatars[authorUid]?.avatarUrl??null,seen:true,close:false,isMine:authorUid===viewer.uid,stories:[]};groups.set(authorUid,group)}
    group.seen=group.seen&&seen;group.close=group.close||data.audience==='close';
-   group.stories.push({id:doc.id,mediaUrl:urls[String(data.mediaId)]?.url??null,mediaId:String(data.mediaId||''),contentType:String(data.contentType||'image/jpeg'),caption:String(data.caption||''),createdAt:data.createdAt?.toMillis?.()??0,expiresAt:data.expiresAt?.toMillis?.()??0,overlay:data.overlay||null,poll:data.poll||null,seen,isMine:authorUid===viewer.uid});
+   group.stories.push({id:doc.id,mediaUrl:urls[String(data.mediaId)]?.url?'/api/media?id='+encodeURIComponent(String(data.mediaId)):null,mediaId:String(data.mediaId||''),contentType:String(data.contentType||'image/jpeg'),caption:String(data.caption||''),createdAt:data.createdAt?.toMillis?.()??0,expiresAt:data.expiresAt?.toMillis?.()??0,overlay:data.overlay||null,poll:data.poll||null,seen,isMine:authorUid===viewer.uid});
   });
   const result=[...groups.values()].map(g=>({...g,stories:g.stories.sort((a,b)=>a.createdAt-b.createdAt)}));
   result.sort((a,b)=>Number(b.isMine)-Number(a.isMine)||Number(a.seen)-Number(b.seen)||((b.stories.at(-1)?.createdAt??0)-(a.stories.at(-1)?.createdAt??0)));
