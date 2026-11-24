@@ -4,6 +4,7 @@ import {canViewAuthor,isBlockedEitherWay,canViewMany} from '@/lib/server/privacy
 import {isPrivateAccount} from '@/lib/core/privacy-rules';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
+import {profileContentKind} from '@/lib/core/profile-content-kind';
 import {recordProfileVisit} from '@/lib/server/daily-stats';
 export const runtime='nodejs';
 export async function GET(request:NextRequest,{params}:{params:Promise<{username:string}>}){
@@ -55,7 +56,7 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{username
   const mediaType=new Map(mediaDocs.map(s=>[s.id,String(s.data()?.contentType||'')]));
   const describe=(p:FirebaseFirestore.QueryDocumentSnapshot)=>{
    const data=p.data(),mediaId=typeof data.mediaId==='string'?data.mediaId:null;
-   return {id:p.id,caption:String(data.caption||''),mediaId,contentType:mediaId?mediaType.get(mediaId)||null:null,
+   return {id:p.id,type:profileContentKind(data,mediaId?mediaType.get(mediaId):undefined),views:Number(data.counters?.views||0),caption:String(data.caption||''),mediaId,contentType:mediaId?mediaType.get(mediaId)||null:null,
     authorHandle:String(data.authorHandle||''),pinned:data.pinned===true,createdAt:data.createdAt?.toMillis?.()??0};
   };
   const detailedPosts=visiblePosts.map(describe).sort((a,b)=>Number(b.pinned)-Number(a.pinned)||b.createdAt-a.createdAt);

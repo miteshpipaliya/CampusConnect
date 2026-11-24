@@ -2,8 +2,7 @@
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 type Item={id:string;title:string;coverUrl:string|null;coverContentType:string;storyCount:number};
-type Legacy={id:string;mediaId:string;caption:string;active:boolean};
-export function ProfileHighlights({handle,self,legacy=[]}:{handle:string;self:boolean;legacy?:Legacy[]}){
+export function ProfileHighlights({handle,self}:{handle:string;self:boolean}){
  const [items,setItems]=useState<Item[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const load=async()=>{
   const r=await fetch('/api/highlights?handle='+encodeURIComponent(handle),{cache:'no-store'});
@@ -18,6 +17,7 @@ export function ProfileHighlights({handle,self,legacy=[]}:{handle:string;self:bo
   catch(e){setError(e instanceof Error?e.message:'Could not remove highlight')}
   finally{setBusy(false)}
  }
+ if(!self&&!items.length&&!error)return null;
  return <section className="cc-profile-highlights" aria-label="Story highlights">
   <h2>Story highlights</h2>
   {error&&<p role="alert">{error}</p>}
@@ -30,12 +30,6 @@ export function ProfileHighlights({handle,self,legacy=[]}:{handle:string;self:bo
     {self&&<button disabled={busy} type="button" onClick={()=>void remove(h.id)}>Remove</button>}
    </div>)}
   {self&&<Link className="cc-profile-highlight" href="/settings/archive"><span className="cc-profile-highlight-circle" aria-hidden="true">+</span><small>New highlight</small></Link>}
-  {!items.length&&!legacy.length&&!self&&<p>No highlights yet.</p>}
-  {legacy.map(h=><div className="cc-profile-highlight" key={'legacy-'+h.id}>
-    <a href={'/api/media?id='+encodeURIComponent(h.mediaId)} target="_blank" rel="noreferrer" aria-label={'Open saved story '+h.caption}>
-      <span className="cc-profile-highlight-circle"><img src={'/api/media?id='+encodeURIComponent(h.mediaId)} alt={h.caption||'Saved story'}/></span>
-    </a><small>{h.caption||'Saved story'} (legacy)</small>
-  </div>)}
   </div>
  </section>;
 }

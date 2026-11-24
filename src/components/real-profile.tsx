@@ -6,7 +6,7 @@ import {ReportDialog} from './report-dialog';
 import {Avatar} from './avatar';
 import {ProfileHighlights} from './profile-highlights';
 type Profile={uid?:string;handle:string;name:string;branch:string;division:string;bio?:string;relationshipStatus?:string;avatarMediaId?:string|null;avatarUrl?:string|null;verified?:boolean};
-type Post={id:string;caption:string;mediaId:string|null;contentType?:string|null;authorHandle?:string;postId?:string;mediaUrl?:string|null;pinned?:boolean};
+type Post={type?:'post'|'reel';views?:number;id:string;caption:string;mediaId:string|null;contentType?:string|null;authorHandle?:string;postId?:string;mediaUrl?:string|null;pinned?:boolean};
 type Highlight={id:string;mediaId:string;caption:string;active:boolean};
 type Data={self:boolean;private?:boolean;profile:Profile;posts:Post[];reposts:Post[];tagged?:Post[];highlights:Highlight[];counters?:{posts:number;followers:number;following:number;reposts?:number};verified?:boolean;viewerRelation?:string};
 type Tab='posts'|'reels'|'reposts'|'saved'|'tagged';
@@ -22,8 +22,8 @@ export function RealProfile({username}:{username:string}){
 
  if(error&&!data)return <div className="cc-live-empty" role="alert">{error} <Link href="/home">Back to Home</Link></div>;
  if(!data)return <div className="cc-live-empty">Loading profile…</div>;
- const {profile,posts,reposts,highlights,self}=data;
- const entries=tab==='posts'?posts:tab==='reposts'?reposts:tab==='saved'?saved:tab==='tagged'?(data.tagged||[]):posts.filter(p=>p.contentType?.startsWith('video/'));
+ const {profile,posts,reposts,self}=data;
+ const entries=tab==='posts'?posts.filter(p=>p.type!=='reel'):tab==='reposts'?reposts:tab==='saved'?saved:tab==='tagged'?(data.tagged||[]):posts.filter(p=>p.type==='reel');
  const stats=data.counters||{posts:posts.length,followers:0,following:0};
  return <section className="cc-real-profile cc-profile-instagram">
   {error&&<p role="alert" className="form-error">{error}</p>}{notice&&<p role="status">{notice}</p>}
@@ -39,11 +39,11 @@ export function RealProfile({username}:{username:string}){
   </header>
   {data.private&&<p role="status" className="cc-profile-private-notice">This account is private. Follow to request access to posts and stories.</p>}
 
-  <ProfileHighlights handle={profile.handle} self={self} legacy={highlights}/>
+  <ProfileHighlights handle={profile.handle} self={self}/>
   <div className="cc-profile-tabs" role="tablist" aria-label="Profile content">
    {([{key:'posts',label:'Posts',Icon:Grid3X3},{key:'reels',label:'Reels',Icon:Clapperboard},{key:'reposts',label:'Reposts',Icon:Repeat2},...(self?[{key:'saved' as const,label:'Saved',Icon:Bookmark}]:[]),{key:'tagged',label:'Tagged',Icon:AtSign}] as const).map(({key,label,Icon})=><button type="button" role="tab" aria-selected={tab===key} className={tab===key?'active':''} key={key} onClick={()=>setTab(key)}><Icon size={18}/>{label}</button>)}
   </div>
-  {entries.length?<div className="cc-profile-grid">{entries.map(p=><article key={p.id} className="cc-profile-tile"><Link href={'/posts/'+encodeURIComponent(p.postId||p.id)}>{p.pinned&&<span aria-label="Pinned post">📌</span>}{(p.mediaUrl||p.mediaId)?(p.contentType?.startsWith('video/')?<video src={p.mediaUrl||'/api/media?id='+encodeURIComponent(p.mediaId||'')} muted playsInline preload="metadata"/>:<img src={p.mediaUrl||'/api/media?id='+encodeURIComponent(p.mediaId||'')} loading="lazy" alt={p.caption||'Campus post'}/>):<div className="cc-profile-text-tile">{p.caption}</div>}</Link><small>{p.caption}</small></article>)}</div>:<div className="cc-profile-empty"><Grid3X3 size={30}/><p>No {tab} yet.</p>{self&&tab==='posts'&&<Link href="/home?compose=1"><Plus size={16}/> Create a post</Link>}</div>}
+  {entries.length?<div className={"cc-profile-grid"+(tab==="reels"?" cc-profile-reel-grid":"")}>{entries.map(p=><article key={p.id} className="cc-profile-tile"><Link href={'/posts/'+encodeURIComponent(p.postId||p.id)}>{tab==='reels'&&<span className="cc-profile-reel-views"><Clapperboard size={16}/> {p.views??0}</span>}{p.pinned&&<span aria-label="Pinned post">📌</span>}{(p.mediaUrl||p.mediaId)?(p.contentType?.startsWith('video/')?<video src={p.mediaUrl||'/api/media?id='+encodeURIComponent(p.mediaId||'')} muted playsInline preload="metadata"/>:<img src={p.mediaUrl||'/api/media?id='+encodeURIComponent(p.mediaId||'')} loading="lazy" alt={p.caption||'Campus post'}/>):<div className="cc-profile-text-tile">{p.caption}</div>}</Link><small>{p.caption}</small></article>)}</div>:<div className="cc-profile-empty"><Grid3X3 size={30}/><p>No {tab} yet.</p>{self&&tab==='posts'&&<Link href="/home?compose=1"><Plus size={16}/> Create a post</Link>}</div>}
   {report&&profile.uid&&<ReportDialog targetType="user" targetId={profile.uid} onClose={()=>setReport(false)}/>}
  </section>;
 }
