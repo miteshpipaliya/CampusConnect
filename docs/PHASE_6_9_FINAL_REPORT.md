@@ -33,3 +33,7 @@ Each branch runs GitHub Actions checks using `npm ci --no-audit`, `npm run lint`
 Do not merge into `main` just because CI passes. First confirm all four current branch heads have green CI and Ready Vercel previews; then deploy staging Firestore indexes; run the above authenticated end-to-end matrix with at least two campus test accounts and separate devices; secure reviewer approval; merge the stacked PRs in order (Phase 6, Phase 7, Phase 8, Phase 9) and monitor post-release errors. Production `main` intentionally remains untouched by this work.
 
 **Status terminology:** *Implemented in code* is different from *live integration verified* and *fully production ready*.
+
+
+## Historical status corrected (2026-11-24)
+PRs #28–#31 **were merged into main** at commit `42f4d475d1c93f9c1dbede3a3a526b1de2a21df4`; Reels fixes #32 and #33 subsequently merged. The earlier text above is an archived pre-merge release gate, **not the current deployment state**. Additional fixes are in unmerged draft audit PR [#34](https://github.com/miteshpipaliya/CampusConnect/pull/34). It repairs story trays, legacy Reel views, hashtag/search/read counts, profiles, moderation and chat/group routes. Do not confuse audit preview with deployed production. See `PROGRESS.md` and `docs/MANUAL_QA.md`.

@@ -1,19 +1,19 @@
-# Decisions
-- Phases 2 and 3 share one development branch at owner request, but merge only after privacy and identity acceptance checks.
-- Student email allowlist is controlled by APPROVED_TEST_EMAILS (comma-separated); no personal email is hardcoded.
-- Private content is denied unless owner or an active follower, and blocking overrides public/follower access.
-- No production migration or indexes are applied from this branch.
+# CampusConnect architecture and release decisions
 
-## Phase 2 completion safeguards
-- Direct Stream client JWTs are disabled by default (STREAM_CLIENT_TOKENS_ENABLED). Server-backed chat remains available.
-- Stream user blocking is mirrored via the Stream block API. Stream's two-way effect is a dashboard setting requiring owner verification.
-- Account delete disables Firebase Auth and queues a 30-day retention period. Physical purging needs BOTH CRON_DELETE_ENABLED and CRON_PURGE_ACCOUNTS_ENABLED set to true after operator review. Stream async deletion must confirm completed before Firebase profile removal.
-- Firestore collection-group indexes for likes/comments/notifications are in firestore.indexes.json but need explicit owner deployment.
-- Story audience and signed-media reads check close-friends membership on the server.
-- New static security checks are regressions tests, not a substitute for two real user accounts and a Stream/R2 integration test.
+Updated 2026-11-24.
 
-## Release-candidate decisions, 2026-11-22
-- Continue with Stream Chat JavaScript SDK v10.2.0 on the browser; server uses authenticated signed REST. Use the current Stream common user API (`/api/v2/users`) for profile upserts, block sync and deletion.
-- Update presence invisibility with a partial user update; never replace a complete Stream user object to change one property.
-- Default activity status to opt-in. Keep Stream browser-token issuance disabled until operator/role review and two-account checks.
-- Historical milestones are not evidence of current production readiness. PR #22 remains draft; no merge or production change without explicit separate approval.
+- Honor the owner's explicit one-branch instruction: `12-adudit`, not five merges into `main`; PR #34 remains a **draft**.
+- Keep all existing production APIs and response keys compatible when introducing new data.
+- Strict TypeScript and `npm ci` remain mandatory; do not add unlocked packages or weaken type checking.
+- Authorization uses server-side Firebase session cookies and `guard`; private posts, stories and group members must fail closed on blocks or missing visibility.
+- The installed `stream-chat@10.2.0` client library lacks the server `createToken` API assumed in the uploaded audit prompt. Keep signed short-lived server JWTs guarded, rate-limited and opt-in rather than attempting an incompatible call.
+- New campus group chats use server-to-Stream requests and do not change the original direct-message path. This feature needs review of Stream channel creation and membership permissions with real test users.
+- `STREAM_CLIENT_TOKENS_ENABLED` remains `false` by default; existing server REST messages keep working.
+- Analytics daily counters are incremental from deployment; they are not historical reconstructions. Empty days are zeros; unusual traffic and anonymous visits are not invented.
+- Story tray reads authors first; missing composite index takes a bounded fallback rather than crashing the Home page. Staging index installation is required for scale.
+- Unread notification summary scans older records for compatibility. It is bounded and reports truncation; later introduce server-side maintained aggregates if accounts grow large.
+- Post fan-out cleanup has a bounded safety limit; partial operation is reported rather than silently claiming perfect global deletion. Add background reconciliation before large-scale release.
+- Do not migrate or delete real production Firestore data from PR #34.
+- Keep CSS import order unchanged until visual regression tests can validate consolidation.
+- React Query and Playwright were absent in the repository; avoid importing nonexistent packages until dependencies and lockfile are updated and CI can install them.
+- Do not claim a bug-free or fully Instagram-compatible product solely from CI or Vercel's Ready state.

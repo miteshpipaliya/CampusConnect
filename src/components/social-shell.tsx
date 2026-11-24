@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users } from 'lucide-react';
+import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users, ChartNoAxesCombined } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
+import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {StreamConnectionProvider} from './chat/stream-connection';
 import type { LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -18,9 +19,10 @@ const links: NavItem[] = [
   {label:'Notifications',href:'/notifications',Icon:Heart},
   {label:'Create',href:'/home?compose=1',Icon:PlusSquare},
   {label:'Community',href:'/home?section=community',Icon:Users},
+  {label:'Dashboard',href:'/dashboard',Icon:ChartNoAxesCombined},
   {label:'Profile',href:'/profile/me',Icon:UserRound},
 ];
-const mobileLabels = new Set(['Home', 'Reels', 'Messages', 'Search', 'Notifications', 'Create', 'Profile']);
+const mobileLabels = new Set(['Home', 'Reels', 'Messages', 'Search', 'Notifications', 'Create', 'Profile', 'Dashboard']);
 function activeLink(pathname: string, item: NavItem, section: string) {
   if (item.label === 'Create') return false;
   const sections:Record<string,string>={Reels:'reels',Messages:'chat',Search:'search',Notifications:'notifications',Community:'community'};
@@ -50,7 +52,7 @@ function Nav({ pathname, section, mobile = false, counts }: { pathname: string; 
         aria-current={active ? 'page' : undefined} aria-label={item.label} title={item.label}>
         <Icon size={mobile ? 23 : 25} strokeWidth={active ? 2.8 : 1.8} fill={active && item.label === 'Home' ? 'currentColor' : 'none'} aria-hidden="true" />
         <span>{item.label}</span>
-        {((item.label==='Notifications'?counts.unread:item.label==='Messages'?counts.unreadMessages:0)>0)&&<b aria-label="Unread notifications" style={{position:'absolute',top:0,right:0,minWidth:17,height:17,borderRadius:20,background:'#fa3659',color:'white',fontSize:10,lineHeight:'17px',textAlign:'center'}}>{Math.min(99,item.label==='Notifications'?counts.unread:counts.unreadMessages)}</b>}
+        {((item.label==='Notifications'?counts.unread:item.label==='Messages'?counts.unreadMessages:0)>0)&&<b aria-label="Unread notifications" style={{position:'absolute',top:0,right:0,minWidth:17,height:17,borderRadius:20,background:'#fa3659',color:'white',fontSize:10,lineHeight:'17px',textAlign:'center'}}>{(item.label==='Notifications'?counts.unread:counts.unreadMessages)>99?'99+':(item.label==='Notifications'?counts.unread:counts.unreadMessages)}</b>}
       </Link>;
     })}
   </nav>;
@@ -63,15 +65,20 @@ function Suggestions({handle}:{handle:string}){
 
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname=usePathname(),params=useSearchParams(),router=useRouter();
-  const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home'),[counts,setCounts]=useState({unread:0,unreadMessages:0});
-  useEffect(()=>{let alive=true;const tick=async()=>{if(document.visibilityState==='hidden')return;
-   try{const response=await fetch('/api/notifications/summary',{cache:'no-store'});if(!response.ok)return;const data=await response.json();
-    if(alive)setCounts({unread:Number(data.unread||0),unreadMessages:Number(data.unreadMessages||0)})
-   }catch{}};
-   void tick();const id=setInterval(()=>void tick(),20000),changed=()=>{void tick()};
+  const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
+  const queryClient=useQueryClient();
+  const summary=useQuery({queryKey:['notification-summary',handle],enabled:checked&&Boolean(handle),queryFn:async({signal})=>{
+   const response=await fetch('/api/notifications/summary',{cache:'no-store',signal});
+   if(!response.ok)throw Error('Notification summary unavailable');
+   const data=await response.json();
+   return {unread:Number(data.unread||0),unreadMessages:Number(data.unreadMessages||0)};
+  },refetchInterval:20000,refetchIntervalInBackground:false,staleTime:20000});
+  const counts=summary.data??{unread:0,unreadMessages:0};
+  useEffect(()=>{
+   const changed=()=>{if(handle&&document.visibilityState!=='hidden')void queryClient.invalidateQueries({queryKey:['notification-summary',handle]})};
    window.addEventListener('cc-notifications-updated',changed);document.addEventListener('visibilitychange',changed);
-   return()=>{alive=false;clearInterval(id);window.removeEventListener('cc-notifications-updated',changed);document.removeEventListener('visibilitychange',changed)};
-  },[]);
+   return()=>{window.removeEventListener('cc-notifications-updated',changed);document.removeEventListener('visibilitychange',changed)};
+  },[handle,queryClient]);
   useEffect(()=>{setSection(params.get('section')||'home')},[params]);
   useEffect(()=>{
    const cached=localStorage.getItem('cc-theme');

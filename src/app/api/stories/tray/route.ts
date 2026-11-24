@@ -6,22 +6,50 @@ import {canViewMany} from '@/lib/server/privacy';
 import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {mintUrls} from '@/lib/server/media-urls';
 import {isStoryActive} from '@/lib/core/story-expiry';
+import {chunkAudienceIds,uniqueStoryDocs} from '@/lib/core/story-tray-batching';
 export const runtime='nodejs';
 export async function GET(req:NextRequest){
  const viewer=await session(req);if(!viewer)return errorResponse(401,'Sign in required');
  try{
   const store=db(),now=Date.now();
-  const snap=await store.collection('stories').where('expiresAt','>',Timestamp.fromMillis(now)).limit(150).get();
-  const eligible=snap.docs.filter(d=>isStoryActive(d.data(),now));
+  // Author-first fetch prevents recent stories from unrelated campus members
+  // exhausting the previous global limit of 150 before followed students appear.
+  const followUids:string[]=[];
+  let followQuery=store.collection('follows').where('followerUid','==',viewer.uid).limit(200);
+  for(let page=0;page<5;page++){
+   const snap=await followQuery.get();
+   for(const doc of snap.docs)if(doc.data().status==='active'&&typeof doc.data().followingUid==='string')followUids.push(doc.data().followingUid);
+   if(snap.size<200||!snap.docs.at(-1))break;
+   followQuery=followQuery.startAfter(snap.docs.at(-1)!);
+  }
+  const permitted=[...new Set([viewer.uid,...followUids])];
+  const collected:FirebaseFirestore.QueryDocumentSnapshot[]=[];
+  try{
+   for(const authors of chunkAudienceIds(permitted,30)){
+    let query=store.collection('stories').where('authorUid','in',authors).where('expiresAt','>',Timestamp.fromMillis(now));
+    for(let page=0;page<5;page++){
+     const snap=await query.limit(150).get();
+     collected.push(...snap.docs);
+     if(snap.size<150||!snap.docs.at(-1))break;
+     query=query.startAfter(snap.docs.at(-1)!);
+    }
+   }
+  }catch(error){
+   // An unprovisioned authorUid+expiresAt composite index must not crash Home.
+   if((error as {code?:unknown}).code!==9)throw error;
+   console.warn('Story tray missing Firestore author/expiry index; bounded fallback active');
+   const fallback=await store.collection('stories').where('expiresAt','>',Timestamp.fromMillis(now)).limit(1000).get();
+   collected.length=0;collected.push(...fallback.docs);
+  }
+  const eligible=uniqueStoryDocs(collected).filter(d=>isStoryActive(d.data(),now));
   const authorUids=[...new Set(eligible.map(d=>String(d.data().authorUid||'')))];
-  const [visibility,mutes,avatars,relations]=await Promise.all([
+  const [visibility,mutes,avatars]=await Promise.all([
    canViewMany(viewer.uid,authorUids),
    store.collection('mutes').where('ownerUid','==',viewer.uid).limit(200).get(),
-   hydrateAvatars(authorUids,viewer.uid),
-   store.collection('follows').where('followerUid','==',viewer.uid).where('status','==','active').limit(500).get()
+   hydrateAvatars(authorUids,viewer.uid)
   ]);
   const muted=new Set(mutes.docs.filter(d=>d.data().stories!==false).map(d=>String(d.data().targetUid||'')));
-  const followed=new Set(relations.docs.map(d=>String(d.data().followingUid||'')));
+  const followed=new Set(followUids);
   const allowed=eligible.filter(d=>{
    const author=String(d.data().authorUid||'');
    return (author===viewer.uid||followed.has(author))&&visibility.get(author)&&!muted.has(author);

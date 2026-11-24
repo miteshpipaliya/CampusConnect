@@ -6,7 +6,6 @@ import {guard} from '@/lib/server/guard';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {canViewAuthor} from '@/lib/server/privacy';
 import {mintUrls} from '@/lib/server/media-urls';
-import {syncHighlightMembership} from '@/lib/server/highlight-membership';
 export const runtime='nodejs';
 const idSchema=z.string().regex(/^[a-zA-Z0-9_-]{10,100}$/);
 const schema=z.object({title:z.string().trim().min(1).max(40),storyIds:z.array(idSchema).min(1).max(50),coverMediaId:z.string().uuid().optional()}).strict();

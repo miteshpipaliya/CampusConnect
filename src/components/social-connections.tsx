@@ -2,8 +2,8 @@
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 type Member={uid:string;handle:string;name:string;branch?:string;private?:boolean};
-export function SocialConnections({handle}:{handle?:string}){
- const [tab,setTab]=useState<'followers'|'following'|'suggestions'>('followers');
+export function SocialConnections({handle,initialTab='followers'}:{handle?:string;initialTab?:'followers'|'following'|'suggestions'}){
+ const [tab,setTab]=useState<'followers'|'following'|'suggestions'>(initialTab);
  const [members,setMembers]=useState<Member[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
  useEffect(()=>{let active=true;setBusy(true);setError('');
   const url=tab==='suggestions'?'/api/suggestions':'/api/connections?type='+tab+(handle?'&handle='+encodeURIComponent(handle):'');

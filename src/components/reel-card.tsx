@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {Avatar} from './avatar';
-import {Heart,MessageCircle,Bookmark,Repeat2,Volume2,VolumeX,Send,Play,Pause,Ellipsis} from 'lucide-react';
+import {Heart,MessageCircle,Bookmark,Repeat2,Volume2,VolumeX,Send,Play,Ellipsis} from 'lucide-react';
 import {safeVideoAspect} from '@/lib/core/reel-discovery';
 import {fitReelFrame} from '@/lib/core/reel-layout';
 import {ChatShareSheet} from './chat/chat-share-sheet';

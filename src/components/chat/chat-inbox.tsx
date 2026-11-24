@@ -9,7 +9,7 @@ type Conversation={handle:string;name:string;preview:string;updatedAt:string;pee
 type Member={uid:string;handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null};
 
 export function ChatInbox(){
- const {client,userId,status}=useStreamConnection();
+ const {client,userId,status,retry}=useStreamConnection();
  const [items,setItems]=useState<Conversation[]>([]),[query,setQuery]=useState(''),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [showPeople,setShowPeople]=useState(false),[memberQuery,setMemberQuery]=useState(''),[members,setMembers]=useState<Member[]>([]),[searching,setSearching]=useState(false),[searchError,setSearchError]=useState('');
  const requestVersion=useRef(0);
@@ -105,7 +105,7 @@ export function ChatInbox(){
   </section>}
   <label htmlFor="cc-chat-search">Search conversations</label>
   <input id="cc-chat-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search existing chats" style={{width:'100%',padding:12,borderRadius:12}}/>
-  {status!=='connected'&&<p role="status">{status==='disabled'?'Real-time chat connection is not enabled.':'Chat is reconnecting.'} Your conversations refresh automatically.</p>}
+  {status==='error'?<p role="alert">Couldn&apos;t connect. <button type="button" onClick={retry}>Retry</button></p>:status!=='connected'&&<p role="status">{status==='disabled'?'Real-time chat connection is not enabled.':'Chat is reconnecting.'} Your conversations refresh automatically.</p>}
   {loading?<p role="status">Loading conversations…</p>:error?<p role="alert">{error}</p>:visible.length===0?<p>{query?'No matching conversations.':'No conversations yet. Find a campus member to start chatting.'}</p>:
    <ul style={{listStyle:'none',padding:0}}>{visible.map(c=><li key={c.handle}><Link href={'/messages/'+encodeURIComponent(c.handle)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 4px',borderBottom:'1px solid var(--cc-border,#7773)',textDecoration:'none',color:'inherit'}}>
    <Avatar user={{name:c.name,handle:c.handle,avatarMediaId:c.avatarMediaId??null,avatarUrl:c.avatarUrl??null}} size={44} online={status==='connected'&&Boolean(c.peerUid)&&onlineUids.has(c.peerUid||'')} activityAllowed={Boolean(c.peerUid)&&allowedUids.has(c.peerUid||'')}/>

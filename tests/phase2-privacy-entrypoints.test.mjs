@@ -23,8 +23,10 @@ test('direct Stream tokens require explicit owner opt-in',()=>{
  assert.match(load('src/app/api/chat/token/route.ts'),/STREAM_CLIENT_TOKENS_ENABLED/);
  // The former GET /api/chat?token=1 path was removed; only the CSRF-protected POST endpoint issues client tokens.
  assert.doesNotMatch(load('src/app/api/chat/route.ts'),/nextUrl\.searchParams\.get\('token'\)/);
- assert.match(load('src/app/api/chat/token/route.ts'),/sameOrigin\(request\)/);
- assert.match(load('src/app/api/chat/token/route.ts'),/session\(request\)/);
+ assert.match(load('src/app/api/chat/token/route.ts'),/guard\(request,\{write:true/);
+ const guard=load('src/lib/server/guard.ts');
+ assert.match(guard,/sameOrigin\(request\)/);
+ assert.match(guard,/session\(request\)/);
 });
 test('account purge waits thirty days and requires explicit flags',()=>{
  const cron=load('src/app/api/cron/cleanup/route.ts');

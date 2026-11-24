@@ -6,7 +6,7 @@ import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {guard} from '@/lib/server/guard';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
 import {notifySocial} from '@/lib/server/social-notify';
-import {followCounterDelta,safeCounter} from '@/lib/core/social-rules';
+import {safeCounter} from '@/lib/core/social-rules';
 import {isPrivateAccount} from '@/lib/core/privacy-rules';
 export const runtime='nodejs';
 const schema=z.object({handle:z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/)});

@@ -1,7 +1,7 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent,type KeyboardEvent} from 'react';
 import Link from 'next/link';
-import {ChevronDown,ChevronLeft,Edit3,Search,Smile,Sticker,Share2,Send,MoreHorizontal,Check,RefreshCw,X} from 'lucide-react';
+import {ChevronDown,ChevronLeft,Edit3,Search,Smile,Sticker,Share2,Send,MoreHorizontal,RefreshCw,X} from 'lucide-react';
 import {Avatar} from '@/components/avatar';
 import {mergeChronologicalMessages} from '@/lib/core/chat-pagination';
 import {ChatMediaUpload} from './chat-media-upload';
@@ -43,7 +43,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   [emojiMode,setEmojiMode]=useState<'insert'|'sticker'|null>(null),[showPostPicker,setShowPostPicker]=useState(false),
   [sending,setSending]=useState(false),[loading,setLoading]=useState(Boolean(initialPeer)),[error,setError]=useState(''),
   [inboxError,setInboxError]=useState(''),[notice,setNotice]=useState(''),[inboxLoading,setInboxLoading]=useState(true);
- const {client,status}=useStreamConnection();
+ const {client,status,retry}=useStreamConnection();
  const active=useRef(peer),sequence=useRef(0),inboxSeq=useRef(0),readKeys=useRef(new Map<string,string>()),
   lastTyping=useRef(0),typingTimer=useRef<ReturnType<typeof setTimeout>|null>(null),sendingLock=useRef(false),
   bottom=useRef<HTMLDivElement|null>(null),draftInput=useRef<HTMLTextAreaElement|null>(null);
@@ -277,6 +277,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   <aside className="cc-dm-people" aria-label="Conversations">
    <header className="cc-dm-people-head">
     <h1>{viewerHandle||'Messages'} <ChevronDown aria-hidden="true" size={17}/></h1>
+    <Link href="/messages/groups" title="Group chats" aria-label="Campus group chats" className="cc-dm-icon">Groups</Link>
     <button type="button" className="cc-dm-icon" title="New conversation" aria-label="New message" onClick={()=>setNewMessage(true)}><Edit3 size={22}/></button>
    </header>
    <nav aria-label="Conversation filters" className="cc-dm-tabs">
@@ -338,7 +339,8 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     <div ref={bottom}/>
    </div>
    {typing&&<div className="cc-dm-typing-indicator" role="status" aria-live="polite"><span className="cc-dm-typing-dot"/> {peerName||peer} is typing…</div>}
-   {error&&<p role="alert" className="cc-dm-thread-error">{error} <button type="button" onClick={()=>{setError('');void refreshConversation(peer,true).catch(()=>{})}}>Retry</button></p>}
+   {status==='error'&&<p role="alert" className="cc-dm-thread-error">Couldn&apos;t connect. Messages still refresh. <button type="button" onClick={retry}>Retry live connection</button></p>}
+  {error&&<p role="alert" className="cc-dm-thread-error">{error} <button type="button" onClick={()=>{setError('');void refreshConversation(peer,true).catch(()=>{})}}>Retry</button></p>}
    {notice&&<p role="status" className="cc-dm-status" onClick={()=>setNotice('')}>{notice}</p>}
    {replyTo&&<div className="cc-dm-reply"><span>Replying to: {replyTo.text.slice(0,90)||'attachment'}</span><button type="button" aria-label="Cancel reply" onClick={()=>setReplyTo(null)}><X size={16}/></button></div>}
    {emojiMode&&<div className="cc-dm-emoji-panel" role="group" aria-label={emojiMode==='insert'?'Insert emoji':'Send an emoji sticker'}>

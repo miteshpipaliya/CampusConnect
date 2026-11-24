@@ -1,10 +1,11 @@
 'use client';
-import {createContext,useContext,useEffect,useMemo,useState,type ReactNode} from 'react';
+import {createContext,useContext,useEffect,useMemo,useCallback,useState,type ReactNode} from 'react';
 import type {StreamChat} from 'stream-chat';
 
 type Status='connecting'|'connected'|'disconnected'|'disabled'|'error';
 type StreamSession={client:StreamChat|null;userId:string|null;status:Status};
-const Context=createContext<StreamSession>({client:null,userId:null,status:'connecting'});
+type StreamContext=StreamSession&{retry:()=>void};
+const Context=createContext<StreamContext>({client:null,userId:null,status:'connecting',retry:()=>{}});
 type TokenResponse={token:string;apiKey:string;user:{id:string;name:string;username:string;image:string;invisible:boolean}};
 
 async function getCredentials():Promise<TokenResponse>{
@@ -22,6 +23,8 @@ async function getCredentials():Promise<TokenResponse>{
 /** One authenticated Stream connection per mounted campus session. Stream owns socket recovery and presence. */
 export function StreamConnectionProvider({children}:{children:ReactNode}){
  const [session,setSession]=useState<StreamSession>({client:null,userId:null,status:'connecting'});
+ const [attempt,setAttempt]=useState(0);
+ const retry=useCallback(()=>{setSession({client:null,userId:null,status:'connecting'});setAttempt(x=>x+1)},[]);
  useEffect(()=>{
   let live=true;
   let socket:StreamChat|null=null;
@@ -77,7 +80,8 @@ export function StreamConnectionProvider({children}:{children:ReactNode}){
    stopConnection?.();
    if(socket)void socket.disconnectUser();
   };
- },[]);
- return <Context.Provider value={useMemo(()=>session,[session])}>{children}</Context.Provider>;
+ },[attempt]);
+ const value=useMemo<StreamContext>(()=>({...session,retry}),[session,retry]);
+ return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function useStreamConnection(){return useContext(Context)}
