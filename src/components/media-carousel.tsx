@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {Play,Pause} from 'lucide-react';
+import {Play,Pause,ChevronLeft,ChevronRight} from 'lucide-react';
 import {VolumeControl} from './volume-control';
 import {playWithSound,setVideoVolume} from '@/lib/client/play-with-sound';
 export type CarouselMedia={mediaId:string;url?:string|null;alt?:string;contentType?:string};
@@ -24,14 +24,14 @@ export function MediaCarousel({items,ratio='1 / 1'}:{items:CarouselMedia[];ratio
  if(!item)return null;
  const src=item.url||'/api/media?id='+encodeURIComponent(item.mediaId);
  const video=Boolean(item.contentType?.startsWith('video/'));
- return <div tabIndex={0} aria-label="Post media carousel" onKeyDown={e=>{if(e.target instanceof HTMLInputElement)return;if(e.key==='ArrowLeft')setIndex(i=>Math.max(0,i-1));if(e.key==='ArrowRight')setIndex(i=>Math.min(items.length-1,i+1))}} style={{position:'relative',maxWidth:'100%'}}>
+ return <div className="cc-media-carousel" tabIndex={0} aria-label="Post media carousel" onKeyDown={e=>{if(e.target instanceof HTMLInputElement)return;if(e.key==='ArrowLeft')setIndex(i=>Math.max(0,i-1));if(e.key==='ArrowRight')setIndex(i=>Math.min(items.length-1,i+1))}} style={{position:'relative',maxWidth:'100%'}}>
   <div style={{...(video?{}:{aspectRatio:ratio}),overflow:'hidden',display:'grid',placeItems:'center'}}>
    {video?<InlineVideo key={item.mediaId} src={src}/>:<img src={src} alt={item.alt||'Campus post media'} loading="lazy" style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain'}}/>}
   </div>
-  {items.length>1&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-   <button aria-label="Previous media" disabled={index===0} onClick={()=>setIndex(i=>i-1)}>←</button>
-   <span>{index+1} / {items.length}</span>
-   <button aria-label="Next media" disabled={index===items.length-1} onClick={()=>setIndex(i=>i+1)}>→</button>
+  {items.length>1&&<div className="cc-media-carousel-controls" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+   <button aria-label="Previous media" disabled={index===0} onClick={()=>setIndex(i=>i-1)}><ChevronLeft size={18}/></button>
+   <span className="cc-carousel-dots" aria-label={'Media '+(index+1)+' of '+items.length}>{items.map((m,i)=><button key={m.mediaId} type="button" aria-label={'Show media '+(i+1)} aria-current={i===index} onClick={()=>setIndex(i)}/>)}</span>
+   <button aria-label="Next media" disabled={index===items.length-1} onClick={()=>setIndex(i=>i+1)}><ChevronRight size={18}/></button>
   </div>}
  </div>;
 }

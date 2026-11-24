@@ -10,14 +10,14 @@ import '@/app/notifications-upgrade.css';
 import '@/app/explore-upgrade.css';
 import {NotificationsFeed} from './notifications-feed';
 import {BrandMark} from './brand-mark';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useSelectedLayoutSegment } from 'next/navigation';
 import {Send} from 'lucide-react';
 import {NavIcon} from './icons/nav-icons';
 import {navActive,badgeLabel} from '@/lib/core/nav-active';
 import {MoreMenu} from './more-menu';
 import {SidePanel} from './side-panel';
 import {ShellSession} from './shell-session';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
 import {userKey} from '@/lib/queries';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
@@ -56,7 +56,8 @@ function Suggestions({handle,avatarMediaId}:{handle:string;avatarMediaId:string|
 }
 
 export default function SocialShell({ children }: { children: ReactNode }) {
-  const pathname=usePathname(),params=useSearchParams(),router=useRouter();
+  const actualPath=usePathname(),params=useSearchParams(),router=useRouter(),modalSegment=useSelectedLayoutSegment('modal');
+  const backgroundPath=useRef(actualPath);const hasPostModal=Boolean(modalSegment&&modalSegment.includes('posts')&&actualPath.startsWith('/posts/'));if(!hasPostModal)backgroundPath.current=actualPath;const pathname=hasPostModal?backgroundPath.current:actualPath;
   const [avatarMediaId,setAvatarMediaId]=useState<string|null>(null),[menu,setMenu]=useState(false),[recent,setRecent]=useState<Array<{handle:string;avatarUrl:string|null;avatarMediaId:string|null}>>([]),[menuError,setMenuError]=useState('');
   const [panel,setPanel]=useState<'notifications'|null>(null);
   const [liveUnread,setLiveUnread]=useState<number|null>(null);
@@ -89,7 +90,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router,queryClient]);
   useEffect(()=>{if(!uid)return;let live=true;void fetch('/api/chat',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(live)setRecent(Array.isArray(d?.conversations)?d.conversations.slice(0,3):[])}).catch(()=>{});return()=>{live=false}},[uid]);
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape'){setMenu(false);setPanel(null)}};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
-  useEffect(()=>{setPanel(null);setMenu(false)},[pathname,params]);
+  useEffect(()=>{setPanel(null);setMenu(false)},[actualPath,params]);
   if(!checked||!handle)return <LoadingSkeleton kind="shell"/>;
   return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">

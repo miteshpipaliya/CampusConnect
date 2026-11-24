@@ -78,9 +78,9 @@ function ReelFeedSession({startId}:{startId:string|null}){
  },[active,reels.length,cursor,load]);
  function onScroll(){
   const el=scroller.current;if(!el)return;
-  const middle=el.scrollTop+el.clientHeight/2;
+  const middle=el.getBoundingClientRect().top+el.clientHeight/2;
   const cards=Array.from(el.querySelectorAll<HTMLElement>('[data-reel-card]'));
-  const index=cards.findIndex(x=>x.offsetTop<=middle&&x.offsetTop+x.offsetHeight>=middle);
+  const index=cards.findIndex(x=>{const rect=x.getBoundingClientRect();return rect.top<=middle&&rect.bottom>=middle});
   if(index>=0){setActive(index);if(index>=reels.length-2&&cursor&&!fetching.current)void load(cursor)}
  }
  useEffect(()=>{
@@ -100,7 +100,7 @@ function ReelFeedSession({startId}:{startId:string|null}){
     reels.map((reel,index)=><ReelCard key={reel.id} reel={reel} active={index===active} volume={volume} onVolume={changeVolume} mounted={index>=range.start&&index<=range.end} preloadNext={index===active+1}/>)}
    <div ref={end} className="cc-reel-end">{more?'Loading more Reels…':!cursor&&reels.length>0?'You are all caught up':''}</div>
   </div>
-  {reels.length>1&&<nav className="cc-reel-nav" aria-label="Navigate Reels">
+  {(reels.length>1||Boolean(cursor))&&<nav className="cc-reel-nav" aria-label="Navigate Reels">
    <button type="button" aria-label="Previous Reel" disabled={active<=0} onClick={()=>navigate(-1)}><ChevronUp size={23}/></button>
    <button type="button" aria-label="Next Reel" disabled={active>=reels.length-1&&!cursor} onClick={()=>navigate(1)}><ChevronDown size={23}/></button>
   </nav>}

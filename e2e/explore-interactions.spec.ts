@@ -1,0 +1,23 @@
+import {test,expect} from '@playwright/test';
+test('Explore hover mounts one muted looping video and releases it on leave, then opens a seeded feed and photo modal',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.addInitScript(()=>{HTMLMediaElement.prototype.play=function(){this.dispatchEvent(new Event('playing'));return Promise.resolve()};HTMLMediaElement.prototype.pause=function(){}});
+ const reel={id:'chosen-reel-001',authorUid:'mock-shell',authorHandle:'mockuser',authorName:'Mock',avatarUrl:null,caption:'Selected reel',mediaId:'mock-video',mediaUrl:null,likes:0,comments:0,reposts:0,views:0,liked:false,saved:false,reposted:false,isMine:true,followStatus:'none',createdAt:Date.now(),width:360,height:640};
+ const tile={id:reel.id,type:'reel',authorHandle:'mockuser',caption:'Selected reel',mediaType:'video/mp4',mediaCount:1,likes:2,comments:1,thumbUrl:'/cc-mark.svg',previewUrl:'/mock-preview.mp4'};
+ const photo={...tile,id:'mock-photo-001',caption:'Photo post',type:'post',mediaType:'image/jpeg',previewUrl:null};
+ await page.route('**/mock-preview.mp4',()=>{/* Keep the mocked media transfer pending while testing DOM lifecycle. */});
+ await page.route('**/api/**',async route=>{const url=new URL(route.request().url()),path=url.pathname;const data=path==='/api/auth'?{user:{uid:'mock-shell',profile:{handle:'mockuser',avatarMediaId:null}}}:path==='/api/settings'?{settings:{theme:'dark'}}:path==='/api/chat'?{conversations:[]}:path==='/api/notifications/summary'?{unread:0,unreadMessages:0}:path==='/api/explore'?{items:[tile,photo],nextCursor:null}:path==='/api/reels'?{reels:[reel,{...reel,id:'related-reel-002',caption:'Related reel'}],nextCursor:null}:path==='/api/posts/mock-photo-001'?{post:{id:photo.id,authorUid:'mock-shell',authorHandle:'mockuser',authorName:'Mock',avatarMediaId:null,avatarUrl:null,caption:photo.caption,mediaUrl:'/cc-mark.svg',mediaContentType:'image/jpeg',likes:0,comments:0,liked:false,saved:false}}:path.endsWith('/comments')?{comments:[]}:{};await route.fulfill({status:path==='/api/chat/token'?403:200,contentType:'application/json',body:JSON.stringify(data)})});
+ await page.goto('/explore');
+ const reelTile=page.getByRole('link',{name:'mockuser: Selected reel'}),video=page.locator('.cc-explore-hover-video');
+ await expect(reelTile).toBeVisible();await expect(video).toHaveCount(0);
+ const bounds=await reelTile.boundingBox();expect(bounds&&Math.abs(bounds.width/bounds.height-.75)<.02).toBeTruthy();
+ await reelTile.hover();await expect(video).toHaveCount(1);await expect(video).toHaveJSProperty('muted',true);await expect(video).toHaveJSProperty('loop',true);
+ await page.mouse.move(1400,10);await expect(video).toHaveCount(0);
+ await reelTile.hover();await expect(video).toHaveCount(1);
+ const requested=page.waitForRequest(req=>new URL(req.url()).pathname==='/api/reels'&&new URL(req.url()).searchParams.get('start')===reel.id);
+ await reelTile.click();await requested;await expect(page).toHaveURL(/\/reels\?start=chosen-reel-001/);await expect(video).toHaveCount(0);
+ await expect(page.locator('[data-reel-card]')).toHaveCount(2);await expect(page.locator('[data-reel-card]').first()).toContainText('Selected reel');
+ const cap=page.locator('.cc-reel-caption').first(),box=page.locator('.cc-reel-video-box').first();await expect(cap).toHaveAttribute('data-caption-placement','left');const c=await cap.boundingBox(),b=await box.boundingBox();expect(c&&b&&b.x-c.x-c.width<30&&b.x-c.x-c.width>=0).toBeTruthy();
+ await page.goBack();const post=page.getByRole('link',{name:'mockuser: Photo post'});await expect(post).toBeVisible();await post.click();await expect(page.getByRole('dialog',{name:'Post detail'})).toBeVisible();await expect(page.locator('.cc-post-detail-media')).toBeVisible();await expect(page.locator('.cc-post-detail-info')).toBeVisible();await expect(page.locator('.cc-explore-grid')).toBeVisible();
+ await page.getByRole('button',{name:'Close post detail'}).click();await expect(page).toHaveURL(/\/explore$/);await expect(page.getByRole('dialog',{name:'Post detail'})).toHaveCount(0);
+});

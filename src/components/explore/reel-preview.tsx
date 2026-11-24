@@ -17,7 +17,7 @@ export function useLegacyPoster(src:string|null,enabled:boolean){
  },[src,enabled]);return {node,url};
 }
 export function HoverVideo({src,onFailure}:{src:string;onFailure:()=>void}){
- const ref=useRef<HTMLVideoElement>(null),failed=useRef(onFailure);failed.current=onFailure;
+ const ref=useRef<HTMLVideoElement>(null),[ready,setReady]=useState(false),failed=useRef(onFailure);failed.current=onFailure;
  useEffect(()=>{const v=ref.current;if(!v)return;let alive=true;v.muted=true;v.defaultMuted=true;v.src=src;const hide=()=>{if(document.hidden)v.pause();else void Promise.resolve(v.play()).catch(()=>{})};void Promise.resolve(v.play()).catch(()=>{if(alive)failed.current()});document.addEventListener('visibilitychange',hide);return()=>{alive=false;document.removeEventListener('visibilitychange',hide);v.pause();v.removeAttribute('src');v.load()}},[src]);
- return <video ref={ref} className="cc-explore-hover-video" muted loop playsInline preload="none" aria-hidden="true" disablePictureInPicture onError={()=>failed.current()}/>;
+ return <video ref={ref} className={'cc-explore-hover-video'+(ready?' is-playing':'')} onPlaying={()=>setReady(true)} muted loop playsInline preload="none" aria-hidden="true" disablePictureInPicture onError={()=>failed.current()}/>;
 }
