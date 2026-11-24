@@ -21,3 +21,5 @@ Owner dependency update not observed: firebase-admin 13.6.0 remains locked. Prev
 
 ## Realtime integration
 External Stream grants/two-way block mode and FCM browser delivery require preview acceptance. Unread fallback is bounded by Stream channel scan and notification history cap. No Firestore client SDK or rules relaxation. FCM generic messages only; browser registration API is deprecated and requires planned FID migration. CDN SDK is pinned and CSP scoped. Dependency audit may still report moderate Firebase Admin advisories.
+
+- Release audit: preview backend configuration incomplete (health 503); real account acceptance blocked. Do not merge until acceptance. Existing production health 200. Stream client grants and two-way blocking remain external verification. Removed signed avatar URLs from future Stream identity synchronization; existing remote user records may retain old URLs until synchronized or their signatures expire.

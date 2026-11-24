@@ -31,3 +31,5 @@ Updated 2026-11-24.
 - Realtime upgrade: retain Firestore server authority; visible-tab five-second social notification fallback (not Firestore listeners). Stream events trigger authorized REST refresh. Optional generic FCM push via pinned Firebase CDN; device registrations owner-bound and expiring. Preserve production opt-in gate.
 
 - Notification summary uses aggregate counts for canonical read booleans, retains bounded fallback for older documents and skips Stream REST unread queries while a live authorized inbox is active. No new Firestore indexes required.
+
+- Final integration audit: avoid placing R2 bearer URLs into third-party Stream identity records; render avatars through the existing authorized CampusConnect API. Disconnect partially connected Stream clients on setup errors and avoid logging provider message text.

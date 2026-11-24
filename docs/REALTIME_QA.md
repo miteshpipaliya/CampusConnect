@@ -9,3 +9,6 @@ Use isolated Firebase, Stream and R2 preview credentials and two approved test a
 6. Deploy existing firestore indexes using explicit project ID; no new composite index is needed by pushDevices owner lookup. Existing Firestore client-deny rules remain.
 
 Automated `e2e/realtime-mocked.spec.ts` uses two isolated simulated accounts and a mocked REST transport; it verifies send/receive/read UI and notification visibility handling, not a live Stream WebSocket or actual Firebase permissions.
+
+## Release audit — 2026-11-24
+The integration preview health endpoint returned HTTP 503 for Firebase Auth, Firestore and R2; production returned HTTP 200 for those services. Vercel environment metadata confirmed backend credentials were production-only while the new flags were preview/development-only. Supply isolated preview credentials in Vercel, redeploy, verify health, then run signed-in two-account QA. Do not copy production secrets into preview or expose them in source. Verify Stream role grants and two-way blocks before enabling production tokens. Stream identities no longer contain signed R2 avatar URLs; verify authorized avatars continue to render through the application. Previously issued avatar URLs expire according to their original signature lifetime.

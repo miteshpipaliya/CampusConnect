@@ -56,6 +56,8 @@ export function StreamConnectionProvider({children}:{children:ReactNode}){
     if(!live){await chat.disconnectUser();return}
     setSession({client:chat,userId:initial.user.id,status:'connected'});
    }catch(error){
+    stopConnection?.();stopConnection=null;
+    if(socket){const failed=socket;socket=null;await failed.disconnectUser().catch(()=>{})}
     if(!live)return;
     const reason=error instanceof Error?error.message:'CHAT_CONNECTION_FAILED';
     setSession({client:null,userId:null,status:reason==='STREAM_DISABLED'?'disabled':reason==='SESSION_EXPIRED'?'disconnected':'error'});
