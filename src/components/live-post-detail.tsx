@@ -1,16 +1,18 @@
 'use client';
+import '@/app/post-modal-upgrade.css';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import Link from 'next/link';
 import {Avatar} from './avatar';
 import {PostActions} from './post-actions';
 import {ReportDialog} from './report-dialog';
 import {MediaCarousel,type CarouselMedia} from './media-carousel';
-import {Bookmark,Heart,MessageCircle,Repeat2} from 'lucide-react';
-type Post={id:string;caption:string;media?:CarouselMedia[];authorUid?:string;authorHandle:string;authorName:string;avatarMediaId:string|null;avatarUrl:string|null;mediaUrl:string|null;mediaContentType:string|null;likes:number;comments:number;liked:boolean;saved:boolean;hideLikeCount?:boolean;commentsOff?:boolean;pinned?:boolean};
+import {ChatShareSheet} from './chat/chat-share-sheet';
+import {Bookmark,Heart,MessageCircle,Repeat2,Send,BadgeCheck} from 'lucide-react';
+type Post={id:string;caption:string;media?:CarouselMedia[];authorUid?:string;authorHandle:string;authorName:string;avatarMediaId:string|null;avatarUrl:string|null;mediaUrl:string|null;mediaContentType:string|null;likes:number;comments:number;liked:boolean;saved:boolean;hideLikeCount?:boolean;commentsOff?:boolean;pinned?:boolean;verified?:boolean;createdAt?:number};
 type Comment={id:string;uid:string;handle:string;avatarUrl:string|null;text:string;createdAt:number;likes:number;liked:boolean;pinned:boolean;parentId:string;replies:Comment[]};
 async function get<T>(url:string):Promise<T>{const r=await fetch(url,{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
-export function LivePostDetail({id}:{id:string}){
- const [post,setPost]=useState<Post|null>(null),[comments,setComments]=useState<Comment[]>([]),[reply,setReply]=useState(''),[replyTo,setReplyTo]=useState<string|null>(null),[viewer,setViewer]=useState(''),[reportComment,setReportComment]=useState<string|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+export function LivePostDetail({id,modal=false}:{id:string;modal?:boolean}){
+ const [post,setPost]=useState<Post|null>(null),[comments,setComments]=useState<Comment[]>([]),[reply,setReply]=useState(''),[replyTo,setReplyTo]=useState<string|null>(null),[viewer,setViewer]=useState(''),[reportComment,setReportComment]=useState<string|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[share,setShare]=useState(false);
  async function update(url:string,method='POST',body?:object){const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})}),d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
  const load=useCallback(async()=>{const data=await get<{post:Post}>('/api/posts/'+encodeURIComponent(id));setPost(data.post)},[id]);
  const loadComments=useCallback(async()=>{const data=await get<{comments:Comment[]}>('/api/posts/'+encodeURIComponent(id)+'/comments');setComments(data.comments)},[id]);
@@ -35,7 +37,7 @@ export function LivePostDetail({id}:{id:string}){
  }
  function row(c:Comment,child=false){
   return <div key={c.id} style={{marginLeft:child?34:0,padding:'10px 0',borderBottom:'1px solid #ffffff15'}}>
-   <p style={{margin:0}}>{c.pinned&&<span>📌 Pinned · </span>}<b>@{c.handle}</b> {c.text}</p>
+   <p className="cc-post-detail-comment" style={{margin:0}}><Avatar user={{handle:c.handle,avatarUrl:c.avatarUrl}} size={32}/>{c.pinned&&<span>📌 Pinned · </span>}<b>@{c.handle}</b> {c.text}</p>
    <div style={{display:'flex',gap:12,flexWrap:'wrap',fontSize:12,paddingTop:6}}>
     <button disabled={busy} onClick={()=>void commentAction(c,'like')}>{c.liked?'♥':'♡'} {c.likes}</button>
     {!child&&!post?.commentsOff&&<button onClick={()=>setReplyTo(c.id)}>Reply</button>}
@@ -47,24 +49,25 @@ export function LivePostDetail({id}:{id:string}){
   </div>
  }
  if(error&&!post)return <section className="cc-live-empty" role="alert">{error} <Link href="/home">Go home</Link></section>;
- if(!post)return <section className="cc-live-empty">Loading post…</section>;
- return <article className="cc-live-entry" style={{maxWidth:720,margin:'0 auto',padding:24}}>
-  <header style={{display:'flex',alignItems:'center',gap:10}}><Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><Avatar user={{name:post.authorName,handle:post.authorHandle,avatarMediaId:post.avatarMediaId,avatarUrl:post.avatarUrl}} size={44}/></Link><Link href={'/profile/'+encodeURIComponent(post.authorHandle)}><b>@{post.authorHandle}</b><small style={{display:'block'}}>{post.authorName}</small></Link></header>
-  {post.media?.length?<MediaCarousel items={post.media}/>:post.mediaUrl&&(post.mediaContentType?.startsWith('video/')?<video controls playsInline src={post.mediaUrl} style={{maxWidth:'100%',maxHeight:650}}/>:<img src={post.mediaUrl} loading="lazy" alt={post.caption||'Campus post'} style={{width:'100%',objectFit:'contain'}}/>)}
-  <p>{post.caption}</p><PostActions id={post.id} caption={post.caption} authorUid={post.authorUid} hideLikeCount={post.hideLikeCount??false} commentsOff={post.commentsOff??false} pinned={post.pinned??false} onChanged={()=>void load()}/>
-  <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
-   <button disabled={busy} onClick={()=>void action('like')}><Heart size={20} fill={post.liked?'currentColor':'none'}/> {post.hideLikeCount?'Like':post.likes}</button>
-   <button disabled={busy} onClick={()=>void action('save')}><Bookmark size={20} fill={post.saved?'currentColor':'none'}/> {post.saved?'Saved':'Save'}</button>
-   <button disabled={busy} onClick={()=>void action('repost')}><Repeat2 size={20}/> Repost</button>
-   <span><MessageCircle size={20}/> {post.comments}</span>
-  </div>
-  {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
-  <section aria-label="Comments"><h2>Comments</h2>{comments.map(c=>row(c))}
-  {post.commentsOff?<p>Comments are turned off for this post.</p>:<form onSubmit={comment}>
-   {replyTo&&<p>Replying to a comment <button type="button" onClick={()=>setReplyTo(null)}>Cancel</button></p>}
-   <input required maxLength={1000} value={reply} onChange={e=>setReply(e.target.value)} aria-label="Write a comment" placeholder="Write a comment…"/>
-   <button disabled={!reply.trim()||busy} type="submit">{replyTo?'Reply':'Post'}</button>
-  </form>}</section>
-  {reportComment&&<ReportDialog targetType="comment" targetId={reportComment} postId={id} onClose={()=>setReportComment(null)}/>}
+ if(!post)return <section className="cc-post-detail-loading" role="status" aria-label="Loading post"><div/><div/></section>;
+ const profile='/profile/'+encodeURIComponent(post.authorHandle);
+ const media=post.media?.length?<MediaCarousel items={post.media}/>:post.mediaUrl&&(post.mediaContentType?.startsWith('video/')?<video controls playsInline src={post.mediaUrl}/>:<img src={post.mediaUrl} loading="lazy" alt={post.caption||'Campus post'}/>);
+ return <article className={'cc-post-detail '+(modal?'cc-post-detail-split':'cc-post-detail-page')}>
+ <div className="cc-post-detail-media">{media}</div>
+ <div className="cc-post-detail-info">
+ <header className="cc-post-detail-header"><Link href={profile}><Avatar user={{name:post.authorName,handle:post.authorHandle,avatarMediaId:post.avatarMediaId,avatarUrl:post.avatarUrl}} size={32}/></Link><Link href={profile}><b>@{post.authorHandle}</b>{post.verified&&<BadgeCheck size={14}/>}</Link><PostActions id={post.id} caption={post.caption} authorUid={post.authorUid} hideLikeCount={post.hideLikeCount??false} commentsOff={post.commentsOff??false} pinned={post.pinned??false} onChanged={()=>void load()}/></header>
+ <section className="cc-post-detail-scroll" aria-label="Comments"><div className="cc-post-detail-caption"><Avatar user={{handle:post.authorHandle,avatarUrl:post.avatarUrl}} size={32}/><div><Link href={profile}><b>@{post.authorHandle}</b></Link> {post.caption}</div></div>
+ {comments.map(c=>row(c))}{!comments.length&&!post.commentsOff&&<p className="cc-post-detail-empty">No comments yet.</p>}</section>
+ <footer className="cc-post-detail-footer"><div className="cc-post-detail-actions">
+ <button aria-label={post.liked?'Unlike post':'Like post'} disabled={busy} onClick={()=>void action('like')}><Heart size={24} fill={post.liked?'currentColor':'none'}/></button>
+ <button aria-label="Comment" onClick={()=>document.getElementById('cc-post-comment-input')?.focus()} disabled={post.commentsOff}><MessageCircle size={24}/></button>
+ <button aria-label="Repost" disabled={busy} onClick={()=>void action('repost')}><Repeat2 size={24}/></button>
+ <button aria-label="Share post" onClick={()=>setShare(true)}><Send size={24}/></button>
+ <button className="cc-post-detail-save" aria-label={post.saved?'Unsave post':'Save post'} disabled={busy} onClick={()=>void action('save')}><Bookmark size={24} fill={post.saved?'currentColor':'none'}/></button></div>
+ {!post.hideLikeCount&&<strong>{post.likes} {post.likes===1?'like':'likes'}</strong>}{post.createdAt&&<small>{new Date(post.createdAt).toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'})}</small>}
+ {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}</footer>
+ {post.commentsOff?<p className="cc-post-detail-form">Comments are turned off for this post.</p>:<form className="cc-post-detail-form" onSubmit={comment}>{replyTo&&<button type="button" onClick={()=>setReplyTo(null)}>Cancel reply</button>}<input id="cc-post-comment-input" required maxLength={1000} value={reply} onChange={e=>setReply(e.target.value)} aria-label="Write a comment" placeholder="Add a comment…"/><button disabled={!reply.trim()||busy} type="submit">{replyTo?'Reply':'Post'}</button></form>}
+ </div>{share&&<ChatShareSheet postId={id} onClose={()=>setShare(false)}/>}
+ {reportComment&&<ReportDialog targetType="comment" targetId={reportComment} postId={id} onClose={()=>setReportComment(null)}/>}
  </article>;
 }

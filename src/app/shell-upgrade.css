@@ -75,3 +75,5 @@
 @media(max-width:359px){.cc-shell-v2 .cc-mobile-header .cc-brand .cc-wordmark{display:none}}
 .cc-shell-v2.cc-explore-mode .cc-main{padding:0;min-width:0}
 .cc-shell-v2.cc-explore-mode .cc-page{max-width:none;width:100%;padding:0;margin:0}
+
+.cc-shell-v2 .cc-messages-pill{z-index:60}

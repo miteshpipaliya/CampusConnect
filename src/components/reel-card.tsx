@@ -84,13 +84,14 @@ export function ReelCard({reel,active,volume,onVolume,mounted=true,preloadNext=f
  if(removed)return <article data-reel-card className="cc-reel-card"><p>Reel removed.</p></article>;
  const videoStyle={aspectRatio:String(ratio),...(frame&&frame.width>0&&frame.height>0?{width:frame.width,height:frame.height}:{} )} as CSSProperties;
  const authorBlock=<div className={"cc-reel-caption cc-reel-caption-"+placement} data-caption-placement={placement}>
+     <Link className="cc-reel-caption-avatar" href={'/profile/'+encodeURIComponent(reel.authorHandle)} aria-label={'Profile of '+reel.authorHandle}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={32}/></Link><div className="cc-reel-caption-copy">
      <div className="cc-reel-author">
-      <Link href={'/profile/'+encodeURIComponent(reel.authorHandle)}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={32}/><strong>@{reel.authorHandle}</strong>{reel.verified&&<BadgeCheck size={15} aria-label="Verified"/>}</Link>
+      <Link href={'/profile/'+encodeURIComponent(reel.authorHandle)}><strong>@{reel.authorHandle}</strong>{reel.verified&&<BadgeCheck size={15} aria-label="Verified"/>}</Link>
       {!reel.isMine&&<button type="button" onClick={()=>void followToggle()}>{follow==='active'?'Following':follow==='pending'?'Requested':'Follow'}</button>}
      </div>
      <small className="cc-reel-audio-line"><Music2 size={12}/> Original audio</small>
      {reel.location&&<small className="cc-reel-location"><MapPin size={12}/>{reel.location}</small>}{reel.caption&&<><p className={expanded?'cc-caption-expanded':'cc-caption-short'}>{(expanded?reel.caption:caption.short).split(/([#@][a-zA-Z0-9_.]+)/g).map((part,i)=>part.startsWith('#')?<Link key={i} href={'/explore/tags/'+encodeURIComponent(part.slice(1))}>{part}</Link>:part.startsWith('@')?<Link key={i} href={'/profile/'+encodeURIComponent(part.slice(1))}>{part}</Link>:part)}</p>{(caption.truncated||reel.caption.length>45)&&<button className="cc-caption-more" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?'Less':'… more'}</button>}</>}
-    </div>;
+    </div></div>;
  return <article data-reel-card className="cc-reel-card" aria-label={'Reel by '+reel.authorHandle}>
   <div className={"cc-reel-stage cc-reel-stage-"+placement} ref={stageRef}>
    {placement==='left'&&authorBlock}

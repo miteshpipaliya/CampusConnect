@@ -1,0 +1,3 @@
+export type ReelAffinity={id:string;authorUid:string;hashtags?:unknown;createdAt?:number};
+function tags(value:unknown){return new Set(Array.isArray(value)?value.filter((x):x is string=>typeof x==='string').map(x=>x.toLowerCase()):[])}
+export function rankRelatedReels<T extends ReelAffinity>(items:readonly T[],seed:ReelAffinity):T[]{const wanted=tags(seed.hashtags);const score=(item:T)=>[...tags(item.hashtags)].filter(t=>wanted.has(t)).length*3+(item.authorUid===seed.authorUid?1:0);return [...items].filter(item=>item.id!==seed.id).sort((a,b)=>score(b)-score(a)||(b.createdAt||0)-(a.createdAt||0)||a.id.localeCompare(b.id))}

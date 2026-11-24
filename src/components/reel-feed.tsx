@@ -10,31 +10,33 @@ import {windowRange} from '@/lib/core/reel-window';
 const REFRESH_MS=30000;
 type Page={reels:Reel[];nextCursor:string|null};
 
-export function ReelFeed(){const params=useSearchParams();const startId=params.get('start');
+export function ReelFeed(){const params=useSearchParams();const startId=params.get('start')||params.get('reel');return <ReelFeedSession key={startId||'default'} startId={startId}/>}
+function ReelFeedSession({startId}:{startId:string|null}){
  const [reels,setReels]=useState<Reel[]>([]),[cursor,setCursor]=useState<string|null>(null),
  [loading,setLoading]=useState(true),[more,setMore]=useState(false),[active,setActive]=useState(0),
  [error,setError]=useState(''),[newReels,setNewReels]=useState(false);
- const scroller=useRef<HTMLDivElement>(null),end=useRef<HTMLDivElement>(null),fetching=useRef(false);
+ const scroller=useRef<HTMLDivElement>(null),end=useRef<HTMLDivElement>(null),fetching=useRef(false),request=useRef<AbortController|null>(null);
  const itemsRef=useRef<Reel[]>([]);itemsRef.current=reels;
  const load=useCallback(async(next?:string)=>{
-  if(fetching.current)return;fetching.current=true;setError('');
+  if(fetching.current)return;fetching.current=true;const controller=new AbortController();request.current=controller;setError('');
   if(next)setMore(true);else if(!itemsRef.current.length)setLoading(true);
   try{
    const start=startId;
-   const response=await fetch('/api/reels?limit=10'+(next?'&cursor='+encodeURIComponent(next):start?'&start='+encodeURIComponent(start):''),{cache:'no-store'});
+   const response=await fetch('/api/reels?limit=10'+(next?'&cursor='+encodeURIComponent(next):'')+(start?'&start='+encodeURIComponent(start):''),{cache:'no-store',signal:controller.signal});
    const result:unknown=await response.json().catch(()=>null);
    if(!response.ok||!result||typeof result!=='object')throw Error(result&&typeof result==='object'&&'error'in result?String(result.error):'Reels unavailable');
+   if(controller.signal.aborted)return;
    const data=result as Page,items=Array.isArray(data.reels)?data.reels:[];
    setReels(old=>next?dedupeReels(old,items):items);
    setCursor(typeof data.nextCursor==='string'?data.nextCursor:null);
    setNewReels(false);
-  }catch(e){setError(e instanceof Error?e.message:'Reels unavailable')}
-  finally{fetching.current=false;setLoading(false);setMore(false)}
+  }catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Reels unavailable')}
+  finally{if(request.current===controller){request.current=null;fetching.current=false;if(!controller.signal.aborted){setLoading(false);setMore(false)}}}
  },[startId]);
  const {volume,changeVolume}=useReelVolume();
- useEffect(()=>{void load()},[load]);
+ useEffect(()=>{void load();return()=>{request.current?.abort();request.current=null;fetching.current=false}},[load]);
  const refresh=useCallback(async()=>{
-  if(fetching.current||document.visibilityState!=='visible'||new URLSearchParams(window.location.search).has('start'))return;
+  if(fetching.current||document.visibilityState!=='visible'||startId!==null)return;
   try{
    const response=await fetch('/api/reels?limit=10',{cache:'no-store'});
    if(!response.ok)return;
@@ -51,7 +53,7 @@ export function ReelFeed(){const params=useSearchParams();const startId=params.g
     }else setNewReels(true);
    }
   }catch{/* keep existing feed available during transient network errors */}
- },[]);
+ },[startId]);
  useEffect(()=>{
   const timer=window.setInterval(()=>{void refresh()},REFRESH_MS);
   const focus=()=>{void refresh()};
@@ -69,16 +71,17 @@ export function ReelFeed(){const params=useSearchParams();const startId=params.g
  },[cursor,load]);
  const navigate=useCallback((delta:number)=>{
   const next=Math.max(0,Math.min(reels.length-1,active+delta));
+  if(delta>0&&next>=reels.length-2&&cursor&&!fetching.current)void load(cursor);
   const card=scroller.current?.querySelectorAll<HTMLElement>('[data-reel-card]')[next];
   card?.scrollIntoView({behavior:'smooth',block:'start'});
   setActive(next);
- },[active,reels.length]);
+ },[active,reels.length,cursor,load]);
  function onScroll(){
   const el=scroller.current;if(!el)return;
   const middle=el.scrollTop+el.clientHeight/2;
   const cards=Array.from(el.querySelectorAll<HTMLElement>('[data-reel-card]'));
   const index=cards.findIndex(x=>x.offsetTop<=middle&&x.offsetTop+x.offsetHeight>=middle);
-  if(index>=0)setActive(index);
+  if(index>=0){setActive(index);if(index>=reels.length-2&&cursor&&!fetching.current)void load(cursor)}
  }
  useEffect(()=>{
   const handle=(e:KeyboardEvent)=>{
@@ -87,17 +90,6 @@ export function ReelFeed(){const params=useSearchParams();const startId=params.g
   };
   window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);
  },[navigate]);
- useEffect(()=>{
-  if(!reels.length)return;
-  const target=new URLSearchParams(window.location.search).get('reel');
-  if(!target)return;
-  const index=reels.findIndex(x=>x.id===target);
-  if(index>=0){
-   scroller.current?.querySelectorAll<HTMLElement>('[data-reel-card]')[index]?.scrollIntoView({block:'start'});
-   setActive(index);
-   window.history.replaceState(null,'','/reels');
-  }
- },[reels]);
  const range=windowRange(active,reels.length);
  return <section aria-label="Campus Reels" className="cc-reel-page">
   {newReels&&<button type="button" className="cc-reel-new" onClick={()=>{setNewReels(false);setActive(0);scroller.current?.scrollTo({top:0});void load()}}>New Reels — Show</button>}
@@ -110,7 +102,7 @@ export function ReelFeed(){const params=useSearchParams();const startId=params.g
   </div>
   {reels.length>1&&<nav className="cc-reel-nav" aria-label="Navigate Reels">
    <button type="button" aria-label="Previous Reel" disabled={active<=0} onClick={()=>navigate(-1)}><ChevronUp size={23}/></button>
-   <button type="button" aria-label="Next Reel" disabled={active>=reels.length-1} onClick={()=>navigate(1)}><ChevronDown size={23}/></button>
+   <button type="button" aria-label="Next Reel" disabled={active>=reels.length-1&&!cursor} onClick={()=>navigate(1)}><ChevronDown size={23}/></button>
   </nav>}
  </section>;
 }

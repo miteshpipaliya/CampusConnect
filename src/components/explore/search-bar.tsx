@@ -5,6 +5,7 @@ import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Search,X,Hash,BadgeCheck,Image as ImageIcon} from 'lucide-react';
 import {Avatar} from '../avatar';
 import {useShellUid} from '../shell-session';
+import {rememberExploreScroll} from '@/lib/client/explore-scroll';
 import {userKey} from '@/lib/queries';
 type Item={uid?:string;handle?:string;name?:string;avatarUrl?:string|null;verified?:boolean;tag?:string;postCount?:number;id?:string;caption?:string;thumbUrl?:string|null;type?:string;authorHandle?:string};
 type History={id:string;query:string};
@@ -22,7 +23,7 @@ export function ExploreSearchBar(){
  const items=term===trimmed?(results.data?.items||[]):[],recent=history.data?.items||[];
  async function remember(value:string){if(!value.trim())return;try{const r=await fetch('/api/search/history',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:value.trim()})});if(r.ok)void client.invalidateQueries({queryKey:userKey(uid,'search-history')})}catch{/* Search navigation should still work. */}}
  async function remove(id?:string){try{const r=await fetch('/api/search/history'+(id?'?id='+encodeURIComponent(id):''),{method:'DELETE'});if(!r.ok)throw Error('Unable to clear recent searches');void client.invalidateQueries({queryKey:userKey(uid,'search-history')});setError('')}catch{setError('Unable to clear recent searches')}}
- function choose(item:Item){const target=filter==='accounts'?'/profile/'+encodeURIComponent(item.handle||''):filter==='tags'?'/explore/tags/'+encodeURIComponent(item.tag||''):item.type==='reel'?'/reels?start='+encodeURIComponent(item.id||''):'/posts/'+encodeURIComponent(item.id||'');void remember(trimmed);setOpen(false);router.push(target)}
+ function choose(item:Item){const target=filter==='accounts'?'/profile/'+encodeURIComponent(item.handle||''):filter==='tags'?'/explore/tags/'+encodeURIComponent(item.tag||''):item.type==='reel'?'/reels?start='+encodeURIComponent(item.id||''):'/posts/'+encodeURIComponent(item.id||'');void remember(trimmed);setOpen(false);rememberExploreScroll(uid);router.push(target,{scroll:item.type==='reel'||filter!=='posts'})}
  const pending=trimmed.length>=2&&(term!==trimmed||results.isPending);
  return <div className="cc-explore-search-sticky"><div className="cc-explore-search-root" ref={root}>
  <div className="cc-explore-search-input"><Search size={18}/><input ref={input} aria-label="Search CampusConnect" role="combobox" aria-expanded={open} aria-controls="cc-explore-results" aria-autocomplete="list" {...(open&&selected>=0&&selected<items.length?{'aria-activedescendant':'cc-explore-option-'+selected}:{})} value={query} placeholder="Search" onFocus={()=>setOpen(true)} onChange={event=>{setQuery(event.target.value);setOpen(true);setSelected(-1)}} onKeyDown={event=>{if(event.key==='Escape'){setOpen(false);return}if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();setOpen(true);setSelected(old=>Math.max(-1,Math.min(items.length-1,old+(event.key==='ArrowDown'?1:-1))))}if(event.key==='Enter'){event.preventDefault();const item=items[selected];if(item)choose(item);else{void remember(trimmed);setOpen(true)}}}}/>{query&&<button aria-label="Clear search" onClick={()=>{setQuery('');setSelected(-1);input.current?.focus()}}><X size={17}/></button>}</div>

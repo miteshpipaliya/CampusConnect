@@ -43,3 +43,5 @@ Updated 2026-11-24.
 - Search is a normal Explore page; notifications remain a drawer. Explore uses a responsive image-only grid and bounded candidate reads, preserving chronological pagination and current privacy checks. Portrait reel captions use the left gutter only when it fits; wide and mobile stay overlay. In-app chrome uses a monochrome SVG CC mark. Legacy video thumbnails without a stored image require a backfill; no full-video downloads in Explore.
 
 - Thumbnail writes are optional for upload compatibility and share the parent post's server-side media authorization. No public bucket or API secret changes.
+
+- Preserve authorization on hover via the existing authenticated media route, no public video URLs. Legacy poster capture is best-effort and requires R2 CORS/browser decoder support; future uploads retain persisted thumbnails. Recommendation ranking is bounded per chronological page to avoid unbounded database scans.

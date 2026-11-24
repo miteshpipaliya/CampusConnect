@@ -66,3 +66,5 @@ Single branch per owner request. Audio defaults to full volume; stories remove m
 - Explore page, dropdown search, reel caption placement and monochrome shell mark implemented. Pending: automated CI/preview, real authenticated UI screenshots, legacy thumbnails and upload-time poster pipeline, PNG app icons.
 
 - New video uploads now attempt a bounded JPEG thumbnail capture; the post transaction validates ownership, confirmed image status and exclusive attachment, with a safe fallback if decoding/upload fails. Added thumbnail access and responsive mocked UI regression tests. Existing video backfill remains outstanding.
+
+- Explore hover playback now mounts only the hovered muted player; legacy thumbnails are decoded serially in the browser with a timeout and released on navigation. Seeded Reels validate the chosen item and paginate across newer/older campus candidates with hashtag/author affinity per page. Post modal uses a responsive two-pane layout. Verification pending CI and production deployment.

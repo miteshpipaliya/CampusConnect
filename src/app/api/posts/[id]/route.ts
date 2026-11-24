@@ -24,7 +24,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
   const mediaUrls=await mintUrls([...(media?.exists?[{id:media.id,...(media.data()??{})}]:[]),...mediaDocs.filter(d=>d.exists).map(d=>({id:d.id,...(d.data()??{})}))],{viewerUid:user.uid});
   return NextResponse.json({post:{
    id:post.id,authorUid,caption:String(d.caption||''),authorHandle:String(d.authorHandle||avatars[authorUid]?.handle||'student'),
-   authorName:avatars[authorUid]?.name||'',avatarMediaId:avatars[authorUid]?.avatarMediaId??null,avatarUrl:avatars[authorUid]?.avatarUrl??null,
+   authorName:avatars[authorUid]?.name||'',verified:avatars[authorUid]?.verified===true,createdAt:d.createdAt?.toMillis?.()??0,avatarMediaId:avatars[authorUid]?.avatarMediaId??null,avatarUrl:avatars[authorUid]?.avatarUrl??null,
    mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null,media:allMedia.map(m=>({...m,contentType:mediaDocs.find(d=>d.id===m.mediaId)?.data()?.contentType||'',url:mediaUrls[m.mediaId]?.url??null})),
    mediaContentType:media?.data()?.contentType??null,hideLikeCount:d.hideLikeCount===true,commentsOff:d.commentsOff===true,pinned:d.pinned===true,likes:Number(d.counters?.likes||0),comments:Number(d.counters?.comments||0),
    liked:liked.exists,saved:saved.exists

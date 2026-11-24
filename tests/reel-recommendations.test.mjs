@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {rankRelatedReels} from '../src/lib/core/reel-recommendations.ts';
+test('related reels prioritize matching tags, retain general fallback and exclude seed',()=>{const seed={id:'seed',authorUid:'a',hashtags:['campus']};const items=[{id:'other',authorUid:'b',createdAt:3},{id:'same',authorUid:'a',createdAt:2},{id:'tag',authorUid:'c',hashtags:['CAMPUS'],createdAt:1},seed];assert.deepEqual(rankRelatedReels(items,seed).map(x=>x.id),['tag','same','other']);assert.equal(items.length,4)});
