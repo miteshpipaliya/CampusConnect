@@ -30,7 +30,7 @@ export function ProfileSettings(){
  async function save(event:FormEvent){event.preventDefault();if(!profile)return;setBusy(true);setError('');setMessage('');
  try{
   const {handle:currentHandle,avatarMediaId,branch,division,...settings}=profile;
-  void branch;void division;
+  void branch;void division;void avatarMediaId;
   const response=await fetch('/api/profile/settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(settings)});
   const result=await response.json();if(!response.ok)throw Error(result.error??'Unable to save');
   if(handle.trim().toLowerCase()!==currentHandle){const rename=await fetch('/api/profile/username',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle:handle.trim().toLowerCase()})});const renameResult=await rename.json();if(!rename.ok)throw Error('Settings saved, but username change failed: '+(renameResult.error??'Unavailable'));change('handle',renameResult.handle)}

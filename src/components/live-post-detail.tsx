@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useState,type FormEvent} from 'react';
+import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import Link from 'next/link';
 import {Avatar} from './avatar';
 import {PostActions} from './post-actions';
@@ -8,13 +8,13 @@ import {MediaCarousel,type CarouselMedia} from './media-carousel';
 import {Bookmark,Heart,MessageCircle,Repeat2} from 'lucide-react';
 type Post={id:string;caption:string;media?:CarouselMedia[];authorUid?:string;authorHandle:string;authorName:string;avatarMediaId:string|null;avatarUrl:string|null;mediaUrl:string|null;mediaContentType:string|null;likes:number;comments:number;liked:boolean;saved:boolean;hideLikeCount?:boolean;commentsOff?:boolean;pinned?:boolean};
 type Comment={id:string;uid:string;handle:string;avatarUrl:string|null;text:string;createdAt:number;likes:number;liked:boolean;pinned:boolean;parentId:string;replies:Comment[]};
+async function get<T>(url:string):Promise<T>{const r=await fetch(url,{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
 export function LivePostDetail({id}:{id:string}){
  const [post,setPost]=useState<Post|null>(null),[comments,setComments]=useState<Comment[]>([]),[reply,setReply]=useState(''),[replyTo,setReplyTo]=useState<string|null>(null),[viewer,setViewer]=useState(''),[reportComment,setReportComment]=useState<string|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
- async function get<T>(url:string):Promise<T>{const r=await fetch(url,{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
  async function update(url:string,method='POST',body?:object){const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})}),d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
- async function load(){const data=await get<{post:Post}>('/api/posts/'+encodeURIComponent(id));setPost(data.post)}
- async function loadComments(){const data=await get<{comments:Comment[]}>('/api/posts/'+encodeURIComponent(id)+'/comments');setComments(data.comments)}
- useEffect(()=>{void load().catch(e=>setError(String(e)));void loadComments().catch(()=>{});void get<{user?:{uid?:string}}>('/api/auth').then(x=>setViewer(x.user?.uid||'')).catch(()=>{})},[id]);
+ const load=useCallback(async()=>{const data=await get<{post:Post}>('/api/posts/'+encodeURIComponent(id));setPost(data.post)},[id]);
+ const loadComments=useCallback(async()=>{const data=await get<{comments:Comment[]}>('/api/posts/'+encodeURIComponent(id)+'/comments');setComments(data.comments)},[id]);
+ useEffect(()=>{void load().catch(e=>setError(String(e)));void loadComments().catch(()=>{});void get<{user?:{uid?:string}}>('/api/auth').then(x=>setViewer(x.user?.uid||'')).catch(()=>{})},[id,load,loadComments]);
  async function action(kind:'like'|'save'|'repost'){if(!post||busy)return;setBusy(true);setError('');try{
   if(kind==='like')await update('/api/posts/'+encodeURIComponent(id)+'/likes','POST',{});
   if(kind==='save')await update('/api/saves',post.saved?'DELETE':'POST',{postId:id});

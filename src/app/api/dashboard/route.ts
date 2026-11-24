@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
-import {dayDocId,zeroFilledSeries,utcDay} from '@/lib/core/daily-stats';
+import {dayDocId,zeroFilledSeries} from '@/lib/core/daily-stats';
 import {mintUrls} from '@/lib/server/media-urls';
 export const runtime='nodejs';
 export async function GET(req:NextRequest){

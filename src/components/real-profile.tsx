@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import {useEffect,useState} from 'react';
+import {useCallback,useEffect,useState} from 'react';
 import {Grid3X3,Clapperboard,Repeat2,Plus,Bookmark,AtSign,BadgeCheck} from 'lucide-react';
 import {ReportDialog} from './report-dialog';
 import {Avatar} from './avatar';
@@ -13,8 +13,8 @@ type Tab='posts'|'reels'|'reposts'|'saved'|'tagged';
 export function RealProfile({username}:{username:string}){
  const [followStatus,setFollowStatus]=useState<'none'|'pending'|'active'>('none'),[followBusy,setFollowBusy]=useState(false);
  const [data,setData]=useState<Data|null>(null),[error,setError]=useState(''),[tab,setTab]=useState<Tab>('posts'),[saved,setSaved]=useState<Post[]>([]),[menu,setMenu]=useState(false),[report,setReport]=useState(false),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
- const load=async()=>{const r=await fetch('/api/profile/'+encodeURIComponent(username),{cache:'no-store'});const x=await r.json();if(!r.ok)throw Error(x.error||'Profile unavailable');setData(x)};
- useEffect(()=>{void load().catch(e=>setError(e instanceof Error?e.message:'Profile unavailable'));if(username!=='me')void fetch('/api/follow?handle='+encodeURIComponent(username)).then(r=>r.json()).then(d=>setFollowStatus(d.status||'none')).catch(()=>{})},[username]);
+ const load=useCallback(async()=>{const r=await fetch('/api/profile/'+encodeURIComponent(username),{cache:'no-store'});const x=await r.json();if(!r.ok)throw Error(x.error||'Profile unavailable');setData(x)},[username]);
+ useEffect(()=>{void load().catch(e=>setError(e instanceof Error?e.message:'Profile unavailable'));if(username!=='me')void fetch('/api/follow?handle='+encodeURIComponent(username)).then(r=>r.json()).then(d=>setFollowStatus(d.status||'none')).catch(()=>{})},[username,load]);
  async function toggleFollow(){setFollowBusy(true);setError('');try{const r=await fetch('/api/follow',{method:followStatus==='none'?'POST':'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle:profileHandle})});const d=await r.json();if(!r.ok)throw Error(d.error||'Follow unavailable');setFollowStatus(d.status);await load()}catch(e){setError(String(e))}finally{setFollowBusy(false)}}
  const profileHandle=data?.profile.handle||username;
  useEffect(()=>{if(tab!=='saved'||!data?.self)return;let active=true;void fetch('/api/saves',{cache:'no-store'}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||'Saved posts unavailable');if(active)setSaved(d.items||[])}).catch(e=>{if(active)setError(String(e))});return()=>{active=false}},[tab,data?.self]);

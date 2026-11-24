@@ -101,41 +101,24 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
  </main>;
 }
 let feedCache:Post[]|null=null;
-let accountCache:Me|null=null;
 export function ConnectedFeed(){
  const params=useSearchParams();
- const [me,setMe]=useState<Me|null>(accountCache),[posts,setPosts]=useState<Post[]>(feedCache||[]);
- const [caption,setCaption]=useState(''),[file,setFile]=useState<File|null>(null);
+ const [posts,setPosts]=useState<Post[]>(feedCache||[]);
  const [section,setSection]=useState('home');
- const [composeOpen,setComposeOpen]=useState(false),[previewUrl,setPreviewUrl]=useState<string|null>(null),[mediaStep,setMediaStep]=useState<'preview'|'caption'>('preview');
- const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[loading,setLoading]=useState(feedCache===null);
+ const [composeOpen,setComposeOpen]=useState(false);
+ const [status,setStatus]=useState(''),[loading,setLoading]=useState(feedCache===null);
  const [opened,setOpened]=useState<string|null>(null),[comments,setComments]=useState<Record<string,Array<{id:string;handle:string;text:string}>>>({}),[reply,setReply]=useState('');
  async function refresh(){const x=await api<{posts:Post[]}>('/api/posts');feedCache=x.posts;setPosts(x.posts)}
  useEffect(()=>{Promise.all([api<{user:Me}>('/api/auth'),api<{posts:Post[]}>('/api/posts')])
-  .then(([account,feed])=>{accountCache=account.user;feedCache=feed.posts;setMe(account.user);setPosts(feed.posts)})
+  .then(([,feed])=>{feedCache=feed.posts;setPosts(feed.posts)})
   .catch(()=>setStatus('Sign in to view the live feed.')).finally(()=>setLoading(false));},[]);
  useEffect(()=>{const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh().catch(()=>{});},10000);return()=>window.clearInterval(timer)},[]);
- useEffect(()=>{if(!file){setPreviewUrl(null);return}const url=URL.createObjectURL(file);setPreviewUrl(url);return()=>URL.revokeObjectURL(url)},[file]);
  useEffect(()=>{const selected=params.get('section')||'home';if(selected==='chat'){window.location.replace('/messages'+(params.get('with')?'/'+encodeURIComponent(params.get('with')!):''));return}setSection(['home','reels','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[params]);
  async function toggleLike(id:string){try{await api('/api/posts/'+id+'/likes','POST',{});await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Like failed')}}
  async function toggleSave(id:string,saved:boolean){try{await api('/api/saves',saved?'DELETE':'POST',{postId:id});await refresh();setStatus(saved?'Removed from saved posts':'Saved privately')}catch(e){setStatus(e instanceof Error?e.message:'Save failed')}}
  async function repost(id:string){try{const result=await api<{reposted:boolean}>('/api/reposts','POST',{postId:id});setStatus(result.reposted?'Added to your reposts':'Removed from reposts')}catch(e){setStatus(e instanceof Error?e.message:'Repost failed')}}
  async function openComments(id:string){if(opened===id){setOpened(null);return}try{const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));setOpened(id)}catch(e){setStatus(e instanceof Error?e.message:'Comments unavailable')}}
  async function sendComment(event:FormEvent<HTMLFormElement>,id:string){event.preventDefault();try{await api('/api/posts/'+id+'/comments','POST',{text:reply});setReply('');const r=await api<{comments:Array<{id:string;handle:string;text:string}>}>('/api/posts/'+id+'/comments');setComments(c=>({...c,[id]:r.comments}));await refresh()}catch(e){setStatus(e instanceof Error?e.message:'Comment failed')}}
- async function publish(event:FormEvent<HTMLFormElement>){
-  event.preventDefault();setBusy(true);setStatus('');
-  try{
-   let mediaId:string|undefined;
-   if(file){
-    const reservation=await api<{id:string;uploadUrl:string}>('/api/media','POST',{action:'reserve',contentType:file.type,size:file.size});
-    const upload=await fetch(reservation.uploadUrl,{method:'PUT',body:file,headers:{'Content-Type':file.type}});
-    if(!upload.ok)throw Error('R2 upload failed. Check CORS settings.');
-    await api('/api/media','POST',{action:'confirm',id:reservation.id});mediaId=reservation.id;
-   }
-   await api('/api/posts','POST',{caption,...(mediaId?{mediaId}:{})});
-   setCaption('');setFile(null);setComposeOpen(false);setMediaStep('preview');setStatus('Post published');await refresh();
-  }catch(e){setStatus(e instanceof Error?e.message:'Unable to publish')}finally{setBusy(false)}
- }
  return <section className={'cc-connected-feed'+(section==='chat'?' cc-chat-view':'')}>{section!=='chat'&&<SocialPanels section={section}/>}
   {status&&<p role="status">{status}</p>}
   {composeOpen&&<CreateComposer onClose={()=>setComposeOpen(false)} onPublished={()=>{setStatus('Content published');void refresh()}}/>}

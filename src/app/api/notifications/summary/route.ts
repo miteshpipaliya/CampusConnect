@@ -11,13 +11,13 @@ export async function GET(req:NextRequest){
   // Read beyond the old 100-notification cap. Legacy documents may lack readAt,
   // so a query aggregating only readAt==null would silently omit them.
   const read=async()=>{
-   let count=0,scanned=0,cursor:FirebaseFirestore.QueryDocumentSnapshot|undefined;
+   let count=0,cursor:FirebaseFirestore.QueryDocumentSnapshot|undefined;
    for(let page=0;page<25;page++){
     let query=ref.orderBy('createdAt','desc');
     if(cursor)query=query.startAfter(cursor);
     const snap=await query.limit(100).get();
     for(const doc of snap.docs)if(notificationUnread(doc.data()))count++;
-    scanned+=snap.size;cursor=snap.docs.at(-1);
+    cursor=snap.docs.at(-1);
     if(snap.size<100)return {count,truncated:false};
    }
    return {count,truncated:true};

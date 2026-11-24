@@ -1,7 +1,7 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent,type KeyboardEvent} from 'react';
 import Link from 'next/link';
-import {ChevronDown,ChevronLeft,Edit3,Search,Smile,Sticker,Share2,Send,MoreHorizontal,Check,RefreshCw,X} from 'lucide-react';
+import {ChevronDown,ChevronLeft,Edit3,Search,Smile,Sticker,Share2,Send,MoreHorizontal,RefreshCw,X} from 'lucide-react';
 import {Avatar} from '@/components/avatar';
 import {mergeChronologicalMessages} from '@/lib/core/chat-pagination';
 import {ChatMediaUpload} from './chat-media-upload';
