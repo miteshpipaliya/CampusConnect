@@ -24,7 +24,7 @@ export function MediaCarousel({items,ratio='1 / 1'}:{items:CarouselMedia[];ratio
  if(!item)return null;
  const src=item.url||'/api/media?id='+encodeURIComponent(item.mediaId);
  const video=Boolean(item.contentType?.startsWith('video/'));
- return <div tabIndex={0} aria-label="Post media carousel" onKeyDown={e=>{if(e.key==='ArrowLeft')setIndex(i=>Math.max(0,i-1));if(e.key==='ArrowRight')setIndex(i=>Math.min(items.length-1,i+1))}} style={{position:'relative',maxWidth:'100%'}}>
+ return <div tabIndex={0} aria-label="Post media carousel" onKeyDown={e=>{if(e.target instanceof HTMLInputElement)return;if(e.key==='ArrowLeft')setIndex(i=>Math.max(0,i-1));if(e.key==='ArrowRight')setIndex(i=>Math.min(items.length-1,i+1))}} style={{position:'relative',maxWidth:'100%'}}>
   <div style={{...(video?{}:{aspectRatio:ratio}),overflow:'hidden',display:'grid',placeItems:'center'}}>
    {video?<InlineVideo key={item.mediaId} src={src}/>:<img src={src} alt={item.alt||'Campus post media'} loading="lazy" style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain'}}/>}
   </div>

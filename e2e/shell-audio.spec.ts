@@ -1,0 +1,22 @@
+import {test,expect} from '@playwright/test';
+test('mocked shell: single feed, rail badge, expanded menu and outside dismissal',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.route('**/api/**',async route=>{const path=new URL(route.request().url()).pathname;const data:unknown=path==='/api/auth'?{user:{uid:'mock-shell',profile:{handle:'mockuser',avatarMediaId:null}}}:path==='/api/chat/token'?{error:'disabled'}:path==='/api/settings'?{settings:{theme:'dark'}}:path==='/api/notifications/summary'?{unread:1,unreadMessages:3}:path==='/api/chat'?{conversations:[]}:path==='/api/posts'?{posts:[],nextCursor:null}:path==='/api/stories/tray'?{groups:[]}:path==='/api/suggestions'?{members:[]}:path==='/api/push'?{enabled:false}:{};await route.fulfill({status:path==='/api/chat/token'?403:200,contentType:'application/json',body:JSON.stringify(data)})});
+ await page.goto('/home');const nav=page.getByRole('navigation',{name:'Main navigation'});await expect(nav.getByLabel('Unread conversations')).toHaveText('3');
+ await expect(page.getByRole('navigation',{name:'Feed type'})).toHaveCount(0);
+ const more=page.getByRole('button',{name:'More',exact:true});await more.click();await expect(page.getByRole('menu')).toBeVisible();await page.getByRole('menuitem',{name:'Collapse sidebar'}).click();
+ await expect.poll(async()=>Math.round((await page.locator('.cc-sidebar').boundingBox())?.width??0)).toBe(72);
+ const message=nav.getByRole('link',{name:'Messages',exact:true});const badge=message.getByLabel('Unread conversations');const row=await message.boundingBox(),b=await badge.boundingBox();expect(row&&b&&b.x>=row.x&&b.x+b.width<=row.x+row.width+1).toBeTruthy();
+ await more.click();await expect(page.getByRole('menu')).toBeVisible();await page.locator('#main-content').click({position:{x:10,y:150}});await expect(more).toHaveAttribute('aria-expanded','false');
+ await more.click();await page.keyboard.press('Escape');await expect(more).toHaveAttribute('aria-expanded','false');
+ await page.setViewportSize({width:1100,height:768});await expect.poll(async()=>Math.round((await page.locator('.cc-sidebar').boundingBox())?.width??0)).toBe(72);
+ await page.setViewportSize({width:390,height:844});await expect(page.getByRole('navigation',{name:'Mobile navigation'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+});
+test('mocked Reel volume is full by default and changes DOM volume',async({page})=>{
+ await page.addInitScript(()=>{HTMLMediaElement.prototype.play=()=>Promise.resolve();HTMLMediaElement.prototype.pause=()=>{}});
+ await page.route('**/api/**',async route=>{const path=new URL(route.request().url()).pathname;const reel={id:'mock-reel-001',authorUid:'mock-shell',authorHandle:'mockuser',authorName:'Mock',avatarUrl:null,caption:'Video',mediaId:'mock-video',mediaUrl:'/mock-video.mp4',likes:0,comments:0,reposts:0,views:0,liked:false,saved:false,reposted:false,isMine:true,followStatus:'none',createdAt:Date.now(),width:360,height:640};const data=path==='/api/auth'?{user:{uid:'mock-shell',profile:{handle:'mockuser',avatarMediaId:null}}}:path==='/api/reels'?{reels:[reel],nextCursor:null}:path==='/api/chat/token'?{error:'disabled'}:path==='/api/settings'?{settings:{theme:'dark'}}:path==='/api/chat'?{conversations:[]}:path==='/api/notifications/summary'?{unread:0,unreadMessages:0}:{};await route.fulfill({status:path==='/api/chat/token'?403:200,contentType:'application/json',body:JSON.stringify(data)})});
+ await page.route('**/mock-video.mp4',r=>r.fulfill({status:200,contentType:'video/mp4',body:''}));
+ await page.goto('/reels');const volume=page.getByRole('slider',{name:'Volume'});await expect(volume).toHaveValue('1');await expect.poll(()=>page.locator('.cc-reel-video-box video').evaluate((v:HTMLVideoElement)=>v.volume)).toBe(1);
+ await volume.focus();await page.keyboard.press('Home');await expect(volume).toHaveValue('0');await expect.poll(()=>page.locator('.cc-reel-video-box video').evaluate((v:HTMLVideoElement)=>v.volume)).toBe(0);
+ await page.keyboard.press('End');await expect(volume).toHaveValue('1');await expect(page.getByRole('button',{name:/Mute Reel|Unmute Reel/})).toHaveCount(0);
+});

@@ -59,3 +59,6 @@ Story repair: own story tray links to viewer rather than hiding published items;
 
 ## Realtime integration candidate
 Profile separation, notifications presentation and batched seen handling, event-driven chat refresh/typing/unread badge and toast, shell panels, optional FCM registration/delivery/worker added. See docs/REALTIME_QA.md; all live acceptance remains OWNER-VERIFY. Production unchanged; Stream tokens remain explicit opt-in.
+
+## 1stepcloser UI/audio upgrade
+Single branch per owner request. Audio defaults to full volume; stories remove mute controls, reels and feed have sliders and browser autoplay fallback. Home has a single infinite feed. Original navigation SVGs, accurate rail width, badge layout, dismissible More menu and shared session UID. Mocked browser checks cover layout and volume property, not actual device audio or live providers. Main untouched.

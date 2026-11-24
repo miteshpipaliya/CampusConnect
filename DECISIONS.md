@@ -33,3 +33,5 @@ Updated 2026-11-24.
 - Notification summary uses aggregate counts for canonical read booleans, retains bounded fallback for older documents and skips Stream REST unread queries while a live authorized inbox is active. No new Firestore indexes required.
 
 - Final integration audit: avoid placing R2 bearer URLs into third-party Stream identity records; render avatars through the existing authorized CampusConnect API. Disconnect partially connected Stream clients on setup errors and avoid logging provider message text.
+
+- 1stepcloser: use scoped shell tokens/width overrides instead of rewriting all legacy styles at once. Audio begins at 1 on a new visit, shares reel volume within the feed, and pauses inactive videos. A browser-blocked audible play falls back to temporary mute and retries on interaction. No changes to Stream token or Firebase security controls.

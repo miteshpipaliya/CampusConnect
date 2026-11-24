@@ -16,7 +16,7 @@ import {navActive,badgeLabel} from '@/lib/core/nav-active';
 import {MoreMenu} from './more-menu';
 import {SidePanel} from './side-panel';
 import {ShellSession} from './shell-session';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
 import {userKey} from '@/lib/queries';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
@@ -47,7 +47,7 @@ function Nav({ pathname, section, mobile = false, counts, account, onPanel }: { 
     })}
   </nav>;
 }
-function FollowSuggestion({handle}:{handle:string}){const [status,setStatus]=useState('none'),[busy,setBusy]=useState(false);return <button className="cc-suggestion-follow" disabled={busy||status!=='none'} onClick={async()=>{setBusy(true);try{const r=await fetch('/api/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle})});const d=await r.json();if(r.ok)setStatus(d.status||'active')}finally{setBusy(false)}}}>{status==='pending'?'Requested':status==='active'?'Following':'Follow'}</button>}
+function FollowSuggestion({handle}:{handle:string}){const [status,setStatus]=useState('none'),[busy,setBusy]=useState(false);return <button className="cc-suggestion-follow" disabled={busy||status!=='none'} onClick={async()=>{setBusy(true);try{const r=await fetch('/api/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle})});const d=await r.json();if(r.ok)setStatus(d.status||'active')}catch{/* Keep the follow action available for retry. */}finally{setBusy(false)}}}>{status==='pending'?'Requested':status==='active'?'Following':'Follow'}</button>}
 function Suggestions({handle,avatarMediaId}:{handle:string;avatarMediaId:string|null}){
  const [members,setMembers]=useState<Array<{handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null;reason?:string}>>([]);
  useEffect(()=>{let active=true;fetch('/api/suggestions',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.members))setMembers(d.members.filter((m:{handle:string})=>m.handle&&m.handle!==handle).slice(0,8))}).catch(()=>{});return()=>{active=false}},[handle]);
@@ -62,6 +62,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   const [uid,setUid]=useState<string|null>(null);
   const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
   const queryClient=useQueryClient();
+  const changeMenu=useCallback((open:boolean)=>{if(open)setPanel(null);setMenu(open)},[]);
   const summary=useQuery({queryKey:userKey(uid,'notification-summary',liveUnread===null?'fallback':'live'),enabled:checked&&Boolean(uid),queryFn:async({signal})=>{
    const response=await fetch('/api/notifications/summary'+(liveUnread===null?'':'?messages=0'),{cache:'no-store',signal});
    if(!response.ok)throw Error('Notification summary unavailable');
@@ -93,7 +94,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} onPanel={name=>{setMenu(false);setPanel(old=>old===name?null:name)}}/>
-      <MoreMenu open={menu} setOpen={setMenu}><Link role="menuitem" href="/settings" onClick={()=>setMenu(false)}>Settings</Link><Link role="menuitem" href="/saved" onClick={()=>setMenu(false)}>Saved</Link><Link role="menuitem" href="/home?section=community" onClick={()=>setMenu(false)}>Community</Link><PushSettings/><button role="menuitem" onClick={()=>{setCollapsed(v=>!v);setMenu(false)}}>{collapsed?'Expand sidebar':'Collapse sidebar'}</button><hr/><button role="menuitem" onClick={async()=>{try{const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});if(!r.ok)throw Error('Sign out failed');queryClient.clear();window.location.assign('/login')}catch{setMenuError('Sign out failed')}}}>Log out</button>{menuError&&<p role="alert">{menuError}</p>}</MoreMenu>
+      <MoreMenu open={menu} setOpen={changeMenu}><Link role="menuitem" href="/settings" onClick={()=>setMenu(false)}>Settings</Link><Link role="menuitem" href="/saved" onClick={()=>setMenu(false)}>Saved</Link><Link role="menuitem" href="/home?section=community" onClick={()=>setMenu(false)}>Community</Link><PushSettings/><button role="menuitem" onClick={()=>{setCollapsed(v=>!v);setMenu(false)}}>{collapsed?'Expand sidebar':'Collapse sidebar'}</button><hr/><button role="menuitem" onClick={async()=>{try{const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});if(!r.ok)throw Error('Sign out failed');queryClient.clear();window.location.assign('/login')}catch{setMenuError('Sign out failed')}}}>Log out</button>{menuError&&<p role="alert">{menuError}</p>}</MoreMenu>
 
     </aside>
     <main className="cc-main" id="main-content">

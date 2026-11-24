@@ -41,3 +41,8 @@
 @media(max-height:710px) and (min-width:721px){.cc-shell-v2 .cc-sidebar .cc-navigation{gap:0}.cc-shell-v2 .cc-sidebar .cc-nav-item,.cc-shell-v2 .cc-more-toggle{min-height:44px;padding-block:8px!important}.cc-shell-v2 .cc-sidebar .cc-brand{margin-bottom:10px!important}}
 @media(max-width:720px){.cc-app.cc-shell-v2{display:block!important}.cc-shell-v2 .cc-sidebar{display:none!important}.cc-shell-v2 .cc-mobile-nav .cc-nav-icon{display:grid!important}.cc-shell-v2 .cc-mobile-nav .cc-nav-label{display:none!important}}
 @media(prefers-reduced-motion:reduce){.cc-shell-v2 .cc-more-menu{transition:none}}
+
+/* Override historical route-specific width rules with the single shell width. */
+@media(min-width:721px){.cc-app.cc-shell-v2.cc-force-rail:not(.cc-with-suggestions){grid-template-columns:72px minmax(0,1fr)!important}.cc-app.cc-shell-v2 .cc-sidebar{width:var(--cc-sidebar-width)!important;min-width:var(--cc-sidebar-width)!important;max-width:var(--cc-sidebar-width)!important;overflow:visible!important}.cc-app.cc-shell-v2 .cc-sidebar .cc-nav-item .cc-nav-icon{display:grid!important;visibility:visible!important;opacity:1!important}.cc-app.cc-shell-v2 .cc-sidebar .cc-nav-item .cc-nav-icon span{display:inline-flex!important;visibility:visible!important;opacity:1!important}.cc-app.cc-shell-v2 .cc-sidebar .cc-brand{overflow:hidden}.cc-app.cc-shell-v2 .cc-sidebar .cc-nav-item>.cc-nav-badge{right:4px!important}.cc-shell-v2 .cc-more-wrap{z-index:2}}
+.cc-shell-v2 .cc-reel-page,.cc-shell-v2 .cc-reels-mode .cc-reel-page{background:var(--cc-shell-bg)}
+.cc-shell-v2 .cc-feed-col{color:var(--cc-shell-text)}.cc-shell-v2 .cc-feed-post{border-color:var(--cc-shell-border)}
