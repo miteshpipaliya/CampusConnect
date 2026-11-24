@@ -8,7 +8,9 @@ import {mintUrls} from '@/lib/server/media-urls';
 import {isStoryActive} from '@/lib/core/story-expiry';
 import {chunkAudienceIds,uniqueStoryDocs} from '@/lib/core/story-tray-batching';
 export const runtime='nodejs';
-export async function GET(req:NextRequest){
+import {routeTiming} from '@/lib/server/route-timing';
+export async function GET(req:NextRequest){return routeTiming('stories/tray',()=>readRoute(req))}
+async function readRoute(req:NextRequest){
  const viewer=await session(req);if(!viewer)return errorResponse(401,'Sign in required');
  try{
   const store=db(),now=Date.now();
@@ -58,9 +60,8 @@ export async function GET(req:NextRequest){
   const friendDocs=closeAuthors.length?await store.getAll(...closeAuthors.map(uid=>store.collection('closeFriends').doc(uid+'_'+viewer.uid))):[];
   const friends=new Set(closeAuthors.filter((_,i)=>friendDocs[i]?.exists));
   const stories=allowed.filter(d=>d.data().audience!=='close'||d.data().authorUid===viewer.uid||friends.has(String(d.data().authorUid)));
-  const readDocs=stories.length?await store.getAll(...stories.map(d=>d.ref.collection('views').doc(viewer.uid))):[];
   const mediaRefs=stories.map(d=>d.data().mediaId).filter((id):id is string=>typeof id==='string');
-  const media=mediaRefs.length?await store.getAll(...[...new Set(mediaRefs)].map(id=>store.collection('media').doc(id))):[];
+  const [readDocs,media]=await Promise.all([stories.length?store.getAll(...stories.map(d=>d.ref.collection('views').doc(viewer.uid))):Promise.resolve([]),mediaRefs.length?store.getAll(...[...new Set(mediaRefs)].map(id=>store.collection('media').doc(id))):Promise.resolve([])]);
   const expiry=new Map(stories.map(d=>[String(d.data().mediaId||''),d.data().expiresAt?.toMillis?.()??0]));
   const urls=await mintUrls(media.filter(d=>d.exists).map(d=>({id:d.id,...(d.data()??{}),storyExpiresAt:expiry.get(d.id)})),{viewerUid:viewer.uid});
   const groups=new Map<string,{authorUid:string;handle:string;name:string;avatarUrl:string|null;seen:boolean;close:boolean;isMine:boolean;stories:Array<{id:string;mediaUrl:string|null;mediaId:string;contentType:string;caption:string;createdAt:number;expiresAt:number;overlay:unknown;poll:unknown;seen:boolean;isMine:boolean}>}>();

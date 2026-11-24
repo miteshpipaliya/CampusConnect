@@ -4,7 +4,9 @@ import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {notificationUnread} from '@/lib/core/notification-grouping';
 import {getStreamUnread} from '@/lib/server/stream-unread';
 export const runtime='nodejs';
-export async function GET(req:NextRequest){
+import {routeTiming} from '@/lib/server/route-timing';
+export async function GET(req:NextRequest){return routeTiming('notifications/summary',()=>readRoute(req))}
+async function readRoute(req:NextRequest){
  const user=await session(req);if(!user)return errorResponse(401,'Sign in required');
  try{
   const store=db(),ref=store.collection('users').doc(user.uid).collection('notifications');

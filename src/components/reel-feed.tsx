@@ -1,11 +1,12 @@
 'use client';
+import {LoadingSkeleton} from './loading-skeleton';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {ChevronUp,ChevronDown} from 'lucide-react';
 import {ReelCard,type Reel} from './reel-card';
 import {dedupeReels} from '@/lib/core/reel-views';
 import {useReelVolume} from '@/lib/client/use-reel-volume';
 import {windowRange} from '@/lib/core/reel-window';
-const REFRESH_MS=8000;
+const REFRESH_MS=30000;
 type Page={reels:Reel[];nextCursor:string|null};
 
 export function ReelFeed(){
@@ -100,7 +101,7 @@ export function ReelFeed(){
   {newReels&&<button type="button" className="cc-reel-new" onClick={()=>{setNewReels(false);setActive(0);scroller.current?.scrollTo({top:0});void load()}}>New Reels — Show</button>}
   {error&&<p role="alert" className="cc-reel-error">{error} <button type="button" onClick={()=>void load()}>Retry</button></p>}
   <div className="cc-reel-feed" ref={scroller} onScroll={onScroll}>
-   {loading&&!reels.length?<div className="cc-reel-empty">Loading campus Reels…</div>:
+   {loading&&!reels.length?<LoadingSkeleton kind="reel"/>:
     !reels.length&&!error?<div className="cc-reel-empty">No campus Reels yet. Publish a video to start the feed.</div>:
     reels.map((reel,index)=><ReelCard key={reel.id} reel={reel} active={index===active} volume={volume} onVolume={changeVolume} mounted={index>=range.start&&index<=range.end} preloadNext={index===active+1}/>)}
    <div ref={end} className="cc-reel-end">{more?'Loading more Reels…':!cursor&&reels.length>0?'You are all caught up':''}</div>

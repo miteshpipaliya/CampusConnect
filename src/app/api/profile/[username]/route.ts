@@ -7,7 +7,9 @@ import {session,errorResponse,safeHeaders} from '@/lib/server/session';
 import {profileContentKind} from '@/lib/core/profile-content-kind';
 import {recordProfileVisit} from '@/lib/server/daily-stats';
 export const runtime='nodejs';
-export async function GET(request:NextRequest,{params}:{params:Promise<{username:string}>}){
+import {routeTiming} from '@/lib/server/route-timing';
+export async function GET(request:NextRequest,{params}:{params:Promise<{username:string}>}){return routeTiming('profile',()=>readRoute(request,{params}))}
+async function readRoute(request:NextRequest,{params}:{params:Promise<{username:string}>}){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  const {username}=await params;
  try{
@@ -61,11 +63,11 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{username
   };
   const detailedPosts=visiblePosts.map(describe).sort((a,b)=>Number(b.pinned)-Number(a.pinned)||b.createdAt-a.createdAt);
   const detailedTagged=tagged.map(describe).sort((a,b)=>b.createdAt-a.createdAt);
-  const visibleReposts=await Promise.all(reposts.docs.map(async doc=>{
-   const p=await store.collection('posts').doc(doc.data().postId).get();
-   return p.exists&&!p.data()?.deletedAt&&!p.data()?.archived&&await canViewAuthor(user.uid,String(p.data()?.authorUid||''))?
-    {id:doc.id,postId:p.id,caption:String(p.data()?.caption||''),mediaId:p.data()?.mediaId||null,authorHandle:p.data()?.authorHandle||''}:null;
-  }));
+  const repostIds=[...new Set(reposts.docs.map(doc=>doc.data().postId).filter((id):id is string=>typeof id==='string'&&id.length>0&&!id.includes('/')))];
+  const repostPosts=repostIds.length?await store.getAll(...repostIds.map(id=>store.collection('posts').doc(id))):[];
+  const repostById=new Map(repostPosts.map(p=>[p.id,p]));
+  const repostVisibility=await canViewMany(user.uid,repostPosts.filter(p=>p.exists&&!p.data()?.deletedAt&&!p.data()?.archived).map(p=>String(p.data()?.authorUid||'')));
+  const visibleReposts=reposts.docs.map(doc=>{const p=repostById.get(String(doc.data().postId||''));return p?.exists&&!p.data()?.deletedAt&&!p.data()?.archived&&repostVisibility.get(String(p.data()?.authorUid||''))?{id:doc.id,postId:p.id,caption:String(p.data()?.caption||''),mediaId:p.data()?.mediaId||null,authorHandle:p.data()?.authorHandle||''}:null});
   const highlights=stories.docs.filter(s=>s.data().highlight&&(s.data().audience!=='close'||self||closeFriend.exists))
    .map(s=>({id:s.id,mediaId:s.data().mediaId,caption:s.data().caption||'',active:(s.data().expiresAt?.toMillis?.()||0)>Date.now()}));
   return NextResponse.json({self,profile,verified:verification,viewerRelation,counters,posts:detailedPosts,tagged:detailedTagged,

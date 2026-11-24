@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {LoadingSkeleton} from './loading-skeleton';
 import {PushSettings,PushConnection} from './push-settings';
 import '@/app/chat-live-upgrade.css';
 import {LiveMessageActivity} from './chat/live-message-activity';
@@ -60,7 +61,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   const [panel,setPanel]=useState<'notifications'|'search'|null>(null);
   const [liveUnread,setLiveUnread]=useState<number|null>(null);
   const [uid,setUid]=useState<string|null>(null);
-  const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
+  const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState(params.get('section')||'home');
   const queryClient=useQueryClient();
   const changeMenu=useCallback((open:boolean)=>{if(open)setPanel(null);setMenu(open)},[]);
   const summary=useQuery({queryKey:userKey(uid,'notification-summary',liveUnread===null?'fallback':'live'),enabled:checked&&Boolean(uid),queryFn:async({signal})=>{
@@ -68,7 +69,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    if(!response.ok)throw Error('Notification summary unavailable');
    const data=await response.json();
    return {unread:Number(data.unread||0),unreadMessages:Number(data.unreadMessages||0)};
-  },refetchInterval:5000,refetchIntervalInBackground:false,staleTime:5000});
+  },refetchInterval:liveUnread===null?15000:30000,refetchIntervalInBackground:false,staleTime:15000});
   const counts={unread:summary.data?.unread??0,unreadMessages:liveUnread??summary.data?.unreadMessages??0};
   useEffect(()=>{
    const changed=()=>{if(uid&&document.visibilityState!=='hidden')void queryClient.invalidateQueries({queryKey:userKey(uid,'notification-summary')})};
@@ -89,7 +90,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   useEffect(()=>{if(!uid)return;let live=true;void fetch('/api/chat',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(live)setRecent(Array.isArray(d?.conversations)?d.conversations.slice(0,3):[])}).catch(()=>{});return()=>{live=false}},[uid]);
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape'){setMenu(false);setPanel(null)}};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
   useEffect(()=>{setPanel(null);setMenu(false)},[pathname,params]);
-  if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
+  if(!checked||!handle)return <LoadingSkeleton kind="shell"/>;
   return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />

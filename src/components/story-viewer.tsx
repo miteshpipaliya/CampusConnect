@@ -1,4 +1,5 @@
 'use client';
+import {LoadingSkeleton} from './loading-skeleton';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
@@ -87,7 +88,7 @@ export function StoryViewer({handle,highlightId}:{handle:string;highlightId?:str
   catch(e){setError(e instanceof Error?e.message:'Reply unavailable')}
   finally{setSending(false)}
  }
- if(loading)return <div className="cc-story-screen">Loading stories…</div>;
+ if(loading)return <div className="cc-story-screen"><LoadingSkeleton kind="story"/></div>;
  if(!story||!group)return <div className="cc-story-screen"><p role="alert">{error||'Story unavailable'}</p><Link href="/home">Back to home</Link></div>;
  const expired=Date.now()>=story.expiresAt;
  return <section className="cc-story-screen" aria-label={'Stories by '+group.handle}>

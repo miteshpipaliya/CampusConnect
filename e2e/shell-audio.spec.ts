@@ -28,3 +28,12 @@ test('mocked Reel volume is full by default and changes DOM volume',async({page}
  await volume.focus();await page.keyboard.press('Home');await expect(volume).toHaveValue('0');await expect.poll(()=>page.locator('.cc-reel-video-box video').evaluate((v:HTMLVideoElement)=>v.volume)).toBe(0);
  await page.keyboard.press('End');await expect(volume).toHaveValue('1');await expect(page.getByRole('button',{name:/Mute Reel|Unmute Reel/})).toHaveCount(0);
 });
+
+test('Messages sidebar remains icon-only even on hover',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.route('**/api/**',async route=>{const path=new URL(route.request().url()).pathname;const data=path==='/api/auth'?{user:{uid:'mock-shell',profile:{handle:'mockuser',avatarMediaId:null}}}:path==='/api/settings'?{settings:{theme:'dark'}}:path==='/api/chat'?{conversations:[],members:[]}:path==='/api/notifications/summary'?{unread:0,unreadMessages:0}:{};await route.fulfill({status:path==='/api/chat/token'?403:200,contentType:'application/json',body:JSON.stringify(data)})});
+ await page.goto('/messages');const sidebar=page.locator('.cc-sidebar');await expect(sidebar).toBeVisible();await sidebar.hover({position:{x:30,y:100}});
+ await expect.poll(async()=>Math.round((await sidebar.boundingBox())?.width??0)).toBe(72);
+ await expect(sidebar.locator('.cc-nav-label').first()).toBeHidden();
+ await expect(page.locator('.cc-suggestions')).toHaveCount(0);
+});

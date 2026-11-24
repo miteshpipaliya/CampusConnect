@@ -1,4 +1,5 @@
 'use client';
+import {LoadingSkeleton} from '../loading-skeleton';
 import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent,type KeyboardEvent} from 'react';
 import Link from 'next/link';
 import {ChevronDown,ChevronLeft,Edit3,Search,Smile,Sticker,Share2,Send,MoreHorizontal,RefreshCw,X} from 'lucide-react';
@@ -299,7 +300,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    </div>
    {inboxError&&<p role="alert" className="cc-dm-error">Inbox: {inboxError} <button type="button" onClick={()=>void refreshInbox().catch(()=>{})}>Retry</button></p>}
    <div className="cc-dm-conversations">
-    {inboxLoading&&<p className="cc-dm-muted">Loading conversations…</p>}
+    {inboxLoading&&<LoadingSkeleton kind="inbox"/>}
     {!inboxLoading&&visible.length===0&&<p className="cc-dm-muted">{search?'No matches.':tab==='unread'?'No unread messages.':'Select a campus member above to start a chat.'}</p>}
     {visible.map(c=><button key={c.handle} type="button" className={'cc-dm-person'+(peer===c.handle?' selected':'')} onClick={()=>selectPeer(c.handle)}>
      <Avatar user={c} size={44}/><span className="cc-dm-person-text"><strong>{c.name||c.handle}</strong><small className={(typing&&c.handle===peer)||inboxTyping[c.channelId||'']?'cc-dm-green-typing':''}>{(typing&&c.handle===peer)||inboxTyping[c.channelId||'']?<TypingDots/>:c.preview||'Send a message'}</small></span>
@@ -320,7 +321,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     </div>
    </header>
    <div className="cc-dm-history" role="log" aria-live="polite" aria-relevant="additions">
-    {loading&&all.length===0&&<p className="cc-dm-muted">Loading conversation…</p>}
+    {loading&&all.length===0&&<LoadingSkeleton kind="conversation"/>}
     {!loading&&all.length===0&&<div className="cc-dm-empty-thread"><Smile size={40}/><strong>Say hello to {peerName||peer}</strong><p>Your private conversation starts here.</p></div>}
     {cursor&&<button type="button" className="cc-dm-older" disabled={loadingOlder} onClick={()=>void loadOlder()}>{loadingOlder?'Loading…':'Load earlier messages'}</button>}
     {all.map(m=><article key={m.id} className={'cc-dm-msg'+(m.senderUid===myUid?' mine':' theirs')}>

@@ -37,3 +37,5 @@ Updated 2026-11-24.
 - 1stepcloser: use scoped shell tokens/width overrides instead of rewriting all legacy styles at once. Audio begins at 1 on a new visit, shares reel volume within the feed, and pauses inactive videos. A browser-blocked audible play falls back to temporary mute and retries on interaction. No changes to Stream token or Firebase security controls.
 
 - Hover navigation: keep a 72px grid rail with overlay expansion to 244px; Profile stays compact with no suggestions. Profile Reel previews seek a deterministic interior frame via the existing authorized media endpoint, remain silent and never autoplay. No public media, new credentials or additional storage objects.
+
+- Performance first pass: permanent icon rail for chat/profile, layout skeletons, parallel session/profile/reel/story/feed reads, batched repost authorization, reduced polling, total Server-Timing for six read routes. No revocation policy changes or signed media TTL changes. No latency or 800-user capacity claims without isolated authenticated measurements. Region selection, Redis, full server hydration and load tests remain separate work.

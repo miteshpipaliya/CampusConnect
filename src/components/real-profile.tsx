@@ -1,4 +1,5 @@
 'use client';
+import {LoadingSkeleton} from './loading-skeleton';
 import Link from 'next/link';
 import {useCallback,useEffect,useState} from 'react';
 import {Grid3X3,Clapperboard,Repeat2,Plus,Bookmark,AtSign,BadgeCheck} from 'lucide-react';
@@ -22,7 +23,7 @@ export function RealProfile({username}:{username:string}){
  async function block(){if(!window.confirm('Block this account?'))return;setBusy(true);try{const r=await fetch('/api/blocks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle:profileHandle})});if(!r.ok)throw Error((await r.json()).error||'Unable to block');setNotice('Account blocked');setMenu(false)}catch(e){setError(String(e))}finally{setBusy(false)}}
 
  if(error&&!data)return <div className="cc-live-empty" role="alert">{error} <Link href="/home">Back to Home</Link></div>;
- if(!data)return <div className="cc-live-empty">Loading profile…</div>;
+ if(!data)return <LoadingSkeleton kind="profile"/>;
  const {profile,posts,reposts,self}=data;
  const entries=tab==='posts'?posts.filter(p=>p.type!=='reel'):tab==='reposts'?reposts:tab==='saved'?saved:tab==='tagged'?(data.tagged||[]):posts.filter(p=>p.type==='reel');
  const stats=data.counters||{posts:posts.length,followers:0,following:0};

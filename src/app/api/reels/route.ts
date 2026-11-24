@@ -16,7 +16,9 @@ export const runtime='nodejs';
  * Firestore composite index was missing, and could never discover older video
  * posts published with type='post'. Keep all visibility checks server-side.
  */
-export async function GET(req:NextRequest){
+import {routeTiming} from '@/lib/server/route-timing';
+export async function GET(req:NextRequest){return routeTiming('reels',()=>readRoute(req))}
+async function readRoute(req:NextRequest){
  const user=await session(req);if(!user)return errorResponse(401,'Sign in required');
  const cursor=req.nextUrl.searchParams.get('cursor');
  const limit=clampLimit(req.nextUrl.searchParams.get('limit'),10,20);
@@ -42,9 +44,8 @@ export async function GET(req:NextRequest){
    morePossible=snap.size===50;
    const candidates=snap.docs.filter(d=>couldBeReel(d.data()));
    const ids=[...new Set(candidates.map(d=>reelMediaId(d.data())).filter((id):id is string=>id!==null))];
-   const mediaDocs=ids.length?await store.getAll(...ids.map(id=>store.collection('media').doc(id))):[];
+   const [mediaDocs,visible]=await Promise.all([ids.length?store.getAll(...ids.map(id=>store.collection('media').doc(id))):Promise.resolve([]),canViewMany(user.uid,candidates.map(d=>String(d.data().authorUid||'')))]);
    const mediaById=new Map(mediaDocs.map(d=>[d.id,d]));
-   const visible=await canViewMany(user.uid,candidates.map(d=>String(d.data().authorUid||'')));
    for(const doc of snap.docs){
     lastScanned=doc;
     if(!couldBeReel(doc.data()))continue;
@@ -59,10 +60,9 @@ export async function GET(req:NextRequest){
    query=query.startAfter(snap.docs.at(-1)!);
   }
   const authors=[...new Set(selected.map(s=>String(s.doc.data().authorUid||'')))];
-  const avatars=await hydrateAvatars(authors,user.uid);
   const uniqueMedia=[...new Map(selected.map(s=>[s.mediaId,s.media])).values()];
-  const signed=await mintUrls(uniqueMedia.map(d=>({id:d.id,...(d.data()||{})})),{viewerUid:user.uid});
-  const [likes,saves,reposts,follows]=await Promise.all([
+  const [avatars,signed,likes,saves,reposts,follows]=await Promise.all([
+   hydrateAvatars(authors,user.uid),mintUrls(uniqueMedia.map(d=>({id:d.id,...(d.data()||{})})),{viewerUid:user.uid}),
    selected.length?store.getAll(...selected.map(s=>s.doc.ref.collection('likes').doc(user.uid))):Promise.resolve([]),
    selected.length?store.getAll(...selected.map(s=>store.collection('users').doc(user.uid).collection('saves').doc(s.doc.id))):Promise.resolve([]),
    selected.length?store.getAll(...selected.map(s=>store.collection('reposts').doc(user.uid+'_'+s.doc.id))):Promise.resolve([]),

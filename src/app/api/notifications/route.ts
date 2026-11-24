@@ -6,7 +6,9 @@ import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {mintUrls} from '@/lib/server/media-urls';
 import {notificationUnread,normalizeNotificationType} from '@/lib/core/notification-grouping';
 export const runtime='nodejs';
-export async function GET(req:NextRequest){
+import {routeTiming} from '@/lib/server/route-timing';
+export async function GET(req:NextRequest){return routeTiming('notifications',()=>readRoute(req))}
+async function readRoute(req:NextRequest){
  const user=await session(req);if(!user)return errorResponse(401,'Sign in required');
  const cursor=req.nextUrl.searchParams.get('cursor');
  if(cursor&&!/^[0-9a-zA-Z_-]{10,128}$/.test(cursor))return errorResponse(400,'Invalid cursor');

@@ -49,11 +49,11 @@
 .cc-app.cc-shell-v2 .cc-sidebar .cc-nav-item,.cc-app.cc-shell-v2 .cc-sidebar .cc-more-toggle{width:48px!important;min-width:48px!important;max-width:48px!important;height:48px!important;min-height:48px!important;padding:12px!important;justify-content:flex-start!important;gap:16px!important;white-space:nowrap}
 .cc-app.cc-shell-v2 .cc-sidebar .cc-nav-label,.cc-app.cc-shell-v2 .cc-sidebar .cc-wordmark{display:none!important}
 .cc-app.cc-shell-v2 .cc-sidebar .cc-nav-item>.cc-nav-badge{position:absolute!important;top:5px!important;right:2px!important;margin:0!important}
-.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)){width:244px!important;max-width:244px!important;box-shadow:12px 0 28px #0003;z-index:75}
-.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)) .cc-brand{width:220px!important;justify-content:flex-start}
-.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)) :is(.cc-nav-item,.cc-more-toggle){width:220px!important;max-width:220px!important}
-.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)) :is(.cc-nav-label,.cc-wordmark){display:block!important;visibility:visible!important;opacity:1!important}
-.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)) .cc-nav-item>.cc-nav-badge{position:static!important;margin-left:auto!important}
+.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-chat-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)){width:244px!important;max-width:244px!important;box-shadow:12px 0 28px #0003;z-index:75}
+.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-chat-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)) .cc-brand{width:220px!important;justify-content:flex-start}
+.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-chat-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)) :is(.cc-nav-item,.cc-more-toggle){width:220px!important;max-width:220px!important}
+.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-chat-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)) :is(.cc-nav-label,.cc-wordmark){display:block!important;visibility:visible!important;opacity:1!important}
+.cc-app.cc-shell-v2:not(.cc-profile-mode):not(.cc-chat-mode):not(.cc-panel-open) .cc-sidebar:is(:hover,:has(:focus-visible)) .cc-nav-item>.cc-nav-badge{position:static!important;margin-left:auto!important}
 .cc-app.cc-shell-v2.cc-profile-mode .cc-main{padding-inline:clamp(16px,4vw,64px);width:100%;min-width:0}
 .cc-app.cc-shell-v2.cc-profile-mode .cc-page{max-width:1100px;width:100%;margin-inline:auto}
 .cc-app.cc-shell-v2.cc-profile-mode .cc-suggestions{display:none!important}
@@ -62,3 +62,6 @@
 @media(min-width:721px) and (max-height:680px){.cc-app.cc-shell-v2 .cc-sidebar .cc-navigation{margin-top:20px;gap:4px;overflow-y:auto;overflow-x:hidden}.cc-app.cc-shell-v2 .cc-sidebar .cc-nav-item{height:44px!important;min-height:44px!important}}
 @media(min-width:721px) and (max-height:540px){.cc-app.cc-shell-v2 .cc-sidebar .cc-navigation{margin-top:8px;gap:2px}}
 @media(prefers-reduced-motion:reduce){.cc-app.cc-shell-v2 .cc-sidebar{transition:none!important}}
+
+/* Chat and profile reserve a permanent icon-only rail, including keyboard focus. */
+@media(min-width:721px){.cc-app.cc-shell-v2:is(.cc-chat-mode,.cc-profile-mode) .cc-sidebar{width:72px!important;min-width:72px!important;max-width:72px!important;box-shadow:none}.cc-app.cc-shell-v2:is(.cc-chat-mode,.cc-profile-mode) .cc-sidebar :is(.cc-nav-label,.cc-wordmark){display:none!important}}

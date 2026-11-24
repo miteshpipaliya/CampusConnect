@@ -15,7 +15,9 @@ import {claimMedia} from '@/lib/server/media-service';
 import {notify} from '@/lib/server/notify';
 export const runtime='nodejs';
 const schema=z.object({caption:z.string().trim().max(2200).default(''),type:z.enum(['post','reel']).default('post'),mediaId:z.string().uuid().optional(),media:z.array(z.object({mediaId:z.string().uuid(),alt:z.string().max(250).default('')})).max(10).optional(),cropRatio:z.enum(['1 / 1','4 / 5','16 / 9']).optional(),filter:z.enum(['none','grayscale','sepia','contrast','saturate','brightness']).optional(),location:z.string().trim().max(80).optional(),commentsOff:z.boolean().optional(),hideLikeCount:z.boolean().optional()});
-export async function GET(request:NextRequest){
+import {routeTiming} from '@/lib/server/route-timing';
+export async function GET(request:NextRequest){return routeTiming('posts',()=>readRoute(request))}
+async function readRoute(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
  const cursorValue=request.nextUrl.searchParams.get('cursor');
  const hasPaging=cursorValue!==null||request.nextUrl.searchParams.has('limit');
@@ -52,8 +54,7 @@ export async function GET(request:NextRequest){
    repostRefs.length?store.getAll(...repostRefs):Promise.resolve([])
   ]);
   const authorIds=[...new Set(selected.map(d=>String(d.data().authorUid||'')).filter(Boolean))];
-  const users=authorIds.length?await store.getAll(...authorIds.map(id=>store.collection('users').doc(id))):[];
-  const relations=authorIds.length?await store.getAll(...authorIds.map(id=>store.collection('follows').doc(user.uid+'_'+id))):[];
+  const [users,relations]=await Promise.all([authorIds.length?store.getAll(...authorIds.map(id=>store.collection('users').doc(id))):Promise.resolve([]),authorIds.length?store.getAll(...authorIds.map(id=>store.collection('follows').doc(user.uid+'_'+id))):Promise.resolve([])]);
   const followStatus=new Map(authorIds.map((id,i)=>[id,String(relations[i]?.data()?.status||'none')]));
   const authors=new Map(users.filter(d=>d.exists).map(d=>[d.id,d.data()]));
   const mediaIds=[...new Set([
