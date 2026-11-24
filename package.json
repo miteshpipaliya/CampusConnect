@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/*.test.mjs",
     "audit": "npm audit --audit-level=high",
-    "migrate": "node --experimental-strip-types scripts/migrate.mjs"
+    "migrate": "node --experimental-strip-types scripts/migrate.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1173.0",
@@ -21,7 +22,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zod": "^4.1.0",
-    "stream-chat": "10.2.0"
+    "stream-chat": "10.2.0",
+    "@tanstack/react-query": "5.90.12"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -29,7 +31,8 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.5.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "@playwright/test": "1.56.1"
   },
   "overrides": {
     "postcss": "^8.5.23"

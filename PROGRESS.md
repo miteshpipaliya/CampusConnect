@@ -24,8 +24,8 @@ Updated **2026-11-24**. Source of truth: GitHub branch code and CI results for t
 | Phase 11 moderation | Firebase custom-claim guard, report queue, actions and audit log | Admin claim must be provisioned, owner-run permission tests |
 | Phase 4 chat hardening | Existing REST fallback, token-refresh callbacks, server blocking; new inline retry and isolated group routes | Multi-account Stream group creation/member permissions unverified |
 | Phase 12 demo/CSP | Removed old unused demo code, sample API and Unsplash image policy | Regression checks required for final head |
-| Phase 12 React Query/Playwright | **Not implemented**; dependencies absent from `package.json` and lockfile | Install dependencies with lockfile update in a reviewed PR before adding integrations |
-| Phase 12 CSS consolidation | **Not implemented** intentionally to avoid changing loaded route CSS cascade | Visual regression test first |
+| Phase 12 React Query/Playwright | Provider, account-scoped notification query, pinned package metadata and Chromium smoke CI implemented | Exact-head CI must validate install and tests |
+| Phase 12 CSS consolidation | Root styles combined in previous cascade order; profile inline styles moved to classes | Visual regression test pending |
 | Phase 12 documentation | Updated README, ARCHITECTURE, SECURITY, KNOWN_RISKS, MANUAL_QA, DECISIONS | Review as part of PR #34 |
 
 ## Release gates still open
@@ -34,7 +34,7 @@ Updated **2026-11-24**. Source of truth: GitHub branch code and CI results for t
 3. **Real accounts:** run `docs/MANUAL_QA.md` with at least two users, including blocked/private/close-friends and distinct group members.
 4. **Stream:** review member-only permissions, group creation, rename, leave, token refresh, connection, presence, unread counts; keep `STREAM_CLIENT_TOKENS_ENABLED=false` until approved.
 5. **R2/CORS:** verify unsigned access fails, signed URLs expire, uploads and DM attachments work.
-6. **Dependencies:** install `@tanstack/react-query` and `@playwright/test` on `12-adudit` with an up-to-date lockfile. Add Playwright CI only after installing Chromium in CI.
+6. **Dependencies:** validate locked React Query and Playwright packages, Chromium install and smoke tests in exact-head CI.
 7. **Moderation:** ensure correct Firebase custom claim, test reports and all consequences using test accounts.
 8. **Deployment:** keep PR #34 draft and production unchanged until independent acceptance/approval.
 

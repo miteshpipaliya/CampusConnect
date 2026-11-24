@@ -27,7 +27,7 @@ export function RealProfile({username}:{username:string}){
  const stats=data.counters||{posts:posts.length,followers:0,following:0};
  return <section className="cc-real-profile cc-profile-instagram">
   {error&&<p role="alert" className="form-error">{error}</p>}{notice&&<p role="status">{notice}</p>}
-  <header className="cc-profile-hero"><div className="cc-profile-avatar" style={{width:150,height:150,flex:'0 0 150px',borderRadius:'50%',overflow:'hidden',border:'none',outline:'none',padding:0,background:'transparent',boxShadow:'none'}}><Avatar user={profile} size={150}/></div>
+  <header className="cc-profile-hero"><div className="cc-profile-avatar cc-profile-avatar-audit"><Avatar user={profile} size={150}/></div>
    <div className="cc-profile-details"><div className="cc-profile-name"><h1>{profile.handle}</h1>{(profile.verified||data.verified)&&<BadgeCheck size={20} color="#4f9cff" aria-label="Verified BVM account"/>}{self?<Link href="/settings/edit-profile" className="cc-profile-action">Edit profile</Link>:<Link href={'/home?section=chat&with='+encodeURIComponent(profile.handle)} className="cc-profile-action">Message</Link>}{!self&&<button className="cc-profile-action" type="button" disabled={followBusy} onClick={()=>void toggleFollow()}>{followStatus==='active'?'Following':followStatus==='pending'?'Requested':'Follow'}</button>}
      {!self&&<button className="cc-profile-action" type="button" aria-label="Profile options" onClick={()=>setMenu(v=>!v)}>⋯</button>}
      {menu&&<div className="cc-profile-options"><button disabled={busy} onClick={()=>void block()}>Block account</button><button onClick={()=>{setReport(true);setMenu(false)}}>Report profile</button><button onClick={()=>{void navigator.clipboard.writeText(window.location.href).then(()=>setNotice('Profile link copied'))}}>Copy profile link</button></div>}</div>
@@ -37,7 +37,7 @@ export function RealProfile({username}:{username:string}){
     {profile.relationshipStatus&&<p>Relationship: {profile.relationshipStatus}</p>}
    </div>
   </header>
-  {data.private&&<p role="status" style={{padding:20}}>This account is private. Follow to request access to posts and stories.</p>}
+  {data.private&&<p role="status" className="cc-profile-private-notice">This account is private. Follow to request access to posts and stories.</p>}
 
   <ProfileHighlights handle={profile.handle} self={self} legacy={highlights}/>
   <div className="cc-profile-tabs" role="tablist" aria-label="Profile content">
