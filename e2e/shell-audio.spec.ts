@@ -15,9 +15,9 @@ test('mocked shell: single feed, rail badge, expanded menu and outside dismissal
  await page.mouse.move(700,300);
  await expect.poll(async()=>Math.round((await sidebar.boundingBox())?.width??0)).toBe(72);
  const message=nav.getByRole('link',{name:'Messages',exact:true});const badge=message.getByLabel('Unread conversations');const row=await message.boundingBox(),b=await badge.boundingBox();expect(row&&b&&b.x>=row.x&&b.x+b.width<=row.x+row.width+1).toBeTruthy();
- await more.click();await expect(page.getByRole('menu')).toBeVisible();await page.locator('#main-content').click({position:{x:10,y:150}});await expect(more).toHaveAttribute('aria-expanded','false');
+ await more.click();await expect(page.getByRole('menu')).toBeVisible();await page.mouse.click(700,300);await expect(more).toHaveAttribute('aria-expanded','false');
  await more.click();await page.keyboard.press('Escape');await expect(more).toHaveAttribute('aria-expanded','false');
- await page.mouse.move(700,300);await page.locator('#main-content').click({position:{x:10,y:150}});await page.setViewportSize({width:1100,height:768});await expect.poll(async()=>Math.round((await page.locator('.cc-sidebar').boundingBox())?.width??0)).toBe(72);
+ await page.mouse.move(700,300);await page.mouse.click(700,300);await page.setViewportSize({width:1100,height:768});await expect.poll(async()=>Math.round((await page.locator('.cc-sidebar').boundingBox())?.width??0)).toBe(72);
  await page.setViewportSize({width:390,height:844});await expect(page.getByRole('navigation',{name:'Mobile navigation'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
 });
 test('mocked Reel volume is full by default and changes DOM volume',async({page})=>{
