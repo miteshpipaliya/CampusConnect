@@ -18,3 +18,6 @@ Updated 2026-11-24 for draft PR #34 (`12-adudit`). Old frontend-only demo descri
 
 ## R2 dependency gate
 Owner dependency update not observed: firebase-admin 13.6.0 remains locked. Previous audit reported moderate uuid advisory through gaxios/google-gax/teeny-request/retry-request/Firestore/Storage and minimatch through typescript-eslint. Do not claim a clean production audit until npm audit --omit=dev is run on the updated lockfile.
+
+## Realtime integration
+External Stream grants/two-way block mode and FCM browser delivery require preview acceptance. Unread fallback is bounded by Stream channel scan and notification history cap. No Firestore client SDK or rules relaxation. FCM generic messages only; browser registration API is deprecated and requires planned FID migration. CDN SDK is pinned and CSP scoped. Dependency audit may still report moderate Firebase Admin advisories.

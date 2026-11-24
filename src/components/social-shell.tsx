@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {PushSettings,PushConnection} from './push-settings';
 import '@/app/chat-live-upgrade.css';
 import {LiveMessageActivity} from './chat/live-message-activity';
 import '@/app/shell-upgrade.css';
@@ -108,11 +109,11 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape'){setMenu(false);setPanel(null)}};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
   useEffect(()=>{setPanel(null)},[pathname]);
   if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
-  return <StreamConnectionProvider key={uid}><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(collapsed?' cc-shell-collapsed':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(collapsed?' cc-shell-collapsed':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} onPanel={name=>setPanel(old=>old===name?null:name)}/>
-      <div className="cc-more-wrap"><button className="cc-more-toggle" aria-label="More" aria-expanded={menu} onClick={()=>setMenu(v=>!v)}><Menu size={25}/><span className="cc-nav-label">More</span></button>{menu&&<div className="cc-more-menu"><button onClick={()=>{setCollapsed(v=>!v);setMenu(false)}}>{collapsed?'Expand sidebar':'Collapse sidebar'}</button><Link href="/settings" onClick={()=>setMenu(false)}>Settings</Link><Link href="/saved" onClick={()=>setMenu(false)}>Saved</Link><Link href="/dashboard" onClick={()=>setMenu(false)}>Dashboard</Link><button onClick={async()=>{try{const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});if(!r.ok)throw Error('Sign out failed');queryClient.clear();window.location.assign('/login')}catch{setMenuError('Sign out failed')}}}>Log out</button>{menuError&&<p role="alert">{menuError}</p>}</div>}</div>
+      <div className="cc-more-wrap"><button className="cc-more-toggle" aria-label="More" aria-expanded={menu} onClick={()=>setMenu(v=>!v)}><Menu size={25}/><span className="cc-nav-label">More</span></button>{menu&&<div className="cc-more-menu"><button onClick={()=>{setCollapsed(v=>!v);setMenu(false)}}>{collapsed?'Expand sidebar':'Collapse sidebar'}</button><Link href="/settings" onClick={()=>setMenu(false)}>Settings</Link><Link href="/saved" onClick={()=>setMenu(false)}>Saved</Link><PushSettings/><Link href="/dashboard" onClick={()=>setMenu(false)}>Dashboard</Link><button onClick={async()=>{try{const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});if(!r.ok)throw Error('Sign out failed');queryClient.clear();window.location.assign('/login')}catch{setMenuError('Sign out failed')}}}>Log out</button>{menuError&&<p role="alert">{menuError}</p>}</div>}</div>
 
     </aside>
     <main className="cc-main" id="main-content">

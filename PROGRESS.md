@@ -56,3 +56,6 @@ Added account-keyed paginated feed, Instagram-inspired media and actions, story 
 Home follow-up: added carousel swipe and keyboard navigation, blurred video backdrop, Following filter, repost state hydration, recent chat avatars, navigation profile and More menu, story gradient rings and bounded mutual suggestions. Live acceptance and exact-head CI pending.
 
 Story repair: own story tray links to viewer rather than hiding published items; add button remains separate. Owner-only viewer panel, self-view exclusion, fresh authorized media redirects, and unified black Home/Profile backgrounds implemented. Live publish acceptance pending.
+
+## Realtime integration candidate
+Profile separation, notifications presentation and batched seen handling, event-driven chat refresh/typing/unread badge and toast, shell panels, optional FCM registration/delivery/worker added. See docs/REALTIME_QA.md; all live acceptance remains OWNER-VERIFY. Production unchanged; Stream tokens remain explicit opt-in.

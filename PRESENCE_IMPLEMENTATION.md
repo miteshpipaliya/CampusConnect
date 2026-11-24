@@ -57,3 +57,6 @@ NEXT: Inspect latest Vercel preview build and GitHub Actions quality results for
 - Inbox and thread subscribe to Stream live events, request privacy authorization from `/api/chat/presence`, and render a shared green presence dot only when both connection and permission are true. The thread also expires stale typing indicators after inactivity.
 - Stream common user REST routes were corrected and a partial `invisible` update was added for account activity-status changes; accounts without explicit status now default to opt-in/off.
 - NOT VERIFIED: two-device presence, expired sessions, online/offline in real Stream test accounts, Stream dashboard permissions, block synchronization and actual private R2 transfers. The old 'no SDK client' notes below are historical, not current status.
+
+## Realtime integration candidate (2026-11-24)
+Event-driven inbox and conversation refresh, typing dots, live badges and generic push toasts are implemented in source. Actual delivery/permission acceptance still OWNER-VERIFY. Keep STREAM_CLIENT_TOKENS_ENABLED disabled in production until docs/REALTIME_QA.md passes.

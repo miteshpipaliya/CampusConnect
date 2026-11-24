@@ -27,3 +27,5 @@ Updated 2026-11-24.
 - Home Following uses bounded author relationship reads, not a new composite index. Mutual suggestions are limited to 20 followed accounts and 12 candidates.
 
 - Own story opens viewer while separate plus opens composer. Story media uses authenticated redirect to avoid stale 60-second signed links. View counts exclude owner.
+
+- Realtime upgrade: retain Firestore server authority; visible-tab five-second social notification fallback (not Firestore listeners). Stream events trigger authorized REST refresh. Optional generic FCM push via pinned Firebase CDN; device registrations owner-bound and expiring. Preserve production opt-in gate.
