@@ -1,8 +1,8 @@
 export type UploadPurpose='avatar'|'post'|'story'|'reel'|'chat';
-export async function uploadFile({file,purpose,onProgress,signal,maxRetries=2,durationSec}:{file:File;purpose:UploadPurpose;onProgress?:(fraction:number)=>void;signal?:AbortSignal;maxRetries?:number;durationSec?:number}):Promise<string>{
+export async function uploadFile({file,purpose,onProgress,signal,maxRetries=2,durationSec,width,height}:{file:File;purpose:UploadPurpose;onProgress?:(fraction:number)=>void;signal?:AbortSignal;maxRetries?:number;durationSec?:number;width?:number;height?:number}):Promise<string>{
  for(let attempt=0;attempt<=maxRetries;attempt++){
   try{
-   const reserved=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'reserve',contentType:file.type,size:file.size,purpose,...(durationSec?{durationSec}:{})}),...(signal?{signal}:{})});
+   const reserved=await fetch('/api/media',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:'reserve',contentType:file.type,size:file.size,purpose,...(durationSec?{durationSec}:{}),...(width&&height?{width,height}:{})}),...(signal?{signal}:{})});
    if(!reserved.ok)throw Error('Upload reservation failed');
    const data:unknown=await reserved.json();
    if(!data||typeof data!=='object'||!('id' in data)||!('uploadUrl' in data)||typeof data.id!=='string'||typeof data.uploadUrl!=='string')throw Error('Invalid reservation');
@@ -31,4 +31,10 @@ export async function readVideoDuration(file:File):Promise<number>{
  const url=URL.createObjectURL(file),video=document.createElement('video');video.preload='metadata';video.src=url;
  try{return await new Promise<number>((resolve,reject)=>{video.onloadedmetadata=()=>Number.isFinite(video.duration)&&video.duration>0?resolve(video.duration):reject(Error('Invalid video duration'));video.onerror=()=>reject(Error('Cannot read video'))})}
  finally{URL.revokeObjectURL(url);video.removeAttribute('src');video.load()}
+}
+
+export async function readVideoSize(file:File):Promise<{width:number;height:number}>{
+ const url=URL.createObjectURL(file),video=document.createElement('video');video.preload='metadata';
+ try{return await new Promise((resolve,reject)=>{video.onloadedmetadata=()=>{const width=video.videoWidth,height=video.videoHeight;if(Number.isInteger(width)&&Number.isInteger(height)&&width>=16&&height>=16&&width<=8192&&height<=8192)resolve({width,height});else reject(Error('Invalid video dimensions'))};video.onerror=()=>reject(Error('Cannot read video dimensions'));video.src=url})}
+ finally{video.removeAttribute('src');video.load();URL.revokeObjectURL(url)}
 }

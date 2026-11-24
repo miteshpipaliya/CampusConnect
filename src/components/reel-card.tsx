@@ -2,21 +2,23 @@
 import {useEffect,useRef,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {Avatar} from './avatar';
-import {Heart,MessageCircle,Bookmark,Repeat2,Volume2,VolumeX,Send,Play,Ellipsis} from 'lucide-react';
+import {Heart,MessageCircle,Bookmark,Repeat2,Volume2,VolumeX,Send,Play,Ellipsis,MapPin,BadgeCheck} from 'lucide-react';
 import {safeVideoAspect} from '@/lib/core/reel-discovery';
 import {fitReelFrame} from '@/lib/core/reel-layout';
+import {clampCaption} from '@/lib/core/caption-clamp';
+import {ReelMenu} from './reel-menu';
 import {ChatShareSheet} from './chat/chat-share-sheet';
 
-export type Reel={id:string;authorUid:string;authorHandle:string;authorName:string;avatarUrl:string|null;caption:string;mediaId:string;mediaUrl:string|null;contentType?:string;likes:number;comments:number;reposts:number;views:number;liked:boolean;saved:boolean;reposted:boolean;isMine:boolean;followStatus:string;createdAt:number};
+export type Reel={id:string;authorUid:string;authorHandle:string;authorName:string;avatarUrl:string|null;caption:string;mediaId:string;mediaUrl:string|null;contentType?:string;likes:number;comments:number;reposts:number;views:number;liked:boolean;saved:boolean;reposted:boolean;isMine:boolean;followStatus:string;createdAt:number;width?:number|null;height?:number|null;location?:string|null;verified?:boolean;shares?:number;saves?:number;commentsOff?:boolean;hideLikeCount?:boolean};
 type Action='like'|'save'|'repost';
 const format=(n:number)=>n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'K':String(Math.max(0,n));
 
-export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;muted:boolean;onMute:(v:boolean)=>void}){
+export function ReelCard({reel,active,muted,onMute,mounted=true,preloadNext=false}:{reel:Reel;active:boolean;muted:boolean;onMute:(v:boolean)=>void;mounted?:boolean;preloadNext?:boolean}){
  const player=useRef<HTMLVideoElement>(null),stageRef=useRef<HTMLDivElement>(null),actionsRef=useRef<HTMLDivElement>(null),counted=useRef(false),lastTick=useRef(0),playedMs=useRef(0);
- const [paused,setPaused]=useState(false),[ratio,setRatio]=useState(9/16),[progress,setProgress]=useState(0),[frame,setFrame]=useState<{width:number;height:number}|null>(null);
+ const [paused,setPaused]=useState(false),[ratio,setRatio]=useState(()=>safeVideoAspect(reel.width??0,reel.height??0)),[progress,setProgress]=useState(0),[frame,setFrame]=useState<{width:number;height:number}|null>(null);
  const [liked,setLiked]=useState(reel.liked),[saved,setSaved]=useState(reel.saved),[reposted,setReposted]=useState(reel.reposted),[likes,setLikes]=useState(reel.likes);
- const [busy,setBusy]=useState(false),[share,setShare]=useState(false),[comments,setComments]=useState(false),[follow,setFollow]=useState(reel.followStatus),[error,setError]=useState(''),[notice,setNotice]=useState('');
- useEffect(()=>{const v=player.current;if(!v)return;if(active&&!paused&&!document.hidden)void v.play().catch(()=>{});else v.pause()},[active,paused]);
+ const [busy,setBusy]=useState(false),[share,setShare]=useState(false),[comments,setComments]=useState(false),[follow,setFollow]=useState(reel.followStatus),[error,setError]=useState(''),[notice,setNotice]=useState(''),[expanded,setExpanded]=useState(false),[menu,setMenu]=useState(false),[removed,setRemoved]=useState(false);
+ useEffect(()=>{const v=player.current;if(!v)return;if(active&&!paused&&!document.hidden)void v.play().catch(()=>{});else v.pause()},[active,paused,mounted]);
  useEffect(()=>{const handler=()=>{if(document.hidden){player.current?.pause();lastTick.current=0}else if(active&&!paused)void player.current?.play().catch(()=>{})};
   document.addEventListener('visibilitychange',handler);return()=>document.removeEventListener('visibilitychange',handler)
  },[active,paused]);
@@ -30,8 +32,8 @@ export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;mu
    const controls=actionsRef.current;
    const gap=Number.parseFloat(window.getComputedStyle(stage).columnGap)||16;
    const railWidth=controls?.getBoundingClientRect().width||62;
-   const width=Math.max(0,stage.clientWidth-railWidth-gap-12);
-   const height=Math.max(0,stage.clientHeight-20);
+   const width=Math.max(0,stage.clientWidth-(window.innerWidth<=768?0:railWidth+gap));
+   const height=Math.max(0,stage.clientHeight);
    const next=fitReelFrame(width,height,ratio);
    setFrame(prev=>prev?.width===next.width&&prev?.height===next.height?prev:next);
   };
@@ -77,42 +79,43 @@ export function ReelCard({reel,active,muted,onMute}:{reel:Reel;active:boolean;mu
    void fetch('/api/posts/'+reel.id+'/view',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({watchMs:Math.floor(playedMs.current)})}).catch(()=>{counted.current=false});
   }
  }
- async function copyLink(){
-  try{await navigator.clipboard.writeText(window.location.origin+'/posts/'+encodeURIComponent(reel.id));setNotice('Link copied')}
-  catch{setError('Unable to copy the Reel link')}
- }
+ useEffect(()=>{const video=player.current;return()=>{if(video){video.pause();video.removeAttribute('src');video.load()}}},[mounted,reel.mediaUrl]);
+ const caption=clampCaption(reel.caption);
+ if(removed)return <article data-reel-card className="cc-reel-card"><p>Reel removed.</p></article>;
  const videoStyle={aspectRatio:String(ratio),...(frame&&frame.width>0&&frame.height>0?{width:frame.width,height:frame.height}:{} )} as CSSProperties;
  return <article data-reel-card className="cc-reel-card" aria-label={'Reel by '+reel.authorHandle}>
   <div className="cc-reel-stage" ref={stageRef}>
    <div className="cc-reel-video-box" style={videoStyle}>
-    {reel.mediaUrl?<video ref={player} src={reel.mediaUrl} playsInline muted={muted} loop preload={active?'auto':'metadata'}
+    {mounted&&reel.mediaUrl?<video ref={player} src={reel.mediaUrl} playsInline muted={muted} loop preload={active||preloadNext?'auto':'none'}
      disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
      onContextMenu={e=>e.preventDefault()} onTimeUpdate={onTimeUpdate} onPause={()=>{lastTick.current=0}}
      onLoadedMetadata={e=>setRatio(safeVideoAspect(e.currentTarget.videoWidth,e.currentTarget.videoHeight))}
-     onClick={()=>setPaused(v=>!v)} onError={()=>setError('This Reel could not be loaded. Retry by refreshing the page.')}/>:<p>Video unavailable</p>}
+     onClick={()=>setPaused(v=>!v)} onDoubleClick={()=>{if(!liked)void action('like')}} onError={()=>setError('This Reel could not be loaded. Retry by refreshing the page.')}/>:mounted?<p>Video unavailable</p>:null}
     {paused&&<button type="button" className="cc-reel-play" aria-label="Resume Reel" onClick={()=>setPaused(false)}><Play size={28} fill="white"/></button>}
     <button type="button" className="cc-reel-mute" aria-label={muted?'Unmute Reel':'Mute Reel'} onClick={()=>onMute(!muted)}>{muted?<VolumeX size={19}/>:<Volume2 size={19}/>}</button>
     <div className="cc-reel-caption">
      <div className="cc-reel-author">
-      <Link href={'/profile/'+encodeURIComponent(reel.authorHandle)}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={32}/><strong>@{reel.authorHandle}</strong></Link>
+      <Link href={'/profile/'+encodeURIComponent(reel.authorHandle)}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={32}/><strong>@{reel.authorHandle}</strong>{reel.verified&&<BadgeCheck size={15} aria-label="Verified"/>}</Link>
       {!reel.isMine&&<button type="button" onClick={()=>void followToggle()}>{follow==='active'?'Following':follow==='pending'?'Requested':'Follow'}</button>}
      </div>
-     {reel.caption&&<p>{reel.caption}</p>}
+     {reel.location&&<small className="cc-reel-location"><MapPin size={12}/>{reel.location}</small>}{reel.caption&&<><p className={expanded?'cc-caption-expanded':'cc-caption-short'}>{expanded?reel.caption:caption.short}</p>{(caption.truncated||reel.caption.length>45)&&<button className="cc-caption-more" onClick={()=>setExpanded(v=>!v)}>{expanded?'Less':'… more'}</button>}</>}
      <small>Original audio</small>
     </div>
     <div className="cc-reel-progress" role="progressbar" aria-label="Video playback progress" aria-valuenow={Math.round(progress*100)} aria-valuemin={0} aria-valuemax={100}><span style={{width:(progress*100)+'%'}}/></div>
    </div>
    <div className="cc-reel-actions" aria-label="Reel actions" ref={actionsRef}>
-    <button type="button" onClick={()=>void action('like')} aria-label={liked?'Unlike Reel':'Like Reel'} aria-pressed={liked}><Heart fill={liked?'currentColor':'none'} size={27}/><small>{format(likes)}</small></button>
+    <button type="button" onClick={()=>void action('like')} aria-label={liked?'Unlike Reel':'Like Reel'} aria-pressed={liked}><Heart fill={liked?'currentColor':'none'} size={27}/>{!reel.hideLikeCount&&<small>{format(likes)}</small>}</button>
     <button type="button" onClick={()=>setComments(true)} aria-label="View comments"><MessageCircle size={27}/><small>{format(reel.comments)}</small></button>
     <button type="button" onClick={()=>void action('repost')} aria-pressed={reposted} aria-label={reposted?'Undo repost':'Repost'}><Repeat2 size={27}/><small>{format(reel.reposts+(reposted&&!reel.reposted?1:!reposted&&reel.reposted?-1:0))}</small></button>
-    <button type="button" onClick={()=>setShare(true)} aria-label="Send Reel"><Send size={27}/></button>
+    <button type="button" onClick={()=>setShare(true)} aria-label="Send Reel"><Send size={27}/><small>{format(reel.shares??0)}</small></button>
     <button type="button" onClick={()=>void action('save')} aria-pressed={saved} aria-label={saved?'Unsave Reel':'Save Reel'}><Bookmark fill={saved?'currentColor':'none'} size={27}/></button>
-    <button type="button" onClick={()=>void copyLink()} aria-label="Copy Reel link"><Ellipsis size={26}/></button>
+    <button type="button" onClick={()=>setMenu(v=>!v)} aria-label="Reel options" aria-expanded={menu}><Ellipsis size={26}/></button>
+    <Link className="cc-reel-audio-cover" href={'/profile/'+encodeURIComponent(reel.authorHandle)} aria-label="Author profile"><Avatar user={{handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={24}/></Link>
    </div>
   </div>
   {notice&&<p className="cc-reel-notice" role="status">{notice}</p>}
   {error&&<p className="cc-reel-notice" role="alert">{error}</p>}
+  {menu&&<ReelMenu reel={reel} following={follow==='active'} onClose={()=>setMenu(false)} onRemoved={()=>setRemoved(true)} onNotice={setNotice} onUnfollow={()=>setFollow('none')}/>}
   {comments&&<ReelComments id={reel.id} onClose={()=>setComments(false)}/>}
   {share&&<div className="cc-reel-share-panel"><ChatShareSheet postId={reel.id} onClose={()=>setShare(false)}/></div>}
  </article>;

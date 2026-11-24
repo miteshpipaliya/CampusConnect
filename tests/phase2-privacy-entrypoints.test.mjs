@@ -16,7 +16,10 @@ const endpoints=[
 ];
 test('all principal content APIs consult server-side author visibility',()=>{
  for(const endpoint of endpoints){
-  assert.match(load(endpoint),/canViewAuthor|canViewMany/,endpoint+' must check the authenticated viewer');
+  if(endpoint==='src/app/api/media/route.ts'){
+   assert.match(load(endpoint),/mintUrls\(\[\{id,\.\.\.data\}\],\{viewerUid:user\.uid\}\)/);
+   assert.match(load('src/lib/server/media-urls.ts'),/canViewMany\(opts\.viewerUid/);
+  }else assert.match(load(endpoint),/canViewAuthor|canViewMany/,endpoint+' must check the authenticated viewer');
  }
 });
 test('direct Stream tokens require explicit owner opt-in',()=>{

@@ -15,3 +15,6 @@ Updated 2026-11-24 for draft PR #34 (`12-adudit`). Old frontend-only demo descri
 11. **Demo and CSS:** Obsolete demo components and Unsplash CSP references have been removed; CSS sheets remain separated to protect cascade/UI until visual regression tests exist.
 12. **Testing infrastructure:** `@tanstack/react-query` and `@playwright/test` are not in package dependencies/lockfile. React Query provider and Playwright CI are not implemented. Add together in a separate validated tooling commit after lockfile regeneration.
 13. **No production release:** Audit branch is draft PR #34. Source on `main` is not modified by this audit. Do not merge until newest CI+Vercel preview and independent real-account staging QA pass.
+
+## R2 dependency gate
+Owner dependency update not observed: firebase-admin 13.6.0 remains locked. Previous audit reported moderate uuid advisory through gaxios/google-gax/teeny-request/retry-request/Firestore/Storage and minimatch through typescript-eslint. Do not claim a clean production audit until npm audit --omit=dev is run on the updated lockfile.

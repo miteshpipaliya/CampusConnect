@@ -2,7 +2,7 @@
 
 Updated 2026-11-24.
 
-- Honor the owner's explicit one-branch instruction: `12-adudit`, not five merges into `main`; PR #34 remains a **draft**.
+- Honor the owner's explicit one-branch instruction: `12-adudit`, not five merges into `main`; PR #34 merged; new upgrade must use a separate PR.
 - Keep all existing production APIs and response keys compatible when introducing new data.
 - Strict TypeScript and `npm ci` remain mandatory; do not add unlocked packages or weaken type checking.
 - Authorization uses server-side Firebase session cookies and `guard`; private posts, stories and group members must fail closed on blocks or missing visibility.
@@ -17,3 +17,7 @@ Updated 2026-11-24.
 - Keep CSS import order unchanged until visual regression tests can validate consolidation.
 - React Query and Playwright were absent in the repository; avoid importing nonexistent packages until dependencies and lockfile are updated and CI can install them.
 - Do not claim a bug-free or fully Instagram-compatible product solely from CI or Vercel's Ready state.
+
+- R1: preserve original video aspect, full-width workspace, mount only active and neighboring videos; never touch production main during the new upgrade.
+
+- R2: use the same media signer for redirect and list endpoints; signed URLs cannot be revoked after issuance. Report authorization returns a generic unavailable response.

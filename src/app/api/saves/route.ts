@@ -53,10 +53,10 @@ async function update(req:NextRequest,remove:boolean){
  const store=db(),post=store.collection('posts').doc(parsed.postId),save=store.collection('users').doc(checked.user.uid).collection('saves').doc(parsed.postId);
  try{
   const existing=await post.get();
-  if(!existing.exists||existing.data()?.deletedAt||!(await canViewMany(checked.user.uid,[String(existing.data()?.authorUid||'')])).get(String(existing.data()?.authorUid||'')))return errorResponse(404,'Post unavailable');
+  if(!existing.exists||existing.data()?.deletedAt||existing.data()?.archived||!(await canViewMany(checked.user.uid,[String(existing.data()?.authorUid||'')])).get(String(existing.data()?.authorUid||'')))return errorResponse(404,'Post unavailable');
   const saved=await store.runTransaction(async tx=>{
    const [p,s]=await Promise.all([tx.get(post),tx.get(save)]);
-   if(!p.exists||p.data()?.deletedAt)throw Error('MISSING');
+   if(!p.exists||p.data()?.deletedAt||p.data()?.archived)throw Error('MISSING');
    if(remove&&s.exists){tx.delete(save);tx.update(post,{'counters.saves':FieldValue.increment(-1)});return false}
    if(!remove&&!s.exists){tx.create(save,{postId:post.id,collectionName:parsed.collectionName||null,createdAt:FieldValue.serverTimestamp()});tx.update(post,{'counters.saves':FieldValue.increment(1)});return true}
    if(!remove&&s.exists&&parsed.collectionName){tx.set(save,{collectionName:parsed.collectionName},{merge:true})}

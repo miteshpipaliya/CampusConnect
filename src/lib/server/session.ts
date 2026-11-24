@@ -5,7 +5,7 @@ const cache=createTtlCache<{uid:string;email:string|undefined;admin:boolean}>({t
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from './services';
 
-export const safeHeaders={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
+export const safeHeaders={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'};
 export const errorResponse=(status:number,message:string)=>NextResponse.json({error:message},{status,headers:safeHeaders});
 export function sameOrigin(request:NextRequest){
  const origin=request.headers.get('origin');

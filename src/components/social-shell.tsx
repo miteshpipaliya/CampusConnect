@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users, ChartNoAxesCombined } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
+import {userKey} from '@/lib/queries';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {StreamConnectionProvider} from './chat/stream-connection';
 import type { LucideIcon } from 'lucide-react';
@@ -65,9 +66,10 @@ function Suggestions({handle}:{handle:string}){
 
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname=usePathname(),params=useSearchParams(),router=useRouter();
+  const [uid,setUid]=useState<string|null>(null);
   const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
   const queryClient=useQueryClient();
-  const summary=useQuery({queryKey:['notification-summary',handle],enabled:checked&&Boolean(handle),queryFn:async({signal})=>{
+  const summary=useQuery({queryKey:userKey(uid,'notification-summary'),enabled:checked&&Boolean(uid),queryFn:async({signal})=>{
    const response=await fetch('/api/notifications/summary',{cache:'no-store',signal});
    if(!response.ok)throw Error('Notification summary unavailable');
    const data=await response.json();
@@ -75,10 +77,10 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   },refetchInterval:20000,refetchIntervalInBackground:false,staleTime:20000});
   const counts=summary.data??{unread:0,unreadMessages:0};
   useEffect(()=>{
-   const changed=()=>{if(handle&&document.visibilityState!=='hidden')void queryClient.invalidateQueries({queryKey:['notification-summary',handle]})};
+   const changed=()=>{if(uid&&document.visibilityState!=='hidden')void queryClient.invalidateQueries({queryKey:userKey(uid,'notification-summary')})};
    window.addEventListener('cc-notifications-updated',changed);document.addEventListener('visibilitychange',changed);
    return()=>{window.removeEventListener('cc-notifications-updated',changed);document.removeEventListener('visibilitychange',changed)};
-  },[handle,queryClient]);
+  },[uid,queryClient]);
   useEffect(()=>{setSection(params.get('section')||'home')},[params]);
   useEffect(()=>{
    const cached=localStorage.getItem('cc-theme');
@@ -89,10 +91,10 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    }).catch(()=>{});
   },[]);
   useEffect(()=>{let live=true;fetch('/api/auth',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(x=>{
-   if(!live)return;setChecked(true);if(x?.user?.profile?.handle)setHandle(x.user.profile.handle);else router.replace('/login');
-  }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router]);
+   if(!live)return;setChecked(true);queryClient.clear();if(x?.user?.profile?.handle&&x?.user?.uid){setUid(x.user.uid);setHandle(x.user.profile.handle)}else router.replace('/login');
+  }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router,queryClient]);
   if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
-  return <StreamConnectionProvider><div className={'cc-app'+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <StreamConnectionProvider key={uid}><div className={'cc-app'+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts}/>
