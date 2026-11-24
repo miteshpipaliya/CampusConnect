@@ -7,6 +7,7 @@ import {hydrateAvatars} from '@/lib/server/avatar-hydration';
 import {mintUrls} from '@/lib/server/media-urls';
 import {clampLimit} from '@/lib/core/cursor';
 import {couldBeReel,isPlayableReelMedia,reelMediaId} from '@/lib/core/reel-discovery';
+import {reelMetadata} from '@/lib/core/reel-payload';
 export const runtime='nodejs';
 
 /**
@@ -70,7 +71,7 @@ export async function GET(req:NextRequest){
   const followStatus=new Map(authors.map((uid,i)=>[uid,String(follows[i]?.data()?.status||'none')]));
   const reels=selected.map(({doc,mediaId,media},i)=>{
    const data=doc.data(),uid=String(data.authorUid||'');
-   return {id:doc.id,authorUid:uid,authorHandle:avatars[uid]?.handle||String(data.authorHandle||''),
+   return {...reelMetadata(media.data(),Array.isArray(data.media)?data.media[0]:undefined,data,avatars[uid]?.verified),id:doc.id,authorUid:uid,authorHandle:avatars[uid]?.handle||String(data.authorHandle||''),
     authorName:avatars[uid]?.name||'Student',avatarUrl:avatars[uid]?.avatarUrl??null,
     isMine:uid===user.uid,caption:String(data.caption||''),mediaId,
     mediaUrl:signed[mediaId]?.url??'/api/media?id='+encodeURIComponent(mediaId),

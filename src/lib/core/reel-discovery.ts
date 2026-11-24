@@ -19,5 +19,5 @@ export function isPlayableReelMedia(media:{status?:unknown;contentType?:unknown}
 }
 export function safeVideoAspect(width:number,height:number):number{
  if(!Number.isFinite(width)||!Number.isFinite(height)||width<=0||height<=0)return 9/16;
- return Math.max(0.45,Math.min(2.5,width/height));
+ return Math.max(0.4,Math.min(2.5,width/height));
 }

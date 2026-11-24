@@ -22,7 +22,7 @@ export async function POST(request:NextRequest){
  try{
   const body:unknown=await request.json();
   const input=z.discriminatedUnion('action',[
-   z.object({action:z.literal('reserve'),contentType:z.string(),size:z.number().int().positive(),purpose:z.enum(['avatar','post','story','reel','chat']).optional(),width:z.number().int().positive().optional(),height:z.number().int().positive().optional(),durationSec:z.number().positive().optional()}),
+   z.object({action:z.literal('reserve'),contentType:z.string(),size:z.number().int().positive(),purpose:z.enum(['avatar','post','story','reel','chat']).optional(),width:z.number().int().min(16).max(8192).optional(),height:z.number().int().min(16).max(8192).optional(),durationSec:z.number().positive().optional()}),
    z.object({action:z.literal('confirm'),id:z.string().uuid()})
   ]).safeParse(body);
   if(!input.success)return errorResponse(400,'Invalid media request');

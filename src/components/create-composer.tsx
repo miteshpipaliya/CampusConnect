@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {uploadFile,readVideoDuration} from '@/lib/upload';
+import {uploadFile,readVideoDuration,readVideoSize} from '@/lib/upload';
 import {validateFileForPurpose,canPublish} from '@/lib/core/content-rules';
 type Kind='post'|'story'|'reel';
 type Item={file:File;key:string;id?:string;progress:number;error?:string;alt:string;url:string};
@@ -21,7 +21,7 @@ export function CreateComposer({onClose,onPublished}:{onClose:()=>void;onPublish
   try{
    const uploaded:Item[]=[];
    for(const item of items){let id=item.id;
-    if(!id){const durationSec=item.file.type.startsWith('video/')?await readVideoDuration(item.file):undefined;if(durationSec&&((kind==='story'&&durationSec>60)||(kind==='reel'&&durationSec>90)))throw Error(kind==='story'?'Stories must be 60 seconds or shorter':'Reels must be 90 seconds or shorter');id=await uploadFile({file:item.file,purpose:kind,...(durationSec?{durationSec}:{}),onProgress:p=>setItems(old=>old.map(i=>i.key===item.key?{...i,progress:p}:i)),signal:controller.signal});}
+    if(!id){const durationSec=item.file.type.startsWith('video/')?await readVideoDuration(item.file):undefined;if(durationSec&&((kind==='story'&&durationSec>60)||(kind==='reel'&&durationSec>90)))throw Error(kind==='story'?'Stories must be 60 seconds or shorter':'Reels must be 90 seconds or shorter');const dimensions=item.file.type.startsWith('video/')?await readVideoSize(item.file):{};id=await uploadFile({file:item.file,purpose:kind,...dimensions,...(durationSec?{durationSec}:{}),onProgress:p=>setItems(old=>old.map(i=>i.key===item.key?{...i,progress:p}:i)),signal:controller.signal});}
     uploaded.push({...item,id,progress:1});setItems(old=>old.map(i=>i.key===item.key?{...i,id,progress:1}:i));
    }
    const endpoint=kind==='story'?'/api/stories':'/api/posts';

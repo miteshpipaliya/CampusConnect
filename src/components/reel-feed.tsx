@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {ChevronUp,ChevronDown} from 'lucide-react';
 import {ReelCard,type Reel} from './reel-card';
 import {dedupeReels} from '@/lib/core/reel-views';
+import {windowRange} from '@/lib/core/reel-window';
 const REFRESH_MS=8000;
 type Page={reels:Reel[];nextCursor:string|null};
 
@@ -26,7 +27,8 @@ export function ReelFeed(){
   }catch(e){setError(e instanceof Error?e.message:'Reels unavailable')}
   finally{fetching.current=false;setLoading(false);setMore(false)}
  },[]);
- useEffect(()=>{void load()},[load]);
+ useEffect(()=>{void load();try{setMuted(sessionStorage.getItem('cc:reels:muted')!=='false')}catch{}},[load]);
+ const changeMute=useCallback((value:boolean)=>{setMuted(value);try{sessionStorage.setItem('cc:reels:muted',String(value))}catch{}},[]);
  const refresh=useCallback(async()=>{
   if(fetching.current||document.visibilityState!=='visible')return;
   try{
@@ -61,12 +63,12 @@ export function ReelFeed(){
   if(end.current)observer.observe(end.current);
   return()=>observer.disconnect();
  },[cursor,load]);
- function navigate(delta:number){
+ const navigate=useCallback((delta:number)=>{
   const next=Math.max(0,Math.min(reels.length-1,active+delta));
   const card=scroller.current?.querySelectorAll<HTMLElement>('[data-reel-card]')[next];
   card?.scrollIntoView({behavior:'smooth',block:'start'});
   setActive(next);
- }
+ },[active,reels.length]);
  function onScroll(){
   const el=scroller.current;if(!el)return;
   const middle=el.scrollTop+el.clientHeight/2;
@@ -80,7 +82,7 @@ export function ReelFeed(){
    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();navigate(e.key==='ArrowDown'?1:-1)}
   };
   window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);
- },[active,reels.length]);
+ },[navigate]);
  useEffect(()=>{
   if(!reels.length)return;
   const target=new URLSearchParams(window.location.search).get('reel');
@@ -91,14 +93,15 @@ export function ReelFeed(){
    setActive(index);
    window.history.replaceState(null,'','/reels');
   }
- },[reels.length]);
+ },[reels]);
+ const range=windowRange(active,reels.length);
  return <section aria-label="Campus Reels" className="cc-reel-page">
   {newReels&&<button type="button" className="cc-reel-new" onClick={()=>{setNewReels(false);setActive(0);scroller.current?.scrollTo({top:0});void load()}}>New Reels — Show</button>}
   {error&&<p role="alert" className="cc-reel-error">{error} <button type="button" onClick={()=>void load()}>Retry</button></p>}
   <div className="cc-reel-feed" ref={scroller} onScroll={onScroll}>
    {loading&&!reels.length?<div className="cc-reel-empty">Loading campus Reels…</div>:
     !reels.length&&!error?<div className="cc-reel-empty">No campus Reels yet. Publish a video to start the feed.</div>:
-    reels.map((reel,index)=><ReelCard key={reel.id} reel={reel} active={index===active} muted={muted} onMute={setMuted}/>)}
+    reels.map((reel,index)=><ReelCard key={reel.id} reel={reel} active={index===active} muted={muted} onMute={changeMute} mounted={index>=range.start&&index<=range.end} preloadNext={index===active+1}/>)}
    <div ref={end} className="cc-reel-end">{more?'Loading more Reels…':!cursor&&reels.length>0?'You are all caught up':''}</div>
   </div>
   {reels.length>1&&<nav className="cc-reel-nav" aria-label="Navigate Reels">

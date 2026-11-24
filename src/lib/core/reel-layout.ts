@@ -5,7 +5,7 @@
 export function fitReelFrame(availableWidth:number,availableHeight:number,sourceAspectRatio:number){
  if(!Number.isFinite(availableWidth)||!Number.isFinite(availableHeight)||availableWidth<=0||availableHeight<=0)return {width:0,height:0};
  const aspect=Number.isFinite(sourceAspectRatio)&&sourceAspectRatio>0
-  ?Math.max(.45,Math.min(2.5,sourceAspectRatio))
+  ?Math.max(.4,Math.min(2.5,sourceAspectRatio))
   :9/16;
  const fittedWidth=Math.min(availableWidth,availableHeight*aspect);
  const fittedHeight=Math.min(availableHeight,fittedWidth/aspect);

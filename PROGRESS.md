@@ -4,7 +4,7 @@ Updated **2026-11-24**. Source of truth: GitHub branch code and CI results for t
 
 ## Current development branch
 - **Branch:** `12-adudit`, based on production `main` at `d8c77a2bbb9b391219467530907fe5f477491712`
-- **Review PR:** [#34](https://github.com/miteshpipaliya/CampusConnect/pull/34) (**draft, unmerged**)
+- **Review PR:** [#34](https://github.com/miteshpipaliya/CampusConnect/pull/34) (merged into main as ecb28ea; new upgrade requires a separate PR)
 - **Production:** untouched by this audit. Do not deploy/merge it until index/Stream/R2/two-account acceptance and reviewer approval.
 - A prior audit commit `7beba1da18be35b492ecb387e14d0d1b64ca7bcf` passed GitHub CI and had a Ready Vercel preview. Newer commits must be validated independently.
 
@@ -36,6 +36,10 @@ Updated **2026-11-24**. Source of truth: GitHub branch code and CI results for t
 5. **R2/CORS:** verify unsigned access fails, signed URLs expire, uploads and DM attachments work.
 6. **Dependencies:** validate locked React Query and Playwright packages, Chromium install and smoke tests in exact-head CI.
 7. **Moderation:** ensure correct Firebase custom claim, test reports and all consequences using test accounts.
-8. **Deployment:** keep PR #34 draft and production unchanged until independent acceptance/approval.
+8. **Deployment:** keep the new upgrade PR separate from production until independent acceptance/approval.
 
 **Implemented source ≠ live tested ≠ production ready.**
+
+## R1 upgrade checkpoint
+- Removed legacy reel width cap, full viewport desktop/mobile layout, dimensions from media metadata, caption/location/verified/share UI, bounded video mounting, menu actions, pure regression tests.
+- NEXT: verify exact head CI and preview; add guarded layout fixture and threaded comments, keyboard controls and remaining R1 acceptance; then R2–R6. No live account acceptance claimed.
