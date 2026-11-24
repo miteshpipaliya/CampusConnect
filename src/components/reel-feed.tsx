@@ -2,6 +2,7 @@
 import {LoadingSkeleton} from './loading-skeleton';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {ChevronUp,ChevronDown} from 'lucide-react';
+import {useSearchParams} from 'next/navigation';
 import {ReelCard,type Reel} from './reel-card';
 import {dedupeReels} from '@/lib/core/reel-views';
 import {useReelVolume} from '@/lib/client/use-reel-volume';
@@ -9,7 +10,7 @@ import {windowRange} from '@/lib/core/reel-window';
 const REFRESH_MS=30000;
 type Page={reels:Reel[];nextCursor:string|null};
 
-export function ReelFeed(){
+export function ReelFeed(){const params=useSearchParams();const startId=params.get('start');
  const [reels,setReels]=useState<Reel[]>([]),[cursor,setCursor]=useState<string|null>(null),
  [loading,setLoading]=useState(true),[more,setMore]=useState(false),[active,setActive]=useState(0),
  [error,setError]=useState(''),[newReels,setNewReels]=useState(false);
@@ -19,7 +20,7 @@ export function ReelFeed(){
   if(fetching.current)return;fetching.current=true;setError('');
   if(next)setMore(true);else if(!itemsRef.current.length)setLoading(true);
   try{
-   const start=new URLSearchParams(window.location.search).get('start');
+   const start=startId;
    const response=await fetch('/api/reels?limit=10'+(next?'&cursor='+encodeURIComponent(next):start?'&start='+encodeURIComponent(start):''),{cache:'no-store'});
    const result:unknown=await response.json().catch(()=>null);
    if(!response.ok||!result||typeof result!=='object')throw Error(result&&typeof result==='object'&&'error'in result?String(result.error):'Reels unavailable');
@@ -29,7 +30,7 @@ export function ReelFeed(){
    setNewReels(false);
   }catch(e){setError(e instanceof Error?e.message:'Reels unavailable')}
   finally{fetching.current=false;setLoading(false);setMore(false)}
- },[]);
+ },[startId]);
  const {volume,changeVolume}=useReelVolume();
  useEffect(()=>{void load()},[load]);
  const refresh=useCallback(async()=>{

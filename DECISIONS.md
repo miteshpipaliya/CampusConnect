@@ -41,3 +41,5 @@ Updated 2026-11-24.
 - Performance first pass: permanent icon rail for chat/profile, layout skeletons, parallel session/profile/reel/story/feed reads, batched repost authorization, reduced polling, total Server-Timing for six read routes. No revocation policy changes or signed media TTL changes. No latency or 800-user capacity claims without isolated authenticated measurements. Region selection, Redis, full server hydration and load tests remain separate work.
 
 - Search is a normal Explore page; notifications remain a drawer. Explore uses a responsive image-only grid and bounded candidate reads, preserving chronological pagination and current privacy checks. Portrait reel captions use the left gutter only when it fits; wide and mobile stay overlay. In-app chrome uses a monochrome SVG CC mark. Legacy video thumbnails without a stored image require a backfill; no full-video downloads in Explore.
+
+- Thumbnail writes are optional for upload compatibility and share the parent post's server-side media authorization. No public bucket or API secret changes.

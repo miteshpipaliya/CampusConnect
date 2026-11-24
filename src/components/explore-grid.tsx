@@ -5,7 +5,7 @@ import {Heart,MessageCircle,Images,Play,Image as ImageIcon} from 'lucide-react';
 import {useInfiniteQuery} from '@tanstack/react-query';
 import {useShellUid} from './shell-session';
 import {userKey} from '@/lib/queries';
-export type ExploreItem={id:string;caption:string;type:string;authorHandle:string;thumbUrl?:string|null;mediaUrl?:string|null;mediaType:string;likes:number;comments:number;mediaCount:number;width?:number|null;height?:number|null};
+export type ExploreItem={id:string;caption:string;type:string;authorHandle:string;thumbUrl?:string|null;mediaUrl?:string|null;mediaType:string;likes:number;hideLikeCount?:boolean;comments:number;mediaCount:number;width?:number|null;height?:number|null};
 type Page={items:ExploreItem[];nextCursor:string|null};
 export function ExploreGrid({tag,sort}:{tag?:string;sort?:string}){
  const uid=useShellUid(),last=useRef<HTMLDivElement>(null);
@@ -19,6 +19,6 @@ export function ExploreGrid({tag,sort}:{tag?:string;sort?:string}){
  <div className="cc-explore-grid">{query.isPending?Array.from({length:12},(_,i)=><div key={i} className="cc-explore-tile cc-explore-placeholder" aria-hidden="true"/>):items.map(post=>{const thumb=post.thumbUrl||(!post.mediaType.startsWith('video/')?post.mediaUrl:null);return <Link key={post.id} className="cc-explore-tile" href={post.type==='reel'?'/reels?start='+encodeURIComponent(post.id):'/posts/'+encodeURIComponent(post.id)} aria-label={post.authorHandle+': '+(post.caption||'Open campus post')}>
  {thumb?<img src={thumb} width={post.width||300} height={post.height||400} loading="lazy" decoding="async" alt=""/>:<span className="cc-explore-no-preview" aria-label="Preview unavailable">{post.type==='reel'?<Play size={28}/>:<ImageIcon size={28}/>}</span>}
  {post.type==='reel'?<span className="cc-explore-icon cc-explore-play" aria-label="Reel"><Play size={14} fill="currentColor"/></span>:post.mediaCount>1?<span className="cc-explore-icon" aria-label="Carousel"><Images size={22}/></span>:null}
- <span className="cc-explore-overlay"><Heart size={20} fill="currentColor"/> {post.likes} <MessageCircle size={20} fill="currentColor"/> {post.comments}</span></Link>})}
+ <span className="cc-explore-overlay">{!post.hideLikeCount&&<><Heart size={20} fill="currentColor"/> {post.likes}</>} <MessageCircle size={20} fill="currentColor"/> {post.comments}</span></Link>})}
  </div><div ref={last} className="cc-explore-end">{isFetchingNextPage?<span aria-label="Fetching more posts" className="cc-explore-more-skeleton"/>:!hasNextPage&&items.length?'You are all caught up':''}</div></section>
 }

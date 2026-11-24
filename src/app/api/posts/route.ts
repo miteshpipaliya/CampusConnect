@@ -12,9 +12,10 @@ import {mintUrls} from '@/lib/server/media-urls';
 import {isBlockedEitherWay} from '@/lib/server/privacy';
 import {parseCaption} from '@/lib/core/content-rules';
 import {claimMedia} from '@/lib/server/media-service';
+import {validPostThumbnail} from '@/lib/core/post-thumbnail';
 import {notify} from '@/lib/server/notify';
 export const runtime='nodejs';
-const schema=z.object({caption:z.string().trim().max(2200).default(''),type:z.enum(['post','reel']).default('post'),mediaId:z.string().uuid().optional(),media:z.array(z.object({mediaId:z.string().uuid(),alt:z.string().max(250).default('')})).max(10).optional(),cropRatio:z.enum(['1 / 1','4 / 5','16 / 9']).optional(),filter:z.enum(['none','grayscale','sepia','contrast','saturate','brightness']).optional(),location:z.string().trim().max(80).optional(),commentsOff:z.boolean().optional(),hideLikeCount:z.boolean().optional()});
+const schema=z.object({caption:z.string().trim().max(2200).default(''),type:z.enum(['post','reel']).default('post'),mediaId:z.string().uuid().optional(),media:z.array(z.object({mediaId:z.string().uuid(),alt:z.string().max(250).default(''),thumbMediaId:z.string().uuid().optional()})).max(10).optional(),cropRatio:z.enum(['1 / 1','4 / 5','16 / 9']).optional(),filter:z.enum(['none','grayscale','sepia','contrast','saturate','brightness']).optional(),location:z.string().trim().max(80).optional(),commentsOff:z.boolean().optional(),hideLikeCount:z.boolean().optional()});
 import {routeTiming} from '@/lib/server/route-timing';
 export async function GET(request:NextRequest){return routeTiming('posts',()=>readRoute(request))}
 async function readRoute(request:NextRequest){
@@ -94,17 +95,26 @@ export async function POST(request:NextRequest){
  try{
   const store=db(),profile=await store.collection('users').doc(user.uid).get();
   if(!profile.exists)return errorResponse(403,'Profile missing');
-  const input=parsed.data,media=input.media?.length?input.media:input.mediaId?[{mediaId:input.mediaId,alt:''}]:[];
+  const input=parsed.data,media:Array<{mediaId:string;alt:string;thumbMediaId?:string|undefined}>=input.media?.length?input.media:input.mediaId?[{mediaId:input.mediaId,alt:''}]:[];
   if(media.length===0&&!input.caption)return errorResponse(400,'Caption or media required');
   if(media.length===0)return errorResponse(400,'At least one media item is required');
   if(input.type==='reel'&&media.length!==1)return errorResponse(400,'A reel requires one video');
   if(input.type==='post'&&media.length>10)return errorResponse(400,'Too many media items');
   if(new Set(media.map(m=>m.mediaId)).size!==media.length)return errorResponse(400,'Duplicate media');
-  const newPost=store.collection('posts').doc(),mediaRefs=media.map(m=>store.collection('media').doc(m.mediaId));
+  const thumbnailIds=media.flatMap(m=>m.thumbMediaId?[m.thumbMediaId]:[]);
+  const allIds=[...media.map(m=>m.mediaId),...thumbnailIds];
+  if(new Set(allIds).size!==allIds.length)return errorResponse(400,'Duplicate media');
+  const newPost=store.collection('posts').doc(),mediaRefs=media.map(m=>store.collection('media').doc(m.mediaId)),thumbRefs=thumbnailIds.map(id=>store.collection('media').doc(id));
   const {hashtags:tags,mentions}=parseCaption(input.caption);
   try{
    await store.runTransaction(async transaction=>{
+    if(thumbRefs.length){
+     const originals=await transaction.getAll(...mediaRefs);
+     const thumbs=await transaction.getAll(...thumbRefs);
+     if(thumbs.some(d=>!validPostThumbnail(d.data(),user.uid))||media.some((m,i)=>m.thumbMediaId&&!String(originals[i]?.data()?.contentType||'').startsWith('video/')))throw Error('INVALID_THUMBNAIL');
+    }
     await claimMedia(transaction,{uid:user.uid,mediaRefs,kind:input.type,attachmentId:newPost.id});
+    for(const ref of thumbRefs)transaction.update(ref,{postId:newPost.id,isThumbnail:true});
     transaction.create(newPost,{authorUid:user.uid,authorHandle:profile.data()!.handle,caption:input.caption,mediaId:media[0]?.mediaId||null,media:media.map(m=>({...m})),type:input.type,hashtags:tags,mentions,location:input.location||null,cropRatio:input.cropRatio||'1 / 1',filter:input.filter||'none',commentsOff:input.commentsOff||false,hideLikeCount:input.hideLikeCount||false,visibility:profile.data()!.privacy==='private'?'private':'campus',createdAt:FieldValue.serverTimestamp(),deletedAt:null,archived:false,counters:{likes:0,comments:0,reposts:0,saves:0,shares:0,views:0}});
    });
   }catch{return errorResponse(400,'Invalid media or unable to publish')}

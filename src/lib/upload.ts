@@ -23,8 +23,21 @@ export async function resizeImage(file:File,{maxEdge,quality=0.85}:{maxEdge:numb
  try{const scale=Math.min(1,maxEdge/Math.max(bitmap.width,bitmap.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d')?.drawImage(bitmap,0,0,canvas.width,canvas.height);const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Image conversion failed')),'image/jpeg',quality));return new File([blob],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'})}finally{bitmap.close()}
 }
 export async function captureVideoPoster(file:File):Promise<Blob>{
- const url=URL.createObjectURL(file),video=document.createElement('video');video.muted=true;video.preload='metadata';video.src=url;
- try{await new Promise<void>((resolve,reject)=>{video.onloadeddata=()=>resolve();video.onerror=()=>reject(Error('Video decode failed'))});const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d')?.drawImage(video,0,0);return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Poster failed')),'image/jpeg',0.8))}finally{URL.revokeObjectURL(url);video.removeAttribute('src');video.load()}
+ const url=URL.createObjectURL(file),video=document.createElement('video');video.muted=true;video.playsInline=true;video.preload='auto';
+ try{
+  await new Promise<void>((resolve,reject)=>{
+   const timeout=setTimeout(()=>finish(Error('Video preview timed out')),7000);
+   function finish(error?:Error){clearTimeout(timeout);video.onloadeddata=null;video.onseeked=null;video.onerror=null;if(error)reject(error);else resolve()}
+   video.onerror=()=>finish(Error('Video decode failed'));
+   video.onloadeddata=()=>{video.onloadeddata=null;const time=Number.isFinite(video.duration)?Math.min(3,video.duration*.22):0;if(time>.05){video.onseeked=()=>finish();try{video.currentTime=time}catch{finish()}}else finish()};
+   video.src=url;
+  });
+  if(!video.videoWidth||!video.videoHeight)throw Error('Invalid video preview');
+  const canvas=document.createElement('canvas'),scale=Math.min(1,640/Math.max(video.videoWidth,video.videoHeight));
+  canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
+  const context=canvas.getContext('2d');if(!context)throw Error('Poster unavailable');context.drawImage(video,0,0,canvas.width,canvas.height);
+  return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Poster failed')),'image/jpeg',.8));
+ }finally{video.removeAttribute('src');video.load();URL.revokeObjectURL(url)}
 }
 
 export async function readVideoDuration(file:File):Promise<number>{

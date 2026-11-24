@@ -2,6 +2,7 @@ import 'server-only';
 import {db} from './services';
 import {canViewMany} from './privacy';
 import {profileContentKind} from '../core/profile-content-kind';
+import {reelMediaId} from '../core/reel-discovery';
 import {mintUrls} from './media-urls';
 import {clampLimit} from '../core/cursor';
 import {exploreScore} from '../core/explore-ranking';
@@ -36,7 +37,7 @@ export async function explorePage(viewer:string,opts:{cursor?:string|null;tag?:s
  const urls=await mintUrls(previewIds.flatMap(id=>{const doc=byId.get(id);return doc?.exists?[{id:doc.id,...doc.data()}]:[]}),{viewerUid:viewer});
  let posts=selected.map(d=>{const x=d.data(),id=pickMedia(x),original=byId.get(id)?.data(),thumb=preview(d),createdAt=x.createdAt?.toMillis?.()??0;
   const mediaType=String(original?.contentType||'');
-  return {id:d.id,caption:String(x.caption||''),type:profileContentKind(x,mediaType),authorUid:String(x.authorUid||''),authorHandle:String(x.authorHandle||''),thumbUrl:thumb?urls[thumb]?.url??null:null,mediaUrl:thumb?urls[thumb]?.url??null:null,mediaType,likes:x.hideLikeCount===true?0:Number(x.counters?.likes||0),comments:Number(x.counters?.comments||0),reposts:Number(x.counters?.reposts||0),saves:Number(x.counters?.saves||0),createdAt,mediaCount:Array.isArray(x.media)?x.media.length:1,width:Number(original?.width)||null,height:Number(original?.height)||null};
+  return {id:d.id,caption:String(x.caption||''),type:reelMediaId(x)&&mediaType.startsWith('video/')?'reel':profileContentKind(x,mediaType),authorUid:String(x.authorUid||''),authorHandle:String(x.authorHandle||''),thumbUrl:thumb?urls[thumb]?.url??null:null,mediaUrl:thumb?urls[thumb]?.url??null:null,mediaType,hideLikeCount:x.hideLikeCount===true,likes:x.hideLikeCount===true?0:Number(x.counters?.likes||0),comments:Number(x.counters?.comments||0),reposts:Number(x.counters?.reposts||0),saves:Number(x.counters?.saves||0),createdAt,mediaCount:Array.isArray(x.media)?x.media.length:1,width:Number(original?.width)||null,height:Number(original?.height)||null};
  });
  if(opts.sort==='top'||(!opts.tag&&!opts.text))posts=[...posts].sort((a,b)=>exploreScore(b,Date.now())-exploreScore(a,Date.now())||b.createdAt-a.createdAt);
  return {items:posts,nextCursor:lastScanned&&(lastScanned.id!==snap.docs.at(-1)?.id||snap.size===120)?lastScanned.id:null};

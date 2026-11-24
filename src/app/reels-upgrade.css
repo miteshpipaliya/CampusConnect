@@ -126,3 +126,5 @@
 .cc-reel-caption-left .cc-reel-author>button{border:0;background:transparent;color:#7e99ff;padding:0}
 .cc-reel-caption-left .cc-caption-more{color:inherit}
 }
+
+.cc-reel-caption-left .cc-reel-author{flex-wrap:wrap}.cc-reel-caption-left .cc-reel-author a{min-width:0;color:inherit}.cc-reel-caption-left .cc-reel-author strong{overflow-wrap:anywhere}.cc-reel-caption .cc-reel-author>button{flex:none}.cc-reel-caption p{font-size:14px}.cc-reel-caption .cc-reel-author>button[aria-pressed=true]{color:#9ca3af}@media(max-width:720px){.cc-reel-caption p{font-size:13px}}

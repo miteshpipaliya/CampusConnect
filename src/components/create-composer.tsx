@@ -1,9 +1,9 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {uploadFile,readVideoDuration,readVideoSize} from '@/lib/upload';
+import {uploadFile,readVideoDuration,readVideoSize,captureVideoPoster} from '@/lib/upload';
 import {validateFileForPurpose,canPublish} from '@/lib/core/content-rules';
 type Kind='post'|'story'|'reel';
-type Item={file:File;key:string;id?:string;progress:number;error?:string;alt:string;url:string};
+type Item={file:File;key:string;id?:string;thumbMediaId?:string;progress:number;error?:string;alt:string;url:string};
 export function CreateComposer({onClose,onPublished,initialKind}:{onClose:()=>void;onPublished:()=>void;initialKind?:Kind}){
  const [overlayText,setOverlayText]=useState(''),[overlayColor,setOverlayColor]=useState('#ffffff'),[pollQuestion,setPollQuestion]=useState(''),[pollA,setPollA]=useState(''),[pollB,setPollB]=useState('');
  const [location,setLocation]=useState(''),[hideLikeCount,setHideLikeCount]=useState(false),[commentsOff,setCommentsOff]=useState(false);
@@ -23,10 +23,16 @@ export function CreateComposer({onClose,onPublished,initialKind}:{onClose:()=>vo
    const uploaded:Item[]=[];
    for(const item of items){let id=item.id;
     if(!id){const durationSec=item.file.type.startsWith('video/')?await readVideoDuration(item.file):undefined;if(durationSec&&((kind==='story'&&durationSec>60)||(kind==='reel'&&durationSec>90)))throw Error(kind==='story'?'Stories must be 60 seconds or shorter':'Reels must be 90 seconds or shorter');const dimensions=item.file.type.startsWith('video/')?await readVideoSize(item.file):{};id=await uploadFile({file:item.file,purpose:kind,...dimensions,...(durationSec?{durationSec}:{}),onProgress:p=>setItems(old=>old.map(i=>i.key===item.key?{...i,progress:p}:i)),signal:controller.signal});}
-    uploaded.push({...item,id,progress:1});setItems(old=>old.map(i=>i.key===item.key?{...i,id,progress:1}:i));
+    setItems(old=>old.map(i=>i.key===item.key?{...i,id,progress:1}:i));
+    let thumbMediaId=item.thumbMediaId;
+    if(!thumbMediaId&&kind!=='story'&&item.file.type.startsWith('video/')){
+     try{const blob=await captureVideoPoster(item.file);if(controller.signal.aborted)throw Error('Upload cancelled');const posterId=await uploadFile({file:new File([blob],'video-preview.jpg',{type:'image/jpeg'}),purpose:'post',maxRetries:0,signal:controller.signal});thumbMediaId=posterId;setItems(old=>old.map(i=>i.key===item.key?{...i,thumbMediaId:posterId}:i))}
+     catch{if(controller.signal.aborted)throw Error('Upload cancelled');/* The video can still be published when a browser cannot decode a poster. */}
+    }
+    uploaded.push({...item,id,progress:1,...(thumbMediaId?{thumbMediaId}:{})});
    }
    const endpoint=kind==='story'?'/api/stories':'/api/posts';
-   const payload=kind==='story'?{mediaId:uploaded[0]!.id,caption:caption.slice(0,250),audience,...(overlayText.trim()?{overlay:{text:overlayText,color:overlayColor,x:0.5,y:0.5}}:{}),...(pollQuestion.trim()&&pollA.trim()&&pollB.trim()?{poll:{question:pollQuestion,options:[pollA,pollB]}}:{})}:{type:kind,caption,mediaId:uploaded[0]!.id,media:uploaded.map(i=>({mediaId:i.id,alt:i.alt})),...(kind==='post'?{cropRatio:ratio,filter}:{}),location,hideLikeCount,commentsOff};
+   const payload=kind==='story'?{mediaId:uploaded[0]!.id,caption:caption.slice(0,250),audience,...(overlayText.trim()?{overlay:{text:overlayText,color:overlayColor,x:0.5,y:0.5}}:{}),...(pollQuestion.trim()&&pollA.trim()&&pollB.trim()?{poll:{question:pollQuestion,options:[pollA,pollB]}}:{})}:{type:kind,caption,mediaId:uploaded[0]!.id,media:uploaded.map(i=>({mediaId:i.id,alt:i.alt,...(i.thumbMediaId?{thumbMediaId:i.thumbMediaId}:{})})),...(kind==='post'?{cropRatio:ratio,filter}:{}),location,hideLikeCount,commentsOff};
    const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await response.json();
    if(!response.ok)throw Error(data.error||'Publish failed');items.forEach(i=>URL.revokeObjectURL(i.url));onPublished();onClose();if(kind==='reel'){window.dispatchEvent(new Event('campusconnect:reel-published'));window.location.assign('/reels?reel='+encodeURIComponent(String(data.id||'')))}
   }catch(e){setError(e instanceof Error?e.message:'Publish failed')}finally{setBusy(false);abort.current=null}
