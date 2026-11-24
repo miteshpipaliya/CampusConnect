@@ -1,6 +1,7 @@
 import 'server-only';
 import {FieldValue} from 'firebase-admin/firestore';
 import {db} from './services';
+import {deliverPush} from './push-delivery';
 import {isBlockedEitherWay} from './privacy';
 import {chatNotificationId,shouldNotifyChat} from '../core/chat-notifications';
 
@@ -19,4 +20,5 @@ export async function notifyChatMessage(input:{senderUid:string;recipientUid:str
   type:'chat_message',actorUid:input.senderUid,actorHandle:String(sender.data()?.handle||''),
   channelId:input.channelId,messageId:input.messageId,read:false,readAt:null,createdAt:FieldValue.serverTimestamp()
  },{merge:true});
+ await deliverPush(input.recipientUid,'message').catch(()=>{});
 }

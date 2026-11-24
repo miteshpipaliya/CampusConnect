@@ -2,6 +2,7 @@ import 'server-only';
 import {createHash} from 'node:crypto';
 import {FieldValue} from 'firebase-admin/firestore';
 import {db} from './services';
+import {deliverPush} from './push-delivery';
 import {isBlockedEitherWay} from './privacy';
 import {acceptsNotification} from '../core/notification-preferences';
 import {notificationGroupKey,mergeActors,type NotificationEvent} from '../core/notification-grouping';
@@ -14,7 +15,7 @@ export async function notify(input:{recipientUid:string;actorUid:string;type:Not
  const target=input.postId||input.storyId||input.commentId||input.targetId||actorUid;
  const key=createHash('sha256').update(notificationGroupKey(type,target,Date.now())).digest('hex').slice(0,32);
  const ref=recipient.ref.collection('notifications').doc(key);
- return store.runTransaction(async tx=>{
+ const changed=await store.runTransaction(async tx=>{
   const previous=await tx.get(ref),old=previous.data()||{},actorUids:Array<string>=Array.isArray(old.actorUids)?old.actorUids:typeof old.actorUid==='string'?[old.actorUid]:[];
   if(actorUids.includes(actorUid))return false;
   tx.set(ref,{
@@ -24,4 +25,6 @@ export async function notify(input:{recipientUid:string;actorUid:string;type:Not
   },{merge:true});
   return true;
  });
+ if(changed)await deliverPush(recipientUid,'activity').catch(()=>{});
+ return changed;
 }

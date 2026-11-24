@@ -1,3 +1,4 @@
+import {PUSH_COOKIE,revokePush} from '@/lib/server/push-delivery';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes, randomInt, createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
@@ -35,7 +36,7 @@ export async function POST(request:NextRequest){
  if(!request.headers.get('content-type')?.includes('application/json')||Number(request.headers.get('content-length')||0)>8192)return errorResponse(400,'Invalid request');
  let raw:unknown;try{raw=await request.json()}catch{return errorResponse(400,'Invalid JSON')}
  const action=(raw as {action?:string})?.action;
- if(action==='logout'){const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);return r}
+ if(action==='logout'){const binding=request.cookies.get(PUSH_COOKIE)?.value;if(binding){const user=await session(request);if(user)await revokePush(user.uid,binding).catch(()=>{})}const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);r.cookies.delete(PUSH_COOKIE);return r}
  if(action==='loginPassword'){
   const parsed=z.object({email:emailSchema,password:z.string().min(1).max(128)}).safeParse(raw);
   if(!parsed.success||!allowedEmail(parsed.data.email))return errorResponse(401,'Invalid email or password');
