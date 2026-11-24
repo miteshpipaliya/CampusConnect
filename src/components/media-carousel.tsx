@@ -1,19 +1,22 @@
 'use client';
-import {useRef,useState} from 'react';
-import {Volume2,VolumeX,Play,Pause} from 'lucide-react';
+import {useEffect,useRef,useState} from 'react';
+import {Play,Pause} from 'lucide-react';
+import {VolumeControl} from './volume-control';
+import {playWithSound,setVideoVolume} from '@/lib/client/play-with-sound';
 export type CarouselMedia={mediaId:string;url?:string|null;alt?:string;contentType?:string};
 function InlineVideo({src}:{src:string}){
- const player=useRef<HTMLVideoElement>(null),[playing,setPlaying]=useState(false),[muted,setMuted]=useState(true);
- function toggle(){const video=player.current;if(!video)return;if(video.paused)void video.play().then(()=>setPlaying(true)).catch(()=>setPlaying(false));else{video.pause();setPlaying(false)}}
+ const player=useRef<HTMLVideoElement>(null),[playing,setPlaying]=useState(false),[volume,setVolume]=useState(1),stop=useRef<(()=>void)|null>(null);
+ useEffect(()=>{const v=player.current;if(v)setVideoVolume(v,volume)},[volume,src]);
+ useEffect(()=>{const hide=()=>{if(document.hidden){stop.current?.();player.current?.pause()}};document.addEventListener('visibilitychange',hide);return()=>{document.removeEventListener('visibilitychange',hide);stop.current?.()}},[]);
+ function toggle(){const video=player.current;if(!video)return;if(video.paused){stop.current?.();stop.current=playWithSound(video,volume)}else{stop.current?.();video.pause()}}
  return <div className="cc-inline-video" style={{position:'relative',width:'100%',maxWidth:'100%',display:'grid',placeItems:'center',background:'#0d0f14'}}>
-  <video ref={player} src={src} playsInline muted={muted} preload="metadata"
+  <video ref={player} src={src} playsInline preload="metadata"
    disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
    onContextMenu={e=>e.preventDefault()} onClick={toggle} onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)} onPlay={()=>setPlaying(true)}
    style={{display:'block',width:'100%',height:'auto',maxHeight:'68dvh',objectFit:'contain',cursor:'pointer'}}/>
   <button type="button" aria-label={playing?'Pause video':'Play video'} onClick={toggle} style={{position:'absolute',left:12,bottom:12,border:'0',borderRadius:30,padding:8,color:'#fff',background:'#0009',display:'grid',placeItems:'center'}}>
    {playing?<Pause size={21}/>:<Play size={21}/>}</button>
-  <button type="button" aria-label={muted?'Unmute video':'Mute video'} onClick={()=>setMuted(v=>!v)} style={{position:'absolute',right:12,bottom:12,border:'0',borderRadius:30,padding:8,color:'#fff',background:'#0009',display:'grid',placeItems:'center'}}>
-   {muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button>
+  <VolumeControl volume={volume} onChange={setVolume}/>
  </div>
 }
 export function MediaCarousel({items,ratio='1 / 1'}:{items:CarouselMedia[];ratio?:string}){

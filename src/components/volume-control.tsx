@@ -1,0 +1,4 @@
+'use client';
+import {Volume2,Volume1,VolumeX} from 'lucide-react';
+import '@/app/volume-control.css';
+export function VolumeControl({volume,onChange}:{volume:number;onChange:(value:number)=>void}){const Icon=volume===0?VolumeX:volume<.5?Volume1:Volume2;return <div className="cc-volume-control" onClick={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}><input type="range" min={0} max={1} step={.01} value={volume} aria-label="Volume" aria-valuetext={Math.round(volume*100)+'%'} title={volume===0?'Audio is off':'Audio is playing'} onChange={e=>onChange(Number(e.target.value))} onKeyDown={e=>e.stopPropagation()}/><span className="cc-volume-icon" aria-hidden="true" title={volume===0?'Audio is off':'Audio is playing'}><Icon size={18}/></span></div>}
