@@ -8,8 +8,10 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
  const {id}=await params,story=await authorizedStory(user.uid,id,{allowArchive:true});
  if(!story||!story.owned)return errorResponse(403,'Only the owner can see viewers');
  try{
-  const snap=await story.doc.ref.collection('views').orderBy('createdAt','desc').limit(100).get();
-  const people=await hydrateAvatars(snap.docs.map(d=>d.id),user.uid);
-  return NextResponse.json({total:snap.size,viewers:snap.docs.map(d=>({uid:d.id,handle:people[d.id]?.handle||'',name:people[d.id]?.name||'Student',avatarUrl:people[d.id]?.avatarUrl??null}))},{headers:safeHeaders});
+  const ref=story.doc.ref.collection('views');
+  const [snap,count,self]=await Promise.all([ref.orderBy('createdAt','desc').limit(100).get(),ref.count().get(),ref.doc(user.uid).get()]);
+  const visible=snap.docs.filter(d=>d.id!==user.uid);
+  const people=await hydrateAvatars(visible.map(d=>d.id),user.uid);
+  return NextResponse.json({total:Math.max(0,count.data().count-Number(self.exists)),viewers:visible.map(d=>({uid:d.id,handle:people[d.id]?.handle||'',name:people[d.id]?.name||'Student',avatarUrl:people[d.id]?.avatarUrl??null}))},{headers:safeHeaders});
  }catch{return errorResponse(503,'Story viewers unavailable')}
 }

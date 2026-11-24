@@ -10,6 +10,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{id:string}>
  if(!checked.ok)return checked.response;
  const {id}=await params,story=await authorizedStory(checked.user.uid,id,{allowHighlighted:true});
  if(!story)return errorResponse(404,'Story unavailable');
+ if(story.owned)return NextResponse.json({ok:true,firstView:false},{headers:safeHeaders});
  try{
   const ref=story.doc.ref.collection('views').doc(checked.user.uid);
   const created=await story.doc.ref.firestore.runTransaction(async tx=>{

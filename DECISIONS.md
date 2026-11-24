@@ -25,3 +25,5 @@ Updated 2026-11-24.
 - Home redesign is isolated from approved Reels source. Feed actions update local post state rather than polling and replacing the entire feed.
 
 - Home Following uses bounded author relationship reads, not a new composite index. Mutual suggestions are limited to 20 followed accounts and 12 candidates.
+
+- Own story opens viewer while separate plus opens composer. Story media uses authenticated redirect to avoid stale 60-second signed links. View counts exclude owner.
