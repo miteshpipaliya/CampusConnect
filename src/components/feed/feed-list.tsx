@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {useInfiniteQuery,useQuery,useQueryClient} from '@tanstack/react-query';
+import {useInfiniteQuery,useQueryClient} from '@tanstack/react-query';
 import Link from 'next/link';
 import {Heart,MessageCircle,Repeat2,Send,Bookmark,Play,ChevronLeft,ChevronRight} from 'lucide-react';
 import {VolumeControl} from '../volume-control';
@@ -8,6 +8,7 @@ import {playWithSound} from '@/lib/client/play-with-sound';
 import {Avatar} from '../avatar';
 import {PostActions} from '../post-actions';
 import {ChatShareSheet} from '../chat/chat-share-sheet';
+import {useShellUid} from '../shell-session';
 import {userKey} from '@/lib/queries';
 import {feedMediaFrame,formatCount,relativeTime} from '@/lib/core/feed-presentation';
 type Media={mediaId:string;url?:string|null;alt?:string;contentType?:string;width?:number|null;height?:number|null};
@@ -41,11 +42,10 @@ function FeedPost({post:p,changed}:{post:Post;changed:()=>void}){
  return <article className="cc-feed-post"><FeedMedia post={post} header={header} onLike={()=>{if(!post.liked)void act('like')}}/><div className="cc-feed-actions"><button aria-label="Like" aria-pressed={post.liked} className={post.liked?'cc-feed-liked':''} disabled={busy} onClick={()=>void act('like')}><Heart fill={post.liked?'currentColor':'none'}/>{!post.hideLikeCount&&formatCount(post.likes)}</button><Link href={href} scroll={false} aria-label="Comments"><MessageCircle/>{formatCount(post.comments)}</Link><button aria-label="Repost" aria-pressed={Boolean(post.reposted)} disabled={busy} onClick={()=>void act('repost')}><Repeat2/>{formatCount(post.reposts)}</button><button aria-label="Share" onClick={()=>setShare(true)}><Send/>{formatCount(post.shares)}</button><button className="cc-feed-bookmark" aria-label="Save" aria-pressed={post.saved} disabled={busy} onClick={()=>void act('save')}><Bookmark fill={post.saved?'currentColor':'none'}/></button></div><div className="cc-feed-caption"><b>{post.authorHandle}</b> {(expanded?post.caption:post.caption.slice(0,110)).split(/([#@][\w.]+)/g).map((s,i)=>s.startsWith('#')?<Link key={i} href={'/explore/tags/'+encodeURIComponent(s.slice(1))}>{s}</Link>:s.startsWith('@')?<Link key={i} href={'/profile/'+encodeURIComponent(s.slice(1))}>{s}</Link>:s)}{post.caption.length>110&&<button onClick={()=>setExpanded(v=>!v)}>{expanded?' less':'… more'}</button>}</div>{post.comments>0&&<Link className="cc-feed-comment-link" href={href} scroll={false}>View all {post.comments} comments</Link>}{post.commentsOff?<small>Comments are turned off</small>:<form className="cc-feed-comment-box" onSubmit={e=>{e.preventDefault();if(text.trim())void act('comment')}}><input aria-label="Add a comment" placeholder="Add a comment…" value={text} maxLength={1000} onChange={e=>setText(e.target.value)}/>{text.trim()&&<button disabled={busy}>Post</button>}</form>}{error&&<p role="alert">{error}</p>}{share&&<ChatShareSheet postId={post.id} onClose={()=>setShare(false)} onShared={n=>setPost(v=>({...v,shares:v.shares+n}))}/>}</article>
 }
 export function FeedList({epoch=0}:{epoch?:number}){
- const [mode,setMode]=useState<'for-you'|'following'>('for-you');
- const auth=useQuery({queryKey:['feed-session'],queryFn:({signal})=>json<{user?:{uid:string}}>('/api/auth',signal),staleTime:0});const uid=auth.data?.user?.uid??null;
- const query=useInfiniteQuery({queryKey:userKey(uid,'home-feed',epoch,mode),enabled:Boolean(uid),initialPageParam:'',queryFn:({pageParam,signal})=>json<Page>('/api/posts?limit=10&feed='+mode+(pageParam?'&cursor='+encodeURIComponent(pageParam):''),signal),getNextPageParam:last=>last.nextCursor||undefined});
+ const uid=useShellUid();
+ const query=useInfiniteQuery({queryKey:userKey(uid,'home-feed',epoch),enabled:Boolean(uid),initialPageParam:'',queryFn:({pageParam,signal})=>json<Page>('/api/posts?limit=10'+(pageParam?'&cursor='+encodeURIComponent(pageParam):''),signal),getNextPageParam:last=>last.nextCursor||undefined});
  const end=useRef<HTMLDivElement>(null),client=useQueryClient(),{hasNextPage,isFetchingNextPage,fetchNextPage}=query;
  useEffect(()=>{const node=end.current;if(!node||!hasNextPage)return;const observer=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)&&!isFetchingNextPage)void fetchNextPage()},{rootMargin:'600px'});observer.observe(node);return()=>observer.disconnect()},[hasNextPage,isFetchingNextPage,fetchNextPage]);
  const posts=[...new Map((query.data?.pages.flatMap(p=>p.posts)||[]).map(p=>[p.id,p])).values()];
- return <div><nav className="cc-feed-tabs" aria-label="Feed type">{(['for-you','following'] as const).map(t=><button key={t} aria-pressed={mode===t} onClick={()=>setMode(t)}>{t==='following'?'Following':'For You'}</button>)}</nav>{query.isPending&&<div className="cc-feed-skeleton" aria-label="Loading posts"/>}{(query.isError||auth.isError)&&<p role="alert">Feed unavailable <button onClick={()=>{void auth.refetch();void query.refetch()}}>Retry</button></p>}{posts.map(post=><FeedPost key={post.id} post={post} changed={()=>void client.invalidateQueries({queryKey:userKey(uid,'home-feed',epoch,mode)})}/>)}<div ref={end} className="cc-feed-end">{isFetchingNextPage?'Loading more…':!hasNextPage&&posts.length?"You're all caught up":!query.isPending&&!posts.length?'No posts yet.':''}</div></div>
+ return <div>{query.isPending&&<div className="cc-feed-skeleton" aria-label="Loading posts"/>}{query.isError&&<p role="alert">Feed unavailable <button onClick={()=>{void query.refetch()}}>Retry</button></p>}{posts.map(post=><FeedPost key={post.id} post={post} changed={()=>void client.invalidateQueries({queryKey:userKey(uid,'home-feed',epoch)})}/>)}<div ref={end} className="cc-feed-end">{isFetchingNextPage?'Loading more…':!hasNextPage&&posts.length?"You're all caught up":!query.isPending&&!posts.length?'No posts yet.':''}</div></div>
 }

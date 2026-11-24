@@ -12,7 +12,7 @@
 .cc-reel-author button{border:1px solid #ffffff9c;background:#ffffff14;border-radius:8px;padding:5px 11px;color:#fff;font-weight:600;cursor:pointer}
 .cc-reel-caption p{line-height:1.4;font-size:13px;max-height:75px;overflow:auto;margin:9px 0}
 .cc-reel-caption small{font-size:11px;opacity:.84}
-.cc-reel-mute{position:absolute;right:14px;bottom:30px;color:#fff;background:#0008;border:0;border-radius:50%;width:34px;height:34px;display:grid;place-items:center;z-index:5;cursor:pointer}
+
 .cc-reel-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#0007;color:#fff;border:0;border-radius:50%;width:70px;height:70px;display:grid;place-items:center;cursor:pointer}
 .cc-reel-progress{position:absolute;height:3px;background:#c9c9ce5c;left:0;right:0;bottom:0}
 .cc-reel-progress span{height:100%;background:#fff;display:block;transition:width .15s linear}
@@ -72,7 +72,7 @@
  .cc-app.cc-reels-mode{display:grid;grid-template-columns:76px minmax(0,1fr)!important}
  .cc-reels-mode .cc-sidebar{width:76px;overflow:hidden;padding:22px 12px;z-index:12}
  .cc-reels-mode .cc-sidebar .cc-wordmark,
- .cc-reels-mode .cc-sidebar .cc-nav-item span{display:none!important}
+ .cc-reels-mode .cc-sidebar .cc-nav-item .cc-nav-label{display:none!important}
  .cc-reels-mode .cc-sidebar .cc-brand{width:50px}
 }
 @media(max-width:768px){
@@ -108,7 +108,7 @@
  .cc-reels-mode .cc-reel-actions{position:absolute;right:6px;bottom:12px;z-index:6;padding:0;width:48px;gap:12px}
  .cc-reels-mode .cc-reel-actions svg{width:27px;height:27px}
  .cc-reels-mode .cc-reel-caption{right:50px;padding-right:12px}
- .cc-reels-mode .cc-reel-mute{right:55px;bottom:16px}
+ .cc-reels-mode 
  .cc-reel-nav{display:none}
  .cc-reel-menu{right:8px;bottom:80px}
  .cc-reel-comments{top:auto;bottom:0;right:0;width:100%;height:70dvh}
