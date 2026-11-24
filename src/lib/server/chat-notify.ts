@@ -17,6 +17,6 @@ export async function notifyChatMessage(input:{senderUid:string;recipientUid:str
  if(!shouldNotifyChat({senderUid:input.senderUid,recipientUid:input.recipientUid,messagesEnabled:prefs?.messages!==false,blocked}))return;
  await store.collection('users').doc(input.recipientUid).collection('notifications').doc(chatNotificationId(input.messageId)).set({
   type:'chat_message',actorUid:input.senderUid,actorHandle:String(sender.data()?.handle||''),
-  channelId:input.channelId,messageId:input.messageId,read:false,createdAt:FieldValue.serverTimestamp()
+  channelId:input.channelId,messageId:input.messageId,read:false,readAt:null,createdAt:FieldValue.serverTimestamp()
  },{merge:true});
 }

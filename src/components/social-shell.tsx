@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import '@/app/chat-live-upgrade.css';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users, ChartNoAxesCombined, Menu } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
 import {userKey} from '@/lib/queries';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
+import {LiveMessageActivity} from './chat/live-message-activity';
 import {StreamConnectionProvider} from './chat/stream-connection';
 import type { LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -68,6 +70,7 @@ function Suggestions({handle}:{handle:string}){
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname=usePathname(),params=useSearchParams(),router=useRouter();
   const [avatarMediaId,setAvatarMediaId]=useState<string|null>(null),[menu,setMenu]=useState(false),[recent,setRecent]=useState<Array<{handle:string;avatarUrl:string|null;avatarMediaId:string|null}>>([]),[menuError,setMenuError]=useState('');
+  const [liveUnread,setLiveUnread]=useState<number|null>(null);
   const [uid,setUid]=useState<string|null>(null);
   const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
   const queryClient=useQueryClient();
@@ -76,8 +79,8 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    if(!response.ok)throw Error('Notification summary unavailable');
    const data=await response.json();
    return {unread:Number(data.unread||0),unreadMessages:Number(data.unreadMessages||0)};
-  },refetchInterval:20000,refetchIntervalInBackground:false,staleTime:20000});
-  const counts=summary.data??{unread:0,unreadMessages:0};
+  },refetchInterval:5000,refetchIntervalInBackground:false,staleTime:5000});
+  const counts={unread:summary.data?.unread??0,unreadMessages:liveUnread??summary.data?.unreadMessages??0};
   useEffect(()=>{
    const changed=()=>{if(uid&&document.visibilityState!=='hidden')void queryClient.invalidateQueries({queryKey:userKey(uid,'notification-summary')})};
    window.addEventListener('cc-notifications-updated',changed);document.addEventListener('visibilitychange',changed);
@@ -98,7 +101,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   useEffect(()=>{if(!uid)return;let live=true;void fetch('/api/chat',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(live)setRecent(Array.isArray(d?.conversations)?d.conversations.slice(0,3):[])}).catch(()=>{});return()=>{live=false}},[uid]);
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setMenu(false)};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
   if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
-  return <StreamConnectionProvider key={uid}><div className={'cc-app'+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <StreamConnectionProvider key={uid}><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app'+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}}/>

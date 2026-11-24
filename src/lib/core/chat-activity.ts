@@ -1,0 +1,3 @@
+export function inboxTime(value:string|null|undefined,now=Date.now()){const t=Date.parse(value||'');if(!Number.isFinite(t))return '';const s=Math.max(0,(now-t)/1000);return s<60?'now':s<3600?Math.floor(s/60)+'m':s<86400?Math.floor(s/3600)+'h':s<604800?Math.floor(s/86400)+'d':new Intl.DateTimeFormat('en',{month:'short',day:'numeric'}).format(t)}
+export function unreadConversations(rows:readonly {unreadCount?:number}[]){return rows.reduce((n,r)=>n+Number((r.unreadCount??0)>0),0)}
+export function unreadForMember(read:readonly {user?:{id?:string};unread_messages?:number}[]|undefined,uid:string,fallback=0){const row=read?.find(r=>r.user?.id===uid);const n=row?.unread_messages??fallback;return Number.isFinite(n)?Math.max(0,Math.floor(n)):0}
