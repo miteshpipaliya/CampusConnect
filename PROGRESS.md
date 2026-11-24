@@ -52,3 +52,5 @@ Fixed actual CI failures (private avatar rule and shared media entrypoint source
 
 ## Home UI upgrade
 Added account-keyed paginated feed, Instagram-inspired media and actions, story composer entry, suggestions follow, notification positioning and floating messages link. CI and signed-in visual acceptance pending.
+
+Home follow-up: added carousel swipe and keyboard navigation, blurred video backdrop, Following filter, repost state hydration, recent chat avatars, navigation profile and More menu, story gradient rings and bounded mutual suggestions. Live acceptance and exact-head CI pending.

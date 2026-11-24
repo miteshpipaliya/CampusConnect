@@ -26,23 +26,30 @@ export async function GET(request:NextRequest){
   const store=db();const selected:FirebaseFirestore.QueryDocumentSnapshot[]=[];
   const muteSnaps=await store.collection('mutes').where('ownerUid','==',user.uid).limit(200).get();
   const muted=new Set(muteSnaps.docs.filter(d=>d.data().posts!==false).map(d=>String(d.data().targetUid||'')));
+  const followingOnly=request.nextUrl.searchParams.get('feed')==='following';
+  let exhausted=false;
   let lastScanned:FirebaseFirestore.QueryDocumentSnapshot|undefined;
   let query=store.collection('posts').orderBy('createdAt','desc').orderBy(FieldPath.documentId(),'desc');
   if(cursor)query=query.startAfter(Timestamp.fromMillis(cursor.millis),cursor.id);
   for(let page=0;page<4&&selected.length<limit;page++){
    const snap=await query.limit(50).get();
    const visibility=await canViewMany(user.uid,snap.docs.map(doc=>String(doc.data().authorUid||'')));
+   const pageAuthors=[...new Set(snap.docs.map(d=>String(d.data().authorUid||'')).filter(id=>id&&id!==user.uid))];
+   const edges=followingOnly&&pageAuthors.length?await store.getAll(...pageAuthors.map(id=>store.collection('follows').doc(user.uid+'_'+id))):[];
+   const followed=new Set(pageAuthors.filter((_,i)=>edges[i]?.data()?.status==='active'));
    const visible=snap.docs.map(doc=>visibility.get(String(doc.data().authorUid||''))??false);
-   for(let i=0;i<snap.docs.length;i++){const doc=snap.docs[i]!;lastScanned=doc;if(visible[i]&&!muted.has(String(doc.data().authorUid||''))&&!doc.data().deletedAt&&!doc.data().archived){selected.push(doc);if(selected.length===limit)break}}
-   if(snap.docs.length<50)break;
+   for(let i=0;i<snap.docs.length;i++){const doc=snap.docs[i]!;lastScanned=doc;if(visible[i]&&(!followingOnly||doc.data().authorUid===user.uid||followed.has(String(doc.data().authorUid)))&&!muted.has(String(doc.data().authorUid||''))&&!doc.data().deletedAt&&!doc.data().archived){selected.push(doc);if(selected.length===limit)break}}
+   if(snap.docs.length<50){exhausted=lastScanned?.id===snap.docs.at(-1)?.id||snap.empty;break;}
    const last=snap.docs.at(-1);if(!last)break;
    query=query.startAfter(last);
   }
   const likeRefs=selected.map(d=>d.ref.collection('likes').doc(user.uid));
   const saveRefs=selected.map(d=>store.collection('users').doc(user.uid).collection('saves').doc(d.id));
-  const [ownLikes,ownSaves]=await Promise.all([
+  const repostRefs=selected.map(d=>store.collection('reposts').doc(user.uid+'_'+d.id));
+  const [ownLikes,ownSaves,ownReposts]=await Promise.all([
    likeRefs.length?store.getAll(...likeRefs):Promise.resolve([]),
-   saveRefs.length?store.getAll(...saveRefs):Promise.resolve([])
+   saveRefs.length?store.getAll(...saveRefs):Promise.resolve([]),
+   repostRefs.length?store.getAll(...repostRefs):Promise.resolve([])
   ]);
   const authorIds=[...new Set(selected.map(d=>String(d.data().authorUid||'')).filter(Boolean))];
   const users=authorIds.length?await store.getAll(...authorIds.map(id=>store.collection('users').doc(id))):[];
@@ -69,11 +76,11 @@ export async function GET(request:NextRequest){
    const mediaId=typeof data.mediaId==='string'?data.mediaId:null;
    const author=authors.get(String(data.authorUid||''));
    const avatarMediaId=typeof author?.avatarMediaId==='string'?author.avatarMediaId:null;
-   return {id:d.id,createdAt:data.createdAt?.toMillis?.()??0,isMine:data.authorUid===user.uid,followStatus:followStatus.get(String(data.authorUid))||'none',verified:author?.verified===true,shares:Number(data.counters?.shares||0),saves:Number(data.counters?.saves||0),width:mediaId?dimensions.get(mediaId)?.width??null:null,height:mediaId?dimensions.get(mediaId)?.height??null:null,media:Array.isArray(data.media)?data.media.map((m:{mediaId:string;alt?:string})=>({...m,...dimensions.get(m.mediaId),contentType:mediaTypes.get(m.mediaId)||'',url:mediaUrls[m.mediaId]?.url??null})):[],type:data.type||'post',caption:data.caption,cropRatio:data.cropRatio||'1 / 1',filter:data.filter||'none',location:data.location||null,hashtags:data.hashtags||[],mentions:data.mentions||[],pinned:data.pinned===true,hideLikeCount:data.hideLikeCount===true,commentsOff:data.commentsOff===true,authorHandle:data.authorHandle,authorUid:data.authorUid,mediaId,likes:counters.likes,comments:counters.comments,reposts:counters.reposts,liked:ownLikes[i]?.exists??false,saved:ownSaves[i]?.exists??false,avatarMediaId,avatarUrl:avatarMediaId?mediaUrls[avatarMediaId]?.url??null:null,mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null};
+   return {id:d.id,createdAt:data.createdAt?.toMillis?.()??0,isMine:data.authorUid===user.uid,followStatus:followStatus.get(String(data.authorUid))||'none',verified:author?.verified===true,shares:Number(data.counters?.shares||0),saves:Number(data.counters?.saves||0),width:mediaId?dimensions.get(mediaId)?.width??null:null,height:mediaId?dimensions.get(mediaId)?.height??null:null,media:Array.isArray(data.media)?data.media.map((m:{mediaId:string;alt?:string})=>({...m,...dimensions.get(m.mediaId),contentType:mediaTypes.get(m.mediaId)||'',url:mediaUrls[m.mediaId]?.url??null})):[],type:data.type||'post',caption:data.caption,cropRatio:data.cropRatio||'1 / 1',filter:data.filter||'none',location:data.location||null,hashtags:data.hashtags||[],mentions:data.mentions||[],pinned:data.pinned===true,hideLikeCount:data.hideLikeCount===true,commentsOff:data.commentsOff===true,authorHandle:data.authorHandle,authorUid:data.authorUid,mediaId,likes:counters.likes,comments:counters.comments,reposts:counters.reposts,reposted:ownReposts[i]?.exists??false,liked:ownLikes[i]?.exists??false,saved:ownSaves[i]?.exists??false,avatarMediaId,avatarUrl:avatarMediaId?mediaUrls[avatarMediaId]?.url??null:null,mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null};
   }));
   const last=lastScanned;
   const lastMs=last?.data().createdAt?.toMillis?.();
-  const nextCursor=last&&typeof lastMs==='number'?encodeCursor(lastMs,last.id):null;
+  const nextCursor=!exhausted&&last&&typeof lastMs==='number'?encodeCursor(lastMs,last.id):null;
   return NextResponse.json({posts,nextCursor,viewerUid:user.uid},{headers:safeHeaders});
  }catch{return errorResponse(503,'Feed unavailable')}
 }

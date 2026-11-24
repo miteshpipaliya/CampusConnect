@@ -23,3 +23,5 @@ Updated 2026-11-24.
 - R2: use the same media signer for redirect and list endpoints; signed URLs cannot be revoked after issuance. Report authorization returns a generic unavailable response.
 
 - Home redesign is isolated from approved Reels source. Feed actions update local post state rather than polling and replacing the entire feed.
+
+- Home Following uses bounded author relationship reads, not a new composite index. Mutual suggestions are limited to 20 followed accounts and 12 candidates.

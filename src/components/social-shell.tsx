@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users, ChartNoAxesCombined } from 'lucide-react';
+import { Home, PlusSquare, UserRound, Clapperboard, Send, Search, Heart, Users, ChartNoAxesCombined, Menu } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {Avatar} from './avatar';
 import {userKey} from '@/lib/queries';
@@ -44,14 +44,14 @@ function Brand({ compact = false }: { compact?: boolean }) {
     <span className="cc-wordmark">Campus<span>Connect</span><small>BVM CAMPUS</small></span>
   </Link>;
 }
-function Nav({ pathname, section, mobile = false, counts }: { pathname: string; section:string; mobile?: boolean; counts:{unread:number;unreadMessages:number} }) {
+function Nav({ pathname, section, mobile = false, counts, account }: { pathname: string; section:string; mobile?: boolean; counts:{unread:number;unreadMessages:number};account?:{handle:string;avatarMediaId:string|null} }) {
   return <nav className={mobile ? 'cc-mobile-nav' : 'cc-navigation'} aria-label={mobile ? 'Mobile navigation' : 'Main navigation'}>
     {links.filter((item) => !mobile || mobileLabels.has(item.label)).map((item) => {
       const active = activeLink(pathname, item, section);
       const Icon = item.Icon;
       return <Link key={item.label} href={item.href} scroll={false} className={'cc-nav-item' + (active ? ' is-active' : '')}
         aria-current={active ? 'page' : undefined} aria-label={item.label} title={item.label}>
-        <Icon size={mobile ? 23 : 25} strokeWidth={active ? 2.8 : 1.8} fill={active && item.label === 'Home' ? 'currentColor' : 'none'} aria-hidden="true" />
+        {item.label==='Profile'&&account?<Avatar user={account} size={24} ring={active?'seen':'none'}/>:<Icon size={mobile ? 23 : 25} strokeWidth={active ? 2.8 : 1.8} fill={active && item.label === 'Home' ? 'currentColor' : 'none'} aria-hidden="true" />}
         <span>{item.label}</span>
         {((item.label==='Notifications'?counts.unread:item.label==='Messages'?counts.unreadMessages:0)>0)&&<b aria-label="Unread notifications" style={{position:'absolute',top:0,right:0,minWidth:17,height:17,borderRadius:20,background:'#fa3659',color:'white',fontSize:10,lineHeight:'17px',textAlign:'center'}}>{(item.label==='Notifications'?counts.unread:counts.unreadMessages)>99?'99+':(item.label==='Notifications'?counts.unread:counts.unreadMessages)}</b>}
       </Link>;
@@ -60,13 +60,14 @@ function Nav({ pathname, section, mobile = false, counts }: { pathname: string; 
 }
 function FollowSuggestion({handle}:{handle:string}){const [status,setStatus]=useState('none'),[busy,setBusy]=useState(false);return <button className="cc-suggestion-follow" disabled={busy||status!=='none'} onClick={async()=>{setBusy(true);try{const r=await fetch('/api/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle})});const d=await r.json();if(r.ok)setStatus(d.status||'active')}finally{setBusy(false)}}}>{status==='pending'?'Requested':status==='active'?'Following':'Follow'}</button>}
 function Suggestions({handle}:{handle:string}){
- const [members,setMembers]=useState<Array<{handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null}>>([]);
+ const [members,setMembers]=useState<Array<{handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null;reason?:string}>>([]);
  useEffect(()=>{let active=true;fetch('/api/suggestions',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.members))setMembers(d.members.filter((m:{handle:string})=>m.handle&&m.handle!==handle).slice(0,8))}).catch(()=>{});return()=>{active=false}},[handle]);
- return <aside className="cc-suggestions"><div className="cc-me"><Avatar user={{handle}} size={44}/><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your profile</small></div><Link href="/profile/me" >Profile</Link></div><div className="cc-suggestion-heading">Suggested for you</div>{members.length?members.map(m=><div className="cc-suggested" key={m.handle}><Avatar user={{name:m.name,handle:m.handle,avatarMediaId:m.avatarMediaId??null,avatarUrl:m.avatarUrl??null}} size={44}/><div><Link href={'/profile/'+encodeURIComponent(m.handle)}><b>@{m.handle}</b></Link><small>{m.name}</small></div><FollowSuggestion handle={m.handle}/></div>):<p style={{fontSize:12,color:'#aaa'}}>No other campus members found.</p>}</aside>;
+ return <aside className="cc-suggestions"><div className="cc-me"><Avatar user={{handle}} size={44}/><div><Link href="/profile/me"><b>@{handle}</b></Link><small>Your profile</small></div><Link href="/profile/me" >Profile</Link></div><div className="cc-suggestion-heading">Suggested for you</div>{members.length?members.map(m=><div className="cc-suggested" key={m.handle}><Avatar user={{name:m.name,handle:m.handle,avatarMediaId:m.avatarMediaId??null,avatarUrl:m.avatarUrl??null}} size={44}/><div><Link href={'/profile/'+encodeURIComponent(m.handle)}><b>@{m.handle}</b></Link><small>{m.reason||m.name}</small></div><FollowSuggestion handle={m.handle}/></div>):<p style={{fontSize:12,color:'#aaa'}}>No other campus members found.</p>}</aside>;
 }
 
 export default function SocialShell({ children }: { children: ReactNode }) {
   const pathname=usePathname(),params=useSearchParams(),router=useRouter();
+  const [avatarMediaId,setAvatarMediaId]=useState<string|null>(null),[menu,setMenu]=useState(false),[recent,setRecent]=useState<Array<{handle:string;avatarUrl:string|null;avatarMediaId:string|null}>>([]),[menuError,setMenuError]=useState('');
   const [uid,setUid]=useState<string|null>(null);
   const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState('home');
   const queryClient=useQueryClient();
@@ -92,13 +93,16 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    }).catch(()=>{});
   },[]);
   useEffect(()=>{let live=true;fetch('/api/auth',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(x=>{
-   if(!live)return;setChecked(true);queryClient.clear();if(x?.user?.profile?.handle&&x?.user?.uid){setUid(x.user.uid);setHandle(x.user.profile.handle)}else router.replace('/login');
+   if(!live)return;setChecked(true);queryClient.clear();if(x?.user?.profile?.handle&&x?.user?.uid){setUid(x.user.uid);setHandle(x.user.profile.handle);setAvatarMediaId(x.user.profile.avatarMediaId||null)}else router.replace('/login');
   }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router,queryClient]);
+  useEffect(()=>{if(!uid)return;let live=true;void fetch('/api/chat',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(live)setRecent(Array.isArray(d?.conversations)?d.conversations.slice(0,3):[])}).catch(()=>{});return()=>{live=false}},[uid]);
+  useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setMenu(false)};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
   if(!checked||!handle)return <div className="cc-live-empty">Checking campus sign-in… <Link href="/login">Sign in</Link></div>;
   return <StreamConnectionProvider key={uid}><div className={'cc-app'+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
-      <Nav pathname={pathname} section={section} counts={counts}/>
+      <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}}/>
+      <div className="cc-more-wrap"><button className="cc-more-toggle" aria-label="More" aria-expanded={menu} onClick={()=>setMenu(v=>!v)}><Menu size={25}/></button>{menu&&<div className="cc-more-menu"><Link href="/settings" onClick={()=>setMenu(false)}>Settings</Link><Link href="/saved" onClick={()=>setMenu(false)}>Saved</Link><Link href="/dashboard" onClick={()=>setMenu(false)}>Dashboard</Link><button onClick={async()=>{try{const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});if(!r.ok)throw Error('Sign out failed');queryClient.clear();window.location.assign('/login')}catch{setMenuError('Sign out failed')}}}>Log out</button>{menuError&&<p role="alert">{menuError}</p>}</div>}</div>
 
     </aside>
     <main className="cc-main" id="main-content">
@@ -106,7 +110,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
       <div className="cc-page">{children}</div>
     </main>
     {!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle}/>}
-    <Nav pathname={pathname} section={section} counts={counts} mobile />
-    {(pathname==='/home'||pathname.startsWith('/explore')||pathname.startsWith('/reels'))&&<Link href="/messages" className="cc-messages-pill"><Send size={23}/> Messages {counts.unreadMessages>0&&<b>{counts.unreadMessages>99?'99+':counts.unreadMessages}</b>}</Link>}
+    <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} mobile />
+    {(pathname==='/home'||pathname.startsWith('/explore')||pathname.startsWith('/reels'))&&<Link href="/messages" className="cc-messages-pill"><Send size={23}/> Messages <span className="cc-recent-avatars">{recent.map(m=><Avatar key={m.handle} user={{handle:m.handle,avatarUrl:m.avatarUrl,avatarMediaId:m.avatarMediaId}} size={24}/>)}</span>{counts.unreadMessages>0&&<b>{counts.unreadMessages>99?'99+':counts.unreadMessages}</b>}</Link>}
   </div></StreamConnectionProvider>;
 }
