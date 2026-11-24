@@ -1,3 +1,4 @@
+import {FieldValue} from 'firebase-admin/firestore';
 import {NextRequest,NextResponse,after} from 'next/server';
 import {createHmac} from 'node:crypto';
 import {z} from 'zod';
@@ -184,6 +185,7 @@ export async function POST(request:NextRequest){
    const shared=await stream(path+'/message','POST',{message:{text:input.text,user_id:user.uid,campusContentId:input.postId,campusContentType:kind}});
    if(typeof shared.message?.id==='string'){
     deliveredId=shared.message.id;
+    await db().collection('posts').doc(input.postId).update({'counters.shares':FieldValue.increment(1)}).catch(()=>{});
     if(authorUid)after(()=>notify({recipientUid:authorUid,actorUid:user.uid,type:'share',postId:input.postId}).catch(()=>{}));
     after(()=>notifyChatMessage({senderUid:user.uid,recipientUid:other.id,channelId:id,messageId:shared.message.id}).catch(error=>console.error('Chat notification failed',error instanceof Error?error.message:'unknown')));
    }

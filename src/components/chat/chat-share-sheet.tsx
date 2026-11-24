@@ -2,7 +2,7 @@
 import {useEffect,useState} from 'react';
 import {Avatar} from '@/components/avatar';
 type Member={uid:string;handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null};
-export function ChatShareSheet({postId,onClose}:{postId:string;onClose:()=>void}){
+export function ChatShareSheet({postId,onClose,onShared}:{postId:string;onClose:()=>void;onShared?:(count:number)=>void}){
  const [query,setQuery]=useState(''),[people,setPeople]=useState<Member[]>([]),[selected,setSelected]=useState<Member[]>([]),[message,setMessage]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[searching,setSearching]=useState(false);
  useEffect(()=>{
   if(query.trim().length<2){setPeople([]);setSearching(false);return}
@@ -27,7 +27,7 @@ export function ChatShareSheet({postId,onClose}:{postId:string;onClose:()=>void}
     completed++;
    }catch(e){setError('Unable to share with @'+member.handle+': '+(e instanceof Error?e.message:'Unknown error'));break}
   }
-  if(completed){setNotice('Shared with '+completed+' member'+(completed===1?'':'s'));setSelected(previous=>previous.slice(completed))}
+  if(completed){onShared?.(completed);setNotice('Shared with '+completed+' member'+(completed===1?'':'s'));setSelected(previous=>previous.slice(completed))}
   setBusy(false);
  };
  return <section aria-label="Share CampusConnect post" role="dialog" aria-modal="false" style={{border:'1px solid var(--cc-border,#7775)',borderRadius:14,padding:14,marginTop:8,maxWidth:400,background:'var(--cc-surface,#292434)',color:'inherit'}}>

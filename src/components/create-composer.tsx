@@ -4,10 +4,10 @@ import {uploadFile,readVideoDuration,readVideoSize} from '@/lib/upload';
 import {validateFileForPurpose,canPublish} from '@/lib/core/content-rules';
 type Kind='post'|'story'|'reel';
 type Item={file:File;key:string;id?:string;progress:number;error?:string;alt:string;url:string};
-export function CreateComposer({onClose,onPublished}:{onClose:()=>void;onPublished:()=>void}){
+export function CreateComposer({onClose,onPublished,initialKind}:{onClose:()=>void;onPublished:()=>void;initialKind?:Kind}){
  const [overlayText,setOverlayText]=useState(''),[overlayColor,setOverlayColor]=useState('#ffffff'),[pollQuestion,setPollQuestion]=useState(''),[pollA,setPollA]=useState(''),[pollB,setPollB]=useState('');
  const [location,setLocation]=useState(''),[hideLikeCount,setHideLikeCount]=useState(false),[commentsOff,setCommentsOff]=useState(false);
- const [kind,setKind]=useState<Kind|null>(null),[items,setItems]=useState<Item[]>([]),[caption,setCaption]=useState(''),[audience,setAudience]=useState<'all'|'close'>('all'),[ratio,setRatio]=useState('1 / 1'),[filter,setFilter]=useState('none'),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [kind,setKind]=useState<Kind|null>(initialKind??null),[items,setItems]=useState<Item[]>([]),[caption,setCaption]=useState(''),[audience,setAudience]=useState<'all'|'close'>('all'),[ratio,setRatio]=useState('1 / 1'),[filter,setFilter]=useState('none'),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const abort=useRef<AbortController|null>(null);
  const itemsRef=useRef<Item[]>([]);
  itemsRef.current=items;
