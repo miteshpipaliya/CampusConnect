@@ -43,3 +43,6 @@ Updated **2026-11-24**. Source of truth: GitHub branch code and CI results for t
 ## R1 upgrade checkpoint
 - Removed legacy reel width cap, full viewport desktop/mobile layout, dimensions from media metadata, caption/location/verified/share UI, bounded video mounting, menu actions, pure regression tests.
 - NEXT: verify exact head CI and preview; add guarded layout fixture and threaded comments, keyboard controls and remaining R1 acceptance; then R2–R6. No live account acceptance claimed.
+
+## R2 security implementation
+Report authorization, UID notification cache keys, module feed cache removal, shared media URL authorization and TTL bounds added. Full route sweep and live two-account acceptance remain open; exact-head CI pending. R1 Avatar size type error corrected.

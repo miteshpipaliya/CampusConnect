@@ -100,17 +100,16 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
   </section>
  </main>;
 }
-let feedCache:Post[]|null=null;
 export function ConnectedFeed(){
  const params=useSearchParams();
- const [posts,setPosts]=useState<Post[]>(feedCache||[]);
+ const [posts,setPosts]=useState<Post[]>([]);
  const [section,setSection]=useState('home');
  const [composeOpen,setComposeOpen]=useState(false);
- const [status,setStatus]=useState(''),[loading,setLoading]=useState(feedCache===null);
+ const [status,setStatus]=useState(''),[loading,setLoading]=useState(true);
  const [opened,setOpened]=useState<string|null>(null),[comments,setComments]=useState<Record<string,Array<{id:string;handle:string;text:string}>>>({}),[reply,setReply]=useState('');
- async function refresh(){const x=await api<{posts:Post[]}>('/api/posts');feedCache=x.posts;setPosts(x.posts)}
+ async function refresh(){const x=await api<{posts:Post[]}>('/api/posts');setPosts(x.posts)}
  useEffect(()=>{Promise.all([api<{user:Me}>('/api/auth'),api<{posts:Post[]}>('/api/posts')])
-  .then(([,feed])=>{feedCache=feed.posts;setPosts(feed.posts)})
+  .then(([,feed])=>{setPosts(feed.posts)})
   .catch(()=>setStatus('Sign in to view the live feed.')).finally(()=>setLoading(false));},[]);
  useEffect(()=>{const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh().catch(()=>{});},10000);return()=>window.clearInterval(timer)},[]);
  useEffect(()=>{const selected=params.get('section')||'home';if(selected==='chat'){window.location.replace('/messages'+(params.get('with')?'/'+encodeURIComponent(params.get('with')!):''));return}setSection(['home','reels','notifications','search','community'].includes(selected)?selected:'home');if(params.get('compose')==='1')setComposeOpen(true)},[params]);
@@ -123,7 +122,7 @@ export function ConnectedFeed(){
   {status&&<p role="status">{status}</p>}
   {composeOpen&&<CreateComposer onClose={()=>setComposeOpen(false)} onPublished={()=>{setStatus('Content published');void refresh()}}/>}
   {(section==='home'||section==='community')&&<LiveStories/>}
-  {(section==='home'||section==='community')&&(loading&&!feedCache?<p className="cc-feed-skeleton" aria-label="Loading posts"/>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
+  {(section==='home'||section==='community')&&(loading&&!posts.length?<p className="cc-feed-skeleton" aria-label="Loading posts"/>:posts.length?posts.map(post=><article key={post.id} className="cc-live-entry">
    <Link href={'/profile/'+encodeURIComponent(post.authorHandle)} style={{display:'flex',alignItems:'center',gap:8}}><Avatar user={{handle:post.authorHandle,avatarMediaId:post.avatarMediaId??null,avatarUrl:post.avatarUrl??null}} size={32}/><strong>@{post.authorHandle}</strong></Link>
    {post.media?.length?<MediaCarousel items={post.media}/>:post.mediaId&&<img src={post.mediaUrl||'/api/media?id='+encodeURIComponent(post.mediaId)} loading="lazy" alt="Shared campus media"/>}
    <p>{post.caption}</p><PostActions id={post.id} caption={post.caption} authorUid={post.authorUid} onChanged={()=>void refresh()}/>

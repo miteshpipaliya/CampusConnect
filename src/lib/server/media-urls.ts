@@ -2,7 +2,7 @@ import 'server-only';
 import {db} from './services';
 import {canViewMany} from './privacy';
 import {presignGet} from './storage';
-import {maySignMedia} from '../core/media-access';
+import {maySignMedia,signedMediaTTL} from '../core/media-access';
 
 export type MediaUrl={url:string;expiresAt:number};
 type MediaDoc={id:string;ownerUid?:string;key?:string;status?:string;postId?:string;storyId?:string;avatarOwnerUid?:string;storyExpiresAt?:number};
@@ -45,14 +45,15 @@ export async function mintUrls(mediaDocs:MediaDoc[],opts:{viewerUid:string;story
    const storyAuthor=String(storyData?.authorUid||''),postAuthor=String(postData?.authorUid||'');
    const allowed=maySignMedia({
     owner:media.ownerUid===opts.viewerUid,status:media.status||'',hasKey:Boolean(media.key),
-    ...(avatar?{avatar:{active:avatar.exists&&!avatar.data()?.deletedAt&&avatar.data()?.avatarMediaId===media.id,blocked:blockedAvatars.has(media.avatarOwnerUid||'')}}:{}),
-    ...(story?{story:{active:Boolean(story.exists&&(storyData?.highlight||storyData?.expiresAt?.toMillis?.()>Date.now())),visible:visibility.get(storyAuthor)??false,closeFriendsOnly:storyData?.audience==='close'&&storyAuthor!==opts.viewerUid,closeFriend:closeFriends.has(storyAuthor)}}:{}),
+    ...(avatar?{avatar:{active:avatar.exists&&!avatar.data()?.deletedAt&&avatar.data()?.avatarMediaId===media.id,blocked:blockedAvatars.has(media.avatarOwnerUid||''),visible:visibility.get(media.avatarOwnerUid||'')??false}}:{}),
+    ...(story?{story:{active:Boolean(story.exists&&!storyData?.deletedAt&&(storyData?.highlight||storyData?.expiresAt?.toMillis?.()>Date.now())),visible:visibility.get(storyAuthor)??false,closeFriendsOnly:storyData?.audience==='close'&&storyAuthor!==opts.viewerUid,closeFriend:closeFriends.has(storyAuthor)}}:{}),
     ...(post?{post:{exists:post.exists,deleted:Boolean(postData?.deletedAt),archived:Boolean(postData?.archived),author:postAuthor===opts.viewerUid,visible:visibility.get(postAuthor)??false}}:{})
    });
    if(!allowed||!media.key)return;
-   const expiresAt=media.storyExpiresAt??opts.storyExpiresAt;
-   if(expiresAt!==undefined&&expiresAt<=Date.now())return;
-   const seconds=expiresAt===undefined?3600:Math.max(1,Math.min(3600,Math.floor((expiresAt-Date.now())/1000)));
+   const expiry=storyData?.expiresAt?.toMillis?.();
+   const deadlines=[media.storyExpiresAt,opts.storyExpiresAt,...(story&&!storyData?.highlight?[typeof expiry==='number'?expiry:0]:[])].filter((v):v is number=>typeof v==='number');
+   const seconds=signedMediaTTL(Date.now(),deadlines.length?Math.min(...deadlines):undefined,story?60:3600);
+   if(!seconds)return;
    output[media.id]={url:await presignGet(media.key,seconds),expiresAt:Date.now()+seconds*1000};
   }catch{/* deny on failed authorization or signing */}
  }));

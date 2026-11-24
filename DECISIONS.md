@@ -19,3 +19,5 @@ Updated 2026-11-24.
 - Do not claim a bug-free or fully Instagram-compatible product solely from CI or Vercel's Ready state.
 
 - R1: preserve original video aspect, full-width workspace, mount only active and neighboring videos; never touch production main during the new upgrade.
+
+- R2: use the same media signer for redirect and list endpoints; signed URLs cannot be revoked after issuance. Report authorization returns a generic unavailable response.

@@ -11,7 +11,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { db,storage } from '@/lib/server/services';
-import {canViewAuthor,isBlockedEitherWay} from '@/lib/server/privacy';
+import {mintUrls} from '@/lib/server/media-urls';
+import {isBlockedEitherWay} from '@/lib/server/privacy';
 import {mayViewChatMedia} from '@/lib/core/chat-media-rules';
 import { session,errorResponse,safeHeaders } from '@/lib/server/session';
 
@@ -103,21 +104,10 @@ export async function GET(request:NextRequest){
     ownerDeleted:!owner.exists||Boolean(owner.data()?.deletedAt)
    }))return errorResponse(403,'Chat attachment unavailable');
   }else{
-    if(data.ownerUid!==user.uid){
-     if(data.avatarOwnerUid){const owner=await db().collection('users').doc(data.avatarOwnerUid).get();if(owner.exists&&owner.data()?.avatarMediaId===id&&!owner.data()?.deletedAt&&!(await (await import('@/lib/server/privacy')).isBlockedEitherWay(user.uid,data.avatarOwnerUid))){const {client,Bucket}=storage();const url=await getSignedUrl(client,new GetObjectCommand({Bucket,Key:data.key}),{expiresIn:60});const response=NextResponse.redirect(url,302);response.headers.set('Cache-Control','private, no-store');response.headers.set('Referrer-Policy','no-referrer');return response;}}
-     if(data.storyId){
-      const story=await db().collection('stories').doc(data.storyId).get();
-      if(!story.exists||!(await canViewAuthor(user.uid,String(story.data()?.authorUid||'')))||(story.data()?.expiresAt?.toMillis?.()<=Date.now()&&!story.data()?.highlight))return errorResponse(403,'Story unavailable');
-      if(story.data()?.audience==='close'&&story.data()?.authorUid!==user.uid){
-       const friend=await db().collection('closeFriends').doc(String(story.data()?.authorUid||'')+'_'+user.uid).get();
-       if(!friend.exists)return errorResponse(403,'Story unavailable');
-      }
-     }else{
-      if(!data.postId)return errorResponse(403,'Private media');
-      const post=await db().collection('posts').doc(data.postId).get();
-      if(!post.exists||post.data()?.deletedAt||(post.data()?.archived&&post.data()?.authorUid!==user.uid)||!(await canViewAuthor(user.uid,String(post.data()?.authorUid||''))))return errorResponse(403,'Private media');
-     }
-    }
+   const urls=await mintUrls([{id,...data}],{viewerUid:user.uid});
+   const signed=urls[id];if(!signed)return errorResponse(403,'Private media');
+   const response=NextResponse.redirect(signed.url,302);
+   response.headers.set('Cache-Control','private, no-store');response.headers.set('Referrer-Policy','no-referrer');return response;
   }
   const {client,Bucket}=storage();
   const downloadUrl=await getSignedUrl(client,new GetObjectCommand({Bucket,Key:data.key}),{expiresIn:60});

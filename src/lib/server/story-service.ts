@@ -7,7 +7,7 @@ import {mintUrls} from './media-urls';
 export async function authorizedStory(viewerUid:string,id:string,opts:{allowArchive?:boolean;allowHighlighted?:boolean}={}){
  if(!/^[A-Za-z0-9_-]{10,100}$/.test(id))return null;
  const store=db(),doc=await store.collection('stories').doc(id).get();
- if(!doc.exists)return null;
+ if(!doc.exists||doc.data()?.deletedAt)return null;
  const data=doc.data()!,authorUid=String(data.authorUid||'');
  if(!authorUid||!(await canViewAuthor(viewerUid,authorUid)))return null;
  const owned=authorUid===viewerUid,active=isStoryActive(data,Date.now());

@@ -110,7 +110,7 @@ export function ReelCard({reel,active,muted,onMute,mounted=true,preloadNext=fals
     <button type="button" onClick={()=>setShare(true)} aria-label="Send Reel"><Send size={27}/><small>{format(reel.shares??0)}</small></button>
     <button type="button" onClick={()=>void action('save')} aria-pressed={saved} aria-label={saved?'Unsave Reel':'Save Reel'}><Bookmark fill={saved?'currentColor':'none'} size={27}/></button>
     <button type="button" onClick={()=>setMenu(v=>!v)} aria-label="Reel options" aria-expanded={menu}><Ellipsis size={26}/></button>
-    <Link className="cc-reel-audio-cover" href={'/profile/'+encodeURIComponent(reel.authorHandle)} aria-label="Author profile"><Avatar user={{handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={28}/></Link>
+    <Link className="cc-reel-audio-cover" href={'/profile/'+encodeURIComponent(reel.authorHandle)} aria-label="Author profile"><Avatar user={{handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={24}/></Link>
    </div>
   </div>
   {notice&&<p className="cc-reel-notice" role="status">{notice}</p>}
