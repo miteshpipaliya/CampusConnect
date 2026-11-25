@@ -100,8 +100,8 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    }).catch(()=>{});
   },[]);
   useEffect(()=>{let live=true;fetch('/api/auth',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(x=>{
-   if(!live)return;setChecked(true);const previous=queryClient.getQueryData<string>(['cc-active-uid']);const next=x?.user?.uid;if(previous&&previous!==next)queryClient.clear();if(x?.user?.profile?.handle&&next){queryClient.setQueryData(['cc-active-uid'],next);setRulesStep(x.user.rulesOnboarding?.required?x.user.rulesOnboarding.step:null);setUid(x.user.uid);setHandle(x.user.profile.handle);setAvatarMediaId(x.user.profile.avatarMediaId||null)}else router.replace('/login');
-  }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router,queryClient]);
+   if(!live)return;setChecked(true);const previous=queryClient.getQueryData<string>(['cc-active-uid']);const next=x?.user?.uid;if(previous&&previous!==next)queryClient.clear();if(x?.user?.profile?.handle&&next){queryClient.setQueryData(['cc-active-uid'],next);setRulesStep(x.user.rulesOnboarding?.required?x.user.rulesOnboarding.step:null);setUid(x.user.uid);setHandle(x.user.profile.handle);setAvatarMediaId(x.user.profile.avatarMediaId||null)}else router.replace('/');
+  }).catch(()=>{if(live){setChecked(true);router.replace('/')}});return()=>{live=false}},[router,queryClient]);
   useEffect(()=>{if(!uid)return;let live=true;void fetch('/api/chat',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(live)setRecent(Array.isArray(d?.conversations)?d.conversations.slice(0,3):[])}).catch(()=>{});return()=>{live=false}},[uid]);
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape'){setMenu(false);setPanel(null)}};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
   useEffect(()=>{setPanel(null);setMenu(false);setMobileMore(false)},[actualPath,params]);

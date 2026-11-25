@@ -10,3 +10,9 @@
 @keyframes cc-rule-gift-in{from{opacity:0;transform:translateY(9px) scale(.97)}to{opacity:1;transform:none}}
 @media(max-width:650px){.cc-rules-dialog{padding:18px;gap:14px;border-radius:18px}.cc-rules-stage{flex-direction:column;gap:12px;align-items:stretch}.cc-rules-captions{height:clamp(90px,19dvh,180px);font-size:17px;margin-top:10px}.cc-rules-gift{width:min(100%,155px);align-self:center}.cc-rules-gift h2{font-size:15px}}
 @media(prefers-reduced-motion:reduce){.cc-rules-gift>div{animation:none}}
+
+/* Reserve room for active word emphasis; reduced-motion users get immediate updates. */
+.cc-rules-captions,.cc-intro-transcript{overflow-anchor:none;scroll-behavior:smooth}
+.cc-rules-captions .cc-caption-word,.cc-intro-transcript .cc-caption-word{font-weight:400;color:#d0cde0;transition:color 120ms ease,background-color 120ms ease}
+.cc-rules-captions .cc-caption-active,.cc-intro-transcript .cc-caption-active{font-weight:750;color:#fff;background-color:#7953c9;border-radius:4px;box-decoration-break:clone;transition:color 120ms ease,background-color 120ms ease}
+@media(prefers-reduced-motion:reduce){.cc-rules-captions,.cc-intro-transcript{scroll-behavior:auto}.cc-caption-word,.cc-caption-active{transition:none!important}}
