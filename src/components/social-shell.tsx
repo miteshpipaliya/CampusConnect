@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {RulesOnboarding} from './campus/rules-onboarding';
 import {ReferralOnboarding} from './referrals/referral-onboarding';
 import {LoadingSkeleton} from './loading-skeleton';
 import {PushSettings,PushConnection} from './push-settings';
@@ -66,6 +67,8 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   const actualPath=usePathname(),params=useSearchParams(),router=useRouter(),modalSegment=useSelectedLayoutSegment('modal');
   const backgroundPath=useRef(actualPath);const hasPostModal=Boolean(modalSegment&&modalSegment.includes('posts')&&actualPath.startsWith('/posts/'));if(!hasPostModal)backgroundPath.current=actualPath;const pathname=hasPostModal?backgroundPath.current:actualPath;
   const [avatarMediaId,setAvatarMediaId]=useState<string|null>(null),[menu,setMenu]=useState(false),[recent,setRecent]=useState<Array<{handle:string;avatarUrl:string|null;avatarMediaId:string|null}>>([]),[menuError,setMenuError]=useState('');
+  const [rulesStep,setRulesStep]=useState<number|null>(null);
+  const rulesDone=useCallback(()=>setRulesStep(null),[]);
   const [panel,setPanel]=useState<'notifications'|null>(null);
   const [liveUnread,setLiveUnread]=useState<number|null>(null);
   const [uid,setUid]=useState<string|null>(null);
@@ -97,13 +100,14 @@ export default function SocialShell({ children }: { children: ReactNode }) {
    }).catch(()=>{});
   },[]);
   useEffect(()=>{let live=true;fetch('/api/auth',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(x=>{
-   if(!live)return;setChecked(true);const previous=queryClient.getQueryData<string>(['cc-active-uid']);const next=x?.user?.uid;if(previous&&previous!==next)queryClient.clear();if(x?.user?.profile?.handle&&next){queryClient.setQueryData(['cc-active-uid'],next);setUid(x.user.uid);setHandle(x.user.profile.handle);setAvatarMediaId(x.user.profile.avatarMediaId||null)}else router.replace('/login');
+   if(!live)return;setChecked(true);const previous=queryClient.getQueryData<string>(['cc-active-uid']);const next=x?.user?.uid;if(previous&&previous!==next)queryClient.clear();if(x?.user?.profile?.handle&&next){queryClient.setQueryData(['cc-active-uid'],next);setRulesStep(x.user.rulesOnboarding?.required?x.user.rulesOnboarding.step:null);setUid(x.user.uid);setHandle(x.user.profile.handle);setAvatarMediaId(x.user.profile.avatarMediaId||null)}else router.replace('/login');
   }).catch(()=>{if(live){setChecked(true);router.replace('/login')}});return()=>{live=false}},[router,queryClient]);
   useEffect(()=>{if(!uid)return;let live=true;void fetch('/api/chat',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(live)setRecent(Array.isArray(d?.conversations)?d.conversations.slice(0,3):[])}).catch(()=>{});return()=>{live=false}},[uid]);
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape'){setMenu(false);setPanel(null)}};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
   useEffect(()=>{setPanel(null);setMenu(false);setMobileMore(false)},[actualPath,params]);
+  useEffect(()=>{if(rulesStep!==null&&actualPath!=='/home')router.replace('/home')},[rulesStep,actualPath,router]);
   if(!checked||!handle)return <LoadingSkeleton kind="shell"/>;
-  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/leaderboard')?' cc-leaderboard-mode':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}>{rulesStep===null&&<><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/></>}<div inert={rulesStep!==null} aria-hidden={rulesStep!==null?true:undefined} className={'cc-app cc-shell-v2'+(rulesStep!==null?' cc-rules-background':'')+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/leaderboard')?' cc-leaderboard-mode':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} onPanel={name=>{setMenu(false);setPanel(old=>old===name?null:name)}}/>
@@ -112,12 +116,12 @@ export default function SocialShell({ children }: { children: ReactNode }) {
     </aside>
     <main className="cc-main" id="main-content">
       <header className="cc-mobile-header">{isRootTab(actualPath)?<Brand compact/>:<MobileBackBar path={actualPath}/>}<div className="cc-mobile-actions"><Link href="/home?compose=1" aria-label="Create"><NavIcon name="Create"/></Link><Link href="/notifications" aria-label="Notifications"><NavIcon name="Notifications"/><Badge count={counts.unread} label="Unread notifications" mobile/></Link><button type="button" aria-label="More" onClick={()=>setMobileMore(true)}><Menu size={24}/></button></div></header>
-      <OfflineBanner/><InstallPrompt/><div className="cc-referral-onboarding-slot"><ReferralOnboarding key={uid}/></div><div className="cc-page">{children}</div>
+      <OfflineBanner/><InstallPrompt/><div className="cc-referral-onboarding-slot">{rulesStep===null&&<ReferralOnboarding key={uid}/>}</div><div className="cc-page">{children}</div>
     </main>
     {!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
     <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} mobile />
     <MobileMoreSheet open={mobileMore} onClose={()=>setMobileMore(false)} onLogout={()=>void logout()} error={menuError}/>
     {panel&&<SidePanel label="Notifications" onClose={()=>setPanel(null)}><NotificationsFeed/></SidePanel>}
     {(pathname==='/home'||pathname.startsWith('/explore')||pathname.startsWith('/reels'))&&<Link href="/messages" className="cc-messages-pill"><Send size={23}/> Messages <span className="cc-recent-avatars">{recent.map(m=><Avatar key={m.handle} user={{handle:m.handle,avatarUrl:m.avatarUrl,avatarMediaId:m.avatarMediaId}} size={24}/>)}</span><Badge count={counts.unreadMessages} label="Unread conversations"/></Link>}
-  </div></StreamConnectionProvider></ShellSession.Provider>;
+  </div>{rulesStep!==null&&<RulesOnboarding key={uid} initialStep={rulesStep} onComplete={rulesDone}/>}</StreamConnectionProvider></ShellSession.Provider>;
 }

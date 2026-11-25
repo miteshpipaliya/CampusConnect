@@ -1,3 +1,4 @@
+import {RULES_VERSION,rulesStatus} from '@/lib/core/rules-onboarding';
 import {INTRO_COOKIE,persistIntroduction} from '@/lib/server/introduction';
 import {REFERRAL_COOKIE} from '@/lib/core/referral-policy';
 import {registrationFields,ensureReferralCode,settleReferral} from '@/lib/server/referrals';
@@ -34,7 +35,7 @@ async function signIn(uid:string,response:NextResponse){
 }
 export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
- try{const doc=await db().collection('users').doc(user.uid).get();return NextResponse.json({user:{uid:user.uid,email:user.email,profile:ownProfileView(doc.data())}},{headers:safeHeaders})}
+ try{const doc=await db().collection('users').doc(user.uid).get();return NextResponse.json({user:{uid:user.uid,email:user.email,profile:ownProfileView(doc.data()),rulesOnboarding:rulesStatus(doc.data())}},{headers:safeHeaders})}
  catch{return errorResponse(503,'Account service unavailable')}
 }
 export async function POST(request:NextRequest){
@@ -145,7 +146,7 @@ export async function POST(request:NextRequest){
       if((await tx.get(profile)).exists)throw Error('PROFILE_EXISTS');
       const referral=await registrationFields(tx,email,fresh,request.cookies.get(REFERRAL_COOKIE)?.value);
       tx.create(handle,{uid:user!.uid});
-      tx.create(profile,{...referral,uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts?`${parts[1]!}${parts[2]!}${parts[3]!}`:'',branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:parts?2000+Number(parts[1]):null,emailBranchCode:parts?.[2]??null,verifiedInstitutionalEmail:Boolean(parts),createdAt:FieldValue.serverTimestamp()});
+      tx.create(profile,{...referral,...(parts?{rulesOnboarding:{version:RULES_VERSION,next:0}}:{}),uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts?`${parts[1]!}${parts[2]!}${parts[3]!}`:'',branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:parts?2000+Number(parts[1]):null,emailBranchCode:parts?.[2]??null,verifiedInstitutionalEmail:Boolean(parts),createdAt:FieldValue.serverTimestamp()});
      });
     }catch(e){if(e instanceof Error&&e.message==='HANDLE_TAKEN')return errorResponse(409,'Username already taken. Choose another');if(e instanceof Error&&e.message==='PROFILE_EXISTS')return errorResponse(409,'Account already exists. Sign in');throw e}
    }else if(user)await auth().updateUser(user.uid,{emailVerified:true,password:parsed.data.password});

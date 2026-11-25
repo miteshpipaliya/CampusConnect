@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {Timestamp} from 'firebase-admin/firestore';
 import {NextRequest,NextResponse} from 'next/server';
 import {auth,db} from './services';
+import {pendingRules} from '../core/rules-onboarding';
 import {isRevoked} from '../core/session-denylist';
 import {isAllowedEmail} from '../student-email';
 export const safeHeaders={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'};
@@ -21,6 +22,11 @@ export async function session(request:NextRequest){
   if(!verified.email_verified||!verified.email||!isAllowedEmail(verified.email,process.env.APPROVED_TEST_EMAILS))return null;
   const [profile,revoked]=await Promise.all([db().collection('users').doc(verified.uid).get(),sessionRevoked(cookie)]);
   if(revoked||!profile.exists||profile.data()?.deletedAt||profile.data()?.suspendedAt)return null;
+  // Pending students may load their own real read-only feed, but cannot use normal
+  // mutation endpoints or obtain new chat tokens until server completion.
+  const path=request.nextUrl.pathname;
+  if(pendingRules(profile.data())&&!['GET','HEAD'].includes(request.method)&&!['/api/auth','/api/rules-onboarding'].includes(path))return null;
+  if(pendingRules(profile.data())&&path==='/api/chat/token')return null;
   return {uid:verified.uid,email:verified.email,admin:verified.admin===true};
  }catch{return null}
 }
