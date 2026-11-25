@@ -1,4 +1,4 @@
-export const INTRO_VERSION='v2';
+export const INTRO_VERSION='v3';
 export const INTRO_AUDIO='/audio/introduction.mp3';
 export const INTRO_DURATION=34.272625;
 export const INTRO_SHA256='0f4b011913bad6670df689cfe7b0057c4cf780ac8d4da2d0bd82b05af15d3b5d';
