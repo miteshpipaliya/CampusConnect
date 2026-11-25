@@ -26,3 +26,17 @@ test('welcome and account chooser fill the viewport without document scrolling',
   await page.getByRole('link',{name:'Sign up with BVM email'}).click();await expect(page.getByLabel('BVM student email or approved tester')).toBeVisible();await fixedPage(page);
  }
 });
+
+test('welcome typography and compact official logo stay inside their own space',async({page})=>{
+ for(const [width,height] of [[1518,695],[1366,768],[1920,1080],[3840,2160],[768,1024],[390,844],[320,568],[844,390]] as const){
+  await page.setViewportSize({width,height});await page.goto('/');await fixedPage(page);
+  const brand=page.locator('.cc-campus-entry-header .cc-campus-official-brand'),logo=brand.locator('img'),title=page.locator('.cc-campus-entry-title'),cta=page.getByRole('link',{name:'ENTER CAMPUS'});
+  await expect(logo).toHaveAttribute('src','/cc-mark.svg');await expect(title.getByRole('heading',{name:'BVM',exact:true})).toBeVisible();
+  const b=(await brand.boundingBox())!,l=(await logo.boundingBox())!,t=(await title.boundingBox())!,c=(await cta.boundingBox())!;
+  expect(l.width).toBeLessThanOrEqual(57);expect(Math.abs(l.width-l.height)).toBeLessThan(1);
+  expect(b.x).toBeGreaterThanOrEqual(0);expect(b.x+b.width).toBeLessThanOrEqual(width);
+  expect(t.x).toBeGreaterThanOrEqual(0);expect(t.x+t.width).toBeLessThanOrEqual(width+1);
+  expect(t.y+t.height).toBeLessThan(c.y);expect(c.y+c.height).toBeLessThanOrEqual(height);
+  expect(b.x+b.width<=t.x||b.y+b.height<=t.y).toBeTruthy();
+ }
+});
