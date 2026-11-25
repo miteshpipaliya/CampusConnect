@@ -4,8 +4,13 @@ test('illustrated entry and account choices are real navigable routes on desktop
  await page.route('**/api/auth',r=>r.fulfill({status:401,json:{error:'Sign in required'}}));
  for(const asset of ['entry','day']){const response=await request.get('/campus/'+asset+'.webp');expect(response.status()).toBe(200);expect(response.headers()['content-type']).toContain('image/webp')}
  await page.setViewportSize({width:1440,height:900});await page.goto('/');
- await expect(page.getByRole('heading',{name:'BVM',exact:true})).toBeAttached();
+ await expect(page.getByRole('heading',{name:'BVM',exact:true})).toBeVisible();
+ const stage=page.locator('.cc-campus-entry-stage');
+ for(const [width,height] of [[1440,900],[1920,1080],[2560,1080],[3440,1440],[768,1024],[390,844]]){await page.setViewportSize({width,height});const b=await stage.boundingBox();expect(b?.x).toBe(0);expect(b?.width).toBe(width);expect((b?.height??0)>=height).toBeTruthy();expect(await stage.evaluate(el=>getComputedStyle(el).backgroundSize)).toBe('cover');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();await expect(stage.getByRole('link',{name:'ENTER CAMPUS'})).toBeVisible();await expect(stage.locator('.cc-campus-official-brand img')).toHaveAttribute('src','/cc-mark.svg');}
+ await page.setViewportSize({width:1440,height:900});
  const enter=page.getByRole('link',{name:'ENTER CAMPUS'});await expect(enter).toBeVisible();await enter.click();await expect(page).toHaveURL(/\/enter$/);
+ await expect(page.locator('.cc-campus-account .cc-campus-official-brand img')).toHaveAttribute('src','/cc-mark.svg');
+ await expect(page.getByRole('link',{name:'Back to campus entrance'})).toHaveAttribute('href','/');
  await expect(page.getByRole('link',{name:'Sign up with BVM email'})).toHaveAttribute('href','/register');
  await page.getByRole('link',{name:'Log in',exact:true}).click();await expect(page).toHaveURL(/\/login$/);await expect(page.getByLabel('Password',{exact:true})).toBeVisible();
  await page.setViewportSize({width:390,height:844});await page.goto('/');await expect(page.getByRole('heading',{name:'BVM',exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();await enter.click();await expect(page.getByRole('link',{name:'Sign up with BVM email'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
