@@ -4,17 +4,19 @@ import {useQuery} from '@tanstack/react-query';
 import {Crown,Trophy,Link2,Gift,ArrowLeft,ChevronLeft,ChevronRight,Users} from 'lucide-react';
 import Link from 'next/link';
 import {fetchData,StudentLabel,ReferralDashboard,type Board} from './referral-dashboard';
+import {ReferralRewards} from './referral-rewards';
 import {ReferralAdmin} from './referral-admin';
 import {useShellUid} from '../shell-session';
 import {userKey} from '@/lib/queries';
-export function ReferralLeaderboard({referralOpen=false}:{referralOpen?:boolean}){
+export function ReferralLeaderboard({tab='rankings'}:{tab?:'rankings'|'referral'|'rewards'}){
+ const referralOpen=tab==='referral',rewardsOpen=tab==='rewards';
  const uid=useShellUid(),[page,setPage]=useState(0),[competition,setCompetition]=useState(''),[now,setNow]=useState(0);
- const q=useQuery({queryKey:userKey(uid,'referral','leaderboard',competition,page),queryFn:()=>fetchData<Board>('/api/leaderboard?page='+page+(competition?'&competition='+encodeURIComponent(competition):'')),refetchInterval:10000});
+ const q=useQuery({queryKey:userKey(uid,'referral','leaderboard',competition,page),queryFn:()=>fetchData<Board>('/api/leaderboard?page='+page+(competition?'&competition='+encodeURIComponent(competition):'')),enabled:!rewardsOpen,refetchInterval:10000});
  useEffect(()=>{if(!q.data)return;const offset=q.data.serverNow-Date.now(),tick=()=>setNow(Date.now()+offset);tick();const timer=setInterval(tick,1000);return()=>clearInterval(timer)},[q.data]);
  const d=q.data,c=d?.competition,listRows=d?.rows.filter(row=>row.rank>3)??[],remaining=c?Math.max(0,(c.status==='scheduled'?c.startAt:c.endAt)-now):0,days=Math.floor(remaining/86400000),hours=Math.floor(remaining/3600000)%24,minutes=Math.floor(remaining/60000)%60;
  return <section className="cc-referral-board cc-board-v2">
- <header className="cc-board-heading"><div className="cc-board-title"><Trophy size={25}/><h1>Leaderboard</h1></div><nav aria-label="Referral actions" className="cc-board-actions"><Link href="/leaderboard?tab=referral" aria-current={referralOpen?'page':undefined}><Link2 size={17}/> Referral link</Link><button type="button" disabled title="Rewards coming soon"><Gift size={17}/> Rewards</button></nav></header>
- {referralOpen?<><Link className="cc-board-back" href="/leaderboard"><ArrowLeft size={17}/> Back to leaderboard</Link><ReferralDashboard me={d?.me}/></>:<>
+ <header className="cc-board-heading"><div className="cc-board-title"><Trophy size={25}/><h1>Leaderboard</h1></div><nav aria-label="Referral actions" className="cc-board-actions"><Link href="/leaderboard?tab=referral" aria-current={referralOpen?'page':undefined}><Link2 size={17}/> Referral link</Link><Link href="/leaderboard?tab=rewards" aria-current={rewardsOpen?'page':undefined}><Gift size={17}/> Rewards</Link></nav></header>
+ {rewardsOpen?<><Link className="cc-board-back" href="/leaderboard"><ArrowLeft size={17}/> Back to leaderboard</Link><ReferralRewards/></>:referralOpen?<><Link className="cc-board-back" href="/leaderboard"><ArrowLeft size={17}/> Back to leaderboard</Link><ReferralDashboard me={d?.me}/></>:<>
  <div className="cc-board-intro"><p>Bring BVM together. Climb the rankings.</p>{c?<><strong>{c.title}</strong><span className="cc-board-status">{c.status}{(c.status==='active'||c.status==='scheduled')&&now>0?' · '+days+'d '+hours+'h '+minutes+'m '+(c.status==='scheduled'?'until start':'remaining'):''}</span></>:<span className="cc-board-status">No competition scheduled</span>}</div>
  {q.isPending?<div aria-busy="true" className="cc-referral-skeleton"/>:q.isError||!d?<div className="cc-board-empty" role="alert">Unable to load rankings. <button onClick={()=>void q.refetch()}>Retry</button></div>:<>
  {d.competitions.length>0&&<label className="cc-board-filter">Competition <select value={competition||c?.id||''} onChange={e=>{setCompetition(e.target.value);setPage(0)}}>{d.competitions.map(x=><option key={x.id} value={x.id}>{x.title}</option>)}</select></label>}

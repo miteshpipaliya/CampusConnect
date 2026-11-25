@@ -4,6 +4,7 @@ import {db} from './services';
 import {canViewMany} from './privacy';
 import {hydrateAvatars} from './avatar-hydration';
 import {eligible} from './referrals';
+import {referralInvite} from '../core/referral-policy';
 async function publicStudents(viewer:string,ids:string[]){
  const unique=[...new Set(ids)];const visible=await canViewMany(viewer,unique);
  const avatars=await hydrateAvatars(unique.filter(id=>visible.get(id)),viewer);
@@ -14,8 +15,8 @@ export async function referralDashboard(uid:string,origin:string,page:number){
  const store=db(),profile=(await store.collection('users').doc(uid).get()).data(),stats=(await store.collection('referralStats').doc(uid).get()).data();
  const history=await store.collection('referrals').where('referrerUid','==',uid).orderBy('createdAt','desc').offset(page*20).limit(21).get();
  const rows=history.docs.slice(0,20);const student=await publicStudents(uid,rows.map(d=>d.id));
- const code=eligible(profile)&&typeof profile?.referralCode==='string'?profile.referralCode:null;
- return {code,link:code?origin+'/r/'+code:null,lifetime:Number(stats?.totalEligibleReferrals||0),history:rows.map(d=>({student:student(d.id),createdAt:Number(d.data().createdAt),status:String(d.data().status)})),hasMore:history.size>20};
+ const invite=referralInvite(origin,eligible(profile)?profile?.referralCode:null);
+ return {...invite,lifetime:Number(stats?.totalEligibleReferrals||0),history:rows.map(d=>({student:student(d.id),createdAt:Number(d.data().createdAt),status:String(d.data().status)})),hasMore:history.size>20};
 }
 export async function referralLeaderboard(uid:string,page:number,requested?:string){
  const store=db(),current=(await store.collection('referralConfig').doc('current').get()).data();

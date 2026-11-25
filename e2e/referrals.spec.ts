@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 test('referral APIs reject unauthenticated access',async({request})=>{for(const path of ['/api/referrals','/api/leaderboard','/api/admin/referrals']){const r=await request.get(path);expect(r.status()).toBe(401);expect(r.headers()['content-type']).toContain('json')}const invalid=await request.get('/r/invalid-code',{maxRedirects:0});expect([302,307,308]).toContain(invalid.status());expect(invalid.headers()['location']).toContain('/login');expect(invalid.headers()['set-cookie']||'').not.toContain('cc_referral=')});
 
 test.use({serviceWorkers:'block'});
-test('referral workspace, podium, disabled rewards and profile navigation render using test API fixtures',async({page,context})=>{
+test('referral workspace, podium, enabled rewards and profile navigation render using test API fixtures',async({page,context})=>{
  const now=Date.now(),competition={id:'qa-competition',title:'QA competition',status:'active',startAt:now-60000,endAt:now+86400000,rulesVersion:1};
  const rows=Array.from({length:4},(_,i)=>({rank:i+1,student:{handle:'qa'+(i+1),name:'QA student '+(i+1),avatarUrl:null},count:4-i,self:i===3}));
  const code='CC-S4LA',link='https://campusconnectbvm.online/r/'+code;
@@ -23,7 +23,7 @@ test('referral workspace, podium, disabled rewards and profile navigation render
  await expect(page.getByLabel('Your referral code')).toHaveCount(0);
  await page.getByRole('link',{name:'Referral link',exact:true}).click();
  await expect(page).toHaveURL(/\/leaderboard\?tab=referral/);
- await expect(page.getByRole('button',{name:'Rewards',exact:true})).toBeDisabled();
+ await expect(page.getByRole('link',{name:'Rewards',exact:true})).toBeEnabled();
  await expect(page.getByLabel('Your referral code')).toHaveValue(code);
  await expect(page.getByLabel('Your referral link')).toHaveValue(link);
  await page.getByRole('button',{name:'Copy code',exact:true}).click();
@@ -31,6 +31,7 @@ test('referral workspace, podium, disabled rewards and profile navigation render
  expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe(code);
  await page.getByRole('button',{name:'Copy link',exact:true}).click();
  expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe(link);
+ expect(new URL(link).pathname).toBe('/r/'+code);
  const wa=await page.getByRole('link',{name:'WhatsApp',exact:true}).getAttribute('href');
  expect(decodeURIComponent(wa||'')).toContain(link);
  await page.getByRole('link',{name:'Back to leaderboard'}).click();
@@ -38,8 +39,12 @@ test('referral workspace, podium, disabled rewards and profile navigation render
  await expect(page.locator('.cc-board-list')).toContainText('QA student 4');
  await expect(page.locator('.cc-board-list')).not.toContainText('QA student 1');
  await expect(page.getByLabel('Your referral code')).toHaveCount(0);
+ await page.getByRole('link',{name:'Rewards',exact:true}).click();
+ await expect(page).toHaveURL(/tab=rewards/);
+ await expect(page.locator('.cc-reward-card')).toHaveCount(5);
+ for(const [i,name] of ['Black hoodie','Wireless earbuds','Plain black T-shirt','Steel water bottle','The Alchemist'].entries()){const card=page.locator('.cc-reward-card').nth(i);await expect(card.getByRole('heading',{name,exact:true})).toBeVisible();await expect.poll(()=>card.locator('img').evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(0)}
  await page.setViewportSize({width:390,height:844});
- await expect(page.getByRole('button',{name:'Rewards',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Rewards',exact:true})).toBeVisible();
  expect(await page.locator('.cc-board-v2').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
 });
 test('short manual referral code is sent through authenticated onboarding UI',async({page})=>{

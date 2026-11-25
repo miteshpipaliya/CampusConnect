@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {generateCode,normalizeCode,signAttribution,readAttribution,studentDigest,isOpen,inCompetition,compareRank,LINK_TTL,ONBOARDING_TTL} from '../src/lib/core/referral-policy.ts';
+import {generateCode,normalizeCode,referralInvite,signAttribution,readAttribution,studentDigest,isOpen,inCompetition,compareRank,LINK_TTL,ONBOARDING_TTL} from '../src/lib/core/referral-policy.ts';
 import {isAllowedEmail} from '../src/lib/student-email.ts';
 const key='test-only-referral-signature-fixture-32-characters',now=1795616000000;
 test('short random codes are mixed alphanumeric; legacy codes remain valid',()=>{const codes=Array.from({length:2000},generateCode);for(const code of codes){assert.match(code,/^CC-[A-Z0-9]{4}$/);assert.match(code.slice(3),/[A-Z]/);assert.match(code.slice(3),/[0-9]/);assert.equal(normalizeCode(' '+code.toLowerCase()+' '),code)}assert.equal(normalizeCode('CC-'+'A'.repeat(32)),'CC-'+'A'.repeat(32));for(const bad of ['','CC-123','../../users','student@example.com','CC-'+'Z'.repeat(32)])assert.equal(normalizeCode(bad),null)});
@@ -11,3 +11,5 @@ test('competition time bounds and finalization preserve separate scoring',()=>{c
 test('ranking uses count, earliest reached time and deterministic final tie breaker',()=>{const rows=[{id:'c',count:2,reachedAt:12},{id:'b',count:3,reachedAt:20},{id:'a',count:3,reachedAt:20},{id:'d',count:3,reachedAt:10}];assert.deepEqual(rows.sort(compareRank).map(x=>x.id),['d','a','b','c'])});
 
 test('already shared long links and their signed cookies remain compatible',()=>{const old='CC-'+'AB12'.repeat(8);assert.equal(readAttribution(signAttribution(old,key,now),key,now+1)?.code,old)});
+
+test('canonical short code and shared URL stay synchronized',()=>{for(let i=0;i<100;i++){const code=generateCode(),invite=referralInvite('https://campusconnectbvm.online',code);assert.equal(invite.code,code);assert.equal(new URL(invite.link).pathname,'/r/'+code)}assert.deepEqual(referralInvite('https://campusconnectbvm.online','CC-'+'AB12'.repeat(8)),{code:null,link:null});assert.deepEqual(referralInvite('https://campusconnectbvm.online',null),{code:null,link:null})});

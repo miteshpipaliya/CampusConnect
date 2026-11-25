@@ -109,3 +109,31 @@
  .cc-board-v2 .cc-referral-ranking {gap:7px;padding:8px}
  .cc-board-v2 .cc-referral-ranking>strong {min-width:19px}
 }
+
+/* Keep referral onboarding within the content column, clear of the expanding sidebar. */
+.cc-referral-onboarding-slot:empty {display:none}
+.cc-referral-onboarding-slot {width:100%;max-width:720px;margin-inline:auto;position:relative;min-width:0}
+.cc-referral-onboarding-slot .cc-referral-onboarding {width:100%;box-sizing:border-box}
+.cc-referral-onboarding-slot .cc-referral-actions {justify-content:center;margin-top:12px}
+.cc-referral-onboarding-slot .cc-referral-onboarding form {display:grid;gap:8px}
+@media(min-width:721px){.cc-app.cc-shell-v2.cc-leaderboard-mode:has(.cc-referral-onboarding) .cc-sidebar:is(:hover,:has(:focus-visible)){width:72px!important;max-width:72px!important;box-shadow:none}.cc-app.cc-shell-v2.cc-leaderboard-mode:has(.cc-referral-onboarding) .cc-sidebar:is(:hover,:has(:focus-visible)) :is(.cc-brand,.cc-nav-item,.cc-more-toggle){width:48px!important;max-width:48px!important;overflow:hidden}}
+.cc-rewards {display:grid;gap:18px;min-width:0}
+.cc-rewards>header {text-align:center;display:grid;justify-items:center;gap:8px;padding:4px 10px}
+.cc-rewards>header svg {color:#f9cf78}
+.cc-rewards>header h2 {font-size:24px;margin:0}
+.cc-rewards>header p,.cc-rewards-note {font-size:13px;line-height:1.6;color:#b9cfe0;margin:0}
+.cc-rewards-list {display:grid;gap:12px;padding:0;margin:0;list-style:none}
+.cc-reward-card {display:grid;grid-template-columns: minmax(112px,160px) minmax(0,1fr);align-items:center;gap:16px;border:1px solid #39536a;border-radius:15px;padding:12px;background:#12283c}
+.cc-reward-rank-1 {border-color:#b38a45;background:linear-gradient(120deg,#27384c,#1b293b)}
+.cc-reward-photo {background:#fff;border-radius:10px;display:grid;place-items:center;aspect-ratio:1;overflow:hidden;padding:6px}
+.cc-reward-photo img {display:block;width:100%;height:100%;object-fit:contain;min-width:0;max-width:192px;max-height:192px}
+.cc-reward-info {display:grid;gap:6px;min-width:0;justify-items:start}
+.cc-reward-info h3 {font-size:clamp(16px,2.5vw,21px);line-height:1.2;margin:0;overflow-wrap:anywhere}
+.cc-reward-info p {font-size:13px;color:#c2d6e6;margin:0}
+.cc-reward-place {display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:13px;color:#c1d6eb}
+.cc-reward-rank-1 .cc-reward-place {color:#ffd16b}
+.cc-reward-rank-2 .cc-reward-place {color:#dce6ef}
+.cc-reward-rank-3 .cc-reward-place {color:#e3ad86}
+.cc-reward-free {font-size:11px;font-weight:600;border-radius:6px;padding:4px 7px;color:#aee4ca;background:#173c3b}
+.cc-rewards-note {border-top:1px solid #294359;padding:12px 2px}
+@media(max-width:480px){.cc-reward-card {grid-template-columns: minmax(92px,116px) minmax(0,1fr);gap:10px;padding:9px}.cc-rewards>header h2{font-size:21px}.cc-reward-info{gap:5px}}

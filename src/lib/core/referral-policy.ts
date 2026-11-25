@@ -12,3 +12,6 @@ export function studentDigest(email:string,key:string){return mac('referral-stud
 export function isOpen(status:unknown,until:unknown,now=Date.now()){return status==='pending'&&typeof until==='number'&&until>now}
 export function inCompetition(c:{status?:unknown;startAt?:unknown;endAt?:unknown}|undefined,now:number){return c?.status==='active'&&typeof c.startAt==='number'&&typeof c.endAt==='number'&&now>=c.startAt&&now<c.endAt}
 export function compareRank(a:{count:number;reachedAt:number;id:string},b:{count:number;reachedAt:number;id:string}){return b.count-a.count||a.reachedAt-b.reachedAt||(a.id<b.id?-1:a.id>b.id?1:0)}
+
+/** Code and URL are produced together from the canonical reserved short code. */
+export function referralInvite(origin:string,stored:unknown){const code=typeof stored==='string'?normalizeCode(stored):null;if(!code||!isShortCode(code))return {code:null,link:null};return {code,link:new URL('/r/'+code,origin).href}}
