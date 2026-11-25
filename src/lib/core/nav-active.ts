@@ -1,4 +1,4 @@
 export function navActive(path:string,label:string,section='home'){const pathname=path.split('?')[0]||'';if(label==='Create')return false;if(label==='Home')return pathname==='/home'&&section==='home';if(label==='Reels')return pathname.startsWith('/reels')||section==='reels';if(label==='Messages')return pathname.startsWith('/messages')||section==='chat';if(label==='Search')return pathname.startsWith('/explore')||section==='search';if(label==='Notifications')return pathname.startsWith('/notifications')||section==='notifications';if(label==='Profile')return pathname.startsWith('/profile');if(label==='Leaderboard')return pathname==='/leaderboard';if(label==='Dashboard')return pathname.startsWith('/dashboard');return false}
 export function badgeLabel(count:number,mobile=false){return count<=0?'':count>(mobile?9:99)?(mobile?'9+':'99+'):String(count)}
 
-export function isRootTab(path:string){return ['/home','/reels','/messages','/explore','/profile/me','/notifications'].includes(path.split('?')[0]||'')}
+export function isRootTab(path:string){return ['/home','/reels','/messages','/explore','/profile/me','/notifications','/leaderboard'].includes(path.split('?')[0]||'')}

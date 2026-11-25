@@ -103,7 +103,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape'){setMenu(false);setPanel(null)}};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
   useEffect(()=>{setPanel(null);setMenu(false);setMobileMore(false)},[actualPath,params]);
   if(!checked||!handle)return <LoadingSkeleton kind="shell"/>;
-  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/leaderboard')?' cc-leaderboard-mode':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} onPanel={name=>{setMenu(false);setPanel(old=>old===name?null:name)}}/>
@@ -112,9 +112,9 @@ export default function SocialShell({ children }: { children: ReactNode }) {
     </aside>
     <main className="cc-main" id="main-content">
       <header className="cc-mobile-header">{isRootTab(actualPath)?<Brand compact/>:<MobileBackBar path={actualPath}/>}<div className="cc-mobile-actions"><Link href="/home?compose=1" aria-label="Create"><NavIcon name="Create"/></Link><Link href="/notifications" aria-label="Notifications"><NavIcon name="Notifications"/><Badge count={counts.unread} label="Unread notifications" mobile/></Link><button type="button" aria-label="More" onClick={()=>setMobileMore(true)}><Menu size={24}/></button></div></header>
-      <OfflineBanner/><InstallPrompt/><ReferralOnboarding key={uid}/><div className="cc-page">{children}</div>
+      <OfflineBanner/><InstallPrompt/><div className="cc-referral-onboarding-slot"><ReferralOnboarding key={uid}/></div><div className="cc-page">{children}</div>
     </main>
-    {!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
+    {!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
     <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} mobile />
     <MobileMoreSheet open={mobileMore} onClose={()=>setMobileMore(false)} onLogout={()=>void logout()} error={menuError}/>
     {panel&&<SidePanel label="Notifications" onClose={()=>setPanel(null)}><NotificationsFeed/></SidePanel>}
