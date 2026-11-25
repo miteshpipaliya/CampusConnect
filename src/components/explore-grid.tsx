@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
@@ -36,7 +37,7 @@ function ExploreTile({post,preview,hovered,enabled,onHover,onOpen}:{post:Explore
  const legacy=useLegacyPoster(!thumb?src:null,enabled);const hoverTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const clear=()=>{if(hoverTimer.current!==null)clearTimeout(hoverTimer.current);hoverTimer.current=null};useEffect(()=>()=>{if(hoverTimer.current!==null)clearTimeout(hoverTimer.current)},[]);
  return <Link data-preview-id={reel?post.id:undefined} className="cc-explore-tile" href={reel?'/reels?start='+encodeURIComponent(post.id):'/posts/'+encodeURIComponent(post.id)} scroll={reel} aria-label={post.authorHandle+': '+(post.caption||'Open campus post')} onPointerEnter={event=>{if(event.pointerType==='mouse'&&src&&matchMedia('(hover: hover)').matches&&!matchMedia('(prefers-reduced-motion: reduce)').matches){clear();hoverTimer.current=setTimeout(()=>onHover(true),120)}}} onPointerLeave={()=>{clear();onHover(false)}} onClick={()=>{clear();onOpen()}}>
- <div ref={legacy.node} className="cc-explore-preview">{thumb||legacy.url?<img src={(thumb||legacy.url)!} width={post.width||300} height={post.height||400} loading="lazy" decoding="async" alt=""/>:<span className="cc-explore-no-preview" aria-label="Preview unavailable">{reel?<Play size={28}/>:<ImageIcon size={28}/>}</span>}
+ <div ref={legacy.node} className="cc-explore-preview">{thumb||legacy.url?<SafeImg src={(thumb||legacy.url)!} width={post.width||300} height={post.height||400} loading="lazy" decoding="async" alt=""/>:<span className="cc-explore-no-preview" aria-label="Preview unavailable">{reel?<Play size={28}/>:<ImageIcon size={28}/>}</span>}
  {hovered&&src&&<HoverVideo src={src} onFailure={()=>onHover(false)}/>}</div>
  {reel?<span className="cc-explore-icon cc-explore-play" aria-label="Reel"><Play size={14} fill="currentColor"/></span>:post.mediaCount>1?<span className="cc-explore-icon" aria-label="Carousel"><Images size={22}/></span>:null}
  <span className="cc-explore-overlay">{!post.hideLikeCount&&<><Heart size={20} fill="currentColor"/> {post.likes}</>} <MessageCircle size={20} fill="currentColor"/> {post.comments}</span></Link>

@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import '@/app/post-modal-upgrade.css';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import Link from 'next/link';
@@ -53,7 +54,7 @@ export function LivePostDetail({id,modal=false}:{id:string;modal?:boolean}){
  if(!post)return <section className="cc-post-detail-loading" role="status" aria-label="Loading post"><div/><div/></section>;
  const profile='/profile/'+encodeURIComponent(post.authorHandle);
  const follow=async()=>{if(busy)return;setBusy(true);try{await update('/api/follow',post.followStatus==='active'?'DELETE':'POST',{handle:post.authorHandle});await load()}catch{setError('Follow update unavailable')}finally{setBusy(false)}};
- const media=post.media?.length?<MediaCarousel items={post.media}/>:post.mediaUrl&&(post.mediaContentType?.startsWith('video/')?<video controls playsInline src={post.mediaUrl}/>:<img src={post.mediaUrl} loading="lazy" alt={post.caption||'Campus post'}/>);
+ const media=post.media?.length?<MediaCarousel items={post.media}/>:post.mediaUrl&&(post.mediaContentType?.startsWith('video/')?<video controls playsInline src={post.mediaUrl}/>:<SafeImg src={post.mediaUrl} loading="lazy" alt={post.caption||'Campus post'}/>);
  return <article className={'cc-post-detail '+(modal?'cc-post-detail-split':'cc-post-detail-page')}>
  <div className="cc-post-detail-media">{media}</div>
  <div className="cc-post-detail-info">

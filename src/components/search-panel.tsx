@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useState} from 'react';import Link from 'next/link';import {Search,X} from 'lucide-react';
 type Item={uid?:string;handle?:string;name?:string;avatarUrl?:string|null;tag?:string;postCount?:number;id?:string;caption?:string;mediaUrl?:string|null;type?:string};
 type History={id:string;query:string};
@@ -28,8 +29,8 @@ export function SearchPanel(){
   {query.length>=2?<div className="cc-search-results">{!loading&&!items.length&&<p>No results</p>}{items.map((item,i)=>{
    const href=type==='accounts'?'/profile/'+encodeURIComponent(item.handle||''):type==='tags'?'/explore/tags/'+encodeURIComponent(item.tag||''):'/posts/'+encodeURIComponent(item.id||'');
    return <Link key={item.uid||item.tag||item.id||i} href={href} onClick={()=>void remember(query)}>
-    {type==='accounts'&&item.avatarUrl&&<img width={40} height={40} src={item.avatarUrl} alt=""/>}
-    {type==='posts'&&item.mediaUrl&&<img width={40} height={40} src={item.mediaUrl} alt=""/>}
+    {type==='accounts'&&item.avatarUrl&&<SafeImg width={40} height={40} src={item.avatarUrl} alt=""/>}
+    {type==='posts'&&item.mediaUrl&&<SafeImg width={40} height={40} src={item.mediaUrl} alt=""/>}
     <span><strong>{type==='accounts'?'@'+item.handle:type==='tags'?'#'+item.tag:item.caption||'Open post'}</strong><small>{type==='accounts'?item.name:type==='tags'?(item.postCount||0)+' posts':item.type}</small></span>
    </Link>})}</div>:
    <div className="cc-search-history"><header><strong>Recent searches</strong><button onClick={()=>void remove()}>Clear all</button></header>{history.map(h=><div key={h.id}><button onClick={()=>setQuery(h.query)}>{h.query}</button><button aria-label={'Remove '+h.query} onClick={()=>void remove(h.id)}><X size={14}/></button></div>)}</div>}

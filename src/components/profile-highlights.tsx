@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 type Item={id:string;title:string;coverUrl:string|null;coverContentType:string;storyCount:number};
@@ -24,7 +25,7 @@ export function ProfileHighlights({handle,self}:{handle:string;self:boolean}){
   <div className="cc-profile-highlight-row">
   {items.map(h=><div className="cc-profile-highlight" key={h.id}>
     <Link href={'/highlights/'+encodeURIComponent(h.id)} aria-label={'View '+h.title+' highlight'}>
-     <span className="cc-profile-highlight-circle">{h.coverUrl?(h.coverContentType.startsWith('video/')?<video src={h.coverUrl} muted playsInline preload="metadata" aria-label={h.title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<img src={h.coverUrl} loading="lazy" alt={h.title}/>):<span aria-hidden="true">◌</span>}</span>
+     <span className="cc-profile-highlight-circle">{h.coverUrl?(h.coverContentType.startsWith('video/')?<video src={h.coverUrl} muted playsInline preload="metadata" aria-label={h.title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<SafeImg src={h.coverUrl} loading="lazy" alt={h.title}/>):<span aria-hidden="true">◌</span>}</span>
     </Link>
     <small>{h.title} ({h.storyCount})</small>
     {self&&<button disabled={busy} type="button" onClick={()=>void remove(h.id)}>Remove</button>}
