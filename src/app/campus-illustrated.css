@@ -141,3 +141,18 @@
 @media(max-width:900px),(orientation:portrait){.cc-campus-intro{padding:16px max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom));gap:14px}.cc-intro-layout{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin:auto 0 0}.cc-intro-landmark{order:-1;min-height:clamp(105px,23vh,260px);align-items:flex-end}.cc-intro-dialogue{padding:20px;border-radius:18px}.cc-intro-transcript{min-height:140px;max-height:32vh;font-size:clamp(18px,4.8vw,25px)}.cc-intro-status{font-size:11px}.cc-intro-avatar{width:42px;height:42px}}
 @media(max-height:500px) and (orientation:landscape){.cc-intro-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)}.cc-intro-transcript{min-height:100px;max-height:32vh}.cc-intro-landmark{min-height:170px}}
 @media(prefers-reduced-motion:reduce){.cc-intro-cursor{animation:none}.cc-intro-progress i{transition:none}}
+
+/* Compact centered introduction on the account-choice artwork. */
+.cc-campus-intro{min-height:100svh;padding:clamp(14px,2vw,38px);gap:16px;justify-content:center}
+.cc-campus-intro>header{position:absolute;top:clamp(14px,2vw,38px);left:clamp(14px,2vw,38px);right:clamp(14px,2vw,38px)}
+.cc-campus-intro>header .cc-campus-official-brand{font-size:clamp(14px,1.25vw,25px);gap:7px}
+.cc-campus-intro>header .cc-campus-official-brand img{width:clamp(27px,2.2vw,46px);height:clamp(27px,2.2vw,46px)}
+.cc-campus-intro>header>small{font-size:clamp(10px,.85vw,18px)}
+.cc-intro-layout{display:grid;grid-template-columns:minmax(0,1fr);width:min(100%,clamp(520px,48vw,1050px));margin:70px auto 24px}
+.cc-intro-dialogue{padding:clamp(20px,2.4vw,42px);gap:clamp(12px,1.6vh,24px);border-radius:20px}
+.cc-intro-speaker h1{font-size:clamp(23px,2.2vw,36px)}.cc-intro-avatar{width:42px;height:42px;border-radius:11px}
+.cc-intro-transcript{min-height:clamp(150px,25vh,360px);max-height:42svh;font-size:clamp(16px,1.45vw,30px);line-height:1.65}
+.cc-intro-transcript .cc-intro-placeholder{font-size:clamp(15px,1.2vw,24px)}
+.cc-intro-footnote,.cc-intro-message{font-size:clamp(11px,.8vw,17px)}
+@media(max-width:700px),(orientation:portrait){.cc-campus-intro{padding:16px max(14px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom))}.cc-intro-layout{width:min(100%,520px);margin:65px auto 20px}.cc-intro-dialogue{padding:18px;gap:12px}.cc-intro-transcript{min-height:150px;max-height:40svh;font-size:17px}.cc-intro-status{font-size:10px}}
+@media(max-height:500px) and (orientation:landscape){.cc-intro-layout{margin:50px auto 12px}.cc-intro-dialogue{padding:16px;gap:9px}.cc-intro-transcript{min-height:90px;max-height:32svh}}

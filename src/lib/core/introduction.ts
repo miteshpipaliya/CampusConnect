@@ -1,7 +1,7 @@
-export const INTRO_VERSION='v1';
+export const INTRO_VERSION='v2';
 export const INTRO_AUDIO='/audio/introduction.mp3';
-export const INTRO_DURATION=102.687313;
-export const INTRO_SHA256='71ff44812cbf6ef5559adfa18bd4bed28c5174b9b306f116f25a48a09ccd483c';
+export const INTRO_DURATION=34.272625;
+export const INTRO_SHA256='0f4b011913bad6670df689cfe7b0057c4cf780ac8d4da2d0bd82b05af15d3b5d';
 export type IntroWord={word:string;start:number;end:number};
 export function validateTimings(value:unknown):IntroWord[]|null{
  if(!value||typeof value!=='object')return null;

@@ -1,6 +1,6 @@
 import {createHmac,randomBytes,timingSafeEqual} from 'node:crypto';
 import {INTRO_DURATION,INTRO_SHA256,INTRO_VERSION} from './introduction.ts';
-export const INTRO_COOKIE='cc_intro_v1';
+export const INTRO_COOKIE='cc_intro_v2';
 const START_TTL=30*60*1000,COMPLETED_TTL=30*86400000;
 type Proof={v:string;asset:string;nonce:string;started:number;completed?:number;expires:number};
 const signature=(body:string,key:string)=>createHmac('sha256',key).update('campus-introduction:'+body).digest('base64url');

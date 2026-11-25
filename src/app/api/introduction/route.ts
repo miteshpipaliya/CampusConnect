@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import {sameOrigin,session,safeHeaders,errorResponse} from '@/lib/server/session';
 import {clientIp} from '@/lib/server/auth-throttle';
 import {checkRateLimit} from '@/lib/server/rate-limit';
-import {introSecret,introCompleted,INTRO_COOKIE,persistIntroduction} from '@/lib/server/introduction';
+import {introSecret,introCompleted,INTRO_COOKIE} from '@/lib/server/introduction';
 import {newIntroProof,finishIntroProof} from '@/lib/core/introduction-proof';
 export const runtime='nodejs';
 const reply=(completed:boolean)=>NextResponse.json({completed},{headers:safeHeaders});
