@@ -75,3 +75,5 @@ Implemented auth throttling, atomic OTP proof consumption, server-side session d
 - S2 partial: health diagnostics restricted, probes cached/coalesced, guard payloads bounded, strict write quotas fail closed, block/mute/close-friends quotas added. Read-limit sweep pending.
 
 - S2: 11 discovery/directory route families now have read budgets and security matrix; S3 partial: error pages, panel recovery, request ID/timing error wrapper and selected double-parse removals. Global route and lint sweep still pending.
+
+- S4 partial: reuse storage client, visibility-aware adaptive chat fallback, remove duplicate legacy feed polls, 60s story/avatar refresh, document privacy/performance tradeoffs. Query budget instrumentation and load tests outstanding.

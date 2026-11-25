@@ -9,6 +9,7 @@ import {ChatMediaUpload} from './chat-media-upload';
 import {ChatSharedContentCard} from './chat-shared-content-card';
 import {ChatPostPicker} from './chat-post-picker';
 import {inboxTime} from '@/lib/core/chat-activity';
+import {adaptivePoll} from '@/lib/client/adaptive-poll';
 import {useStreamConnection} from './stream-connection';
 
 type Member={uid:string;handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null};
@@ -129,10 +130,10 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    finally{inFlight=false}
   };
   void refreshConversation(peer).catch(e=>{if(live){setLoading(false);setError(e instanceof Error?e.message:'Unable to load conversation')}});
-  const timer=status==='connected'&&channelWatching?null:window.setInterval(tick,3000);
+  const stop=status==='connected'&&channelWatching?null:adaptivePoll(async()=>{await tick();return true});
   const onResume=()=>{void tick()};
   document.addEventListener('visibilitychange',onResume);window.addEventListener('online',onResume);
-  return()=>{live=false;sequence.current++;if(timer!==null)window.clearInterval(timer);document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
+  return()=>{live=false;sequence.current++;stop?.();document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
  },[peer,status,channelWatching,refreshConversation]);
 
  useEffect(()=>{
@@ -141,9 +142,9 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    if(!live||inFlight||document.visibilityState==='hidden'||!navigator.onLine)return;
    inFlight=true;try{await refreshInbox()}catch(e){if(live)setInboxError(e instanceof Error?e.message:'Inbox refresh unavailable')}finally{inFlight=false}
   };
-  const timer=status==='connected'?null:window.setInterval(tick,6000);
+  const stop=status==='connected'?null:adaptivePoll(async()=>{await tick();return false},6000);
   document.addEventListener('visibilitychange',tick);
-  return()=>{live=false;if(timer!==null)window.clearInterval(timer);document.removeEventListener('visibilitychange',tick)};
+  return()=>{live=false;stop?.();document.removeEventListener('visibilitychange',tick)};
  },[refreshInbox,status]);
 
  useEffect(()=>{

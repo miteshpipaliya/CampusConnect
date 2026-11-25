@@ -1,7 +1,9 @@
 import 'server-only';
 import {S3Client,PutObjectCommand,GetObjectCommand,HeadObjectCommand,DeleteObjectCommand,DeleteObjectsCommand} from '@aws-sdk/client-s3';
 import {getSignedUrl} from '@aws-sdk/s3-request-presigner';
-export function getStorage(){
+let cachedStorage:ReturnType<typeof initializeStorage>|undefined;
+export function getStorage(){return cachedStorage??=initializeStorage()}
+function initializeStorage(){
  const provider=process.env.STORAGE_PROVIDER||'r2';
  if(provider==='r2'){
   const endpoint=process.env.R2_ENDPOINT,account=process.env.R2_ACCOUNT_ID;

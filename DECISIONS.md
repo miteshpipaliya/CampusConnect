@@ -49,3 +49,5 @@ Updated 2026-11-24.
 - Security overrides the requested cache optimization: no positive authorization cache (logout/revocation must work across serverless instances). Auth limits fail closed immediately, stronger than the requested three-error threshold. OTP proof is consumed once before side effects; failed signup/reset requires a fresh code. Nonce CSP remains off until preview acceptance.
 
 - Validate signed cookies before writing denylist records; perform push binding cleanup before revocation. Health details require optional HEALTH_SECRET; anonymous callers receive status only.
+
+- Keep signed media lifetimes and no-store redirect policy unchanged rather than implementing hour-stable bearer URLs or browser caching across account switches.

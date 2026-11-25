@@ -10,7 +10,7 @@ export function Avatar({user,handle,size=44,ring='none',className='',online=fals
  const accountHandle=user?.handle||handle;
  useEffect(()=>{if(!accountHandle)return;let alive=true;
   async function update(){try{const r=await fetch('/api/avatar?handle='+encodeURIComponent(accountHandle!),{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(alive)setLatestId(d.avatarMediaId||null)}catch{}}
-  const refresh=()=>{void update()};window.addEventListener('cc-avatar-updated',refresh);const timer=window.setInterval(refresh,20000);return()=>{alive=false;window.clearInterval(timer);window.removeEventListener('cc-avatar-updated',refresh)}
+  const refresh=()=>{if(!document.hidden)void update()};window.addEventListener('cc-avatar-updated',refresh);const timer=window.setInterval(refresh,60000);return()=>{alive=false;window.clearInterval(timer);window.removeEventListener('cc-avatar-updated',refresh)}
  },[accountHandle]);
  const id=latestId===undefined?user?.avatarMediaId:latestId;
  const src=latestId!==undefined?(id?'/api/media?id='+encodeURIComponent(id):null):user?.avatarUrl||(id?'/api/media?id='+encodeURIComponent(id):null);
