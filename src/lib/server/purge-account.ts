@@ -1,4 +1,7 @@
 import 'server-only';
+import {institutional,referralSecret} from './referrals';
+import {studentDigest} from '../core/referral-policy';
+import {FieldValue} from 'firebase-admin/firestore';
 import {auth,db} from './services';
 import {deleteObject} from './storage';
 import {deletionDue} from '../core/phase2-rules';
@@ -55,6 +58,8 @@ export async function purgeAccountBatch(uid:string,now=Date.now()):Promise<{stag
   if(stream.taskId!==priorTask)await profileRef.update({streamDeleteTaskId:stream.taskId});
   return {stage:'stream',processed:0,complete:false};
  }
+ // Preserve the minimum keyed institutional-email tombstone before identity removal to prevent repeat referral credit.
+ const email=profile.data()?.email;if(institutional(email))await store.collection('referralStudents').doc(studentDigest(String(email),referralSecret())).set({lastDeletedAt:FieldValue.serverTimestamp()},{merge:true});
  // Auth is deleted last so that a recoverable Firestore profile remains until external data is cleaned.
  try{await auth().deleteUser(uid)}catch(e){
   if((e as {code?:string}).code!=='auth/user-not-found')throw e;
