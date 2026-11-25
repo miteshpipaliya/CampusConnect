@@ -142,7 +142,7 @@ export async function POST(request:NextRequest){
       const handle=db().collection('handles').doc(p.handle),profile=db().collection('users').doc(user!.uid);
       if((await tx.get(handle)).exists)throw Error('HANDLE_TAKEN');
       if((await tx.get(profile)).exists)throw Error('PROFILE_EXISTS');
-      const referral=await registrationFields(tx,user!.uid,email,fresh,request.cookies.get(REFERRAL_COOKIE)?.value);
+      const referral=await registrationFields(tx,email,fresh,request.cookies.get(REFERRAL_COOKIE)?.value);
       tx.create(handle,{uid:user!.uid});
       tx.create(profile,{...referral,uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts?`${parts[1]!}${parts[2]!}${parts[3]!}`:'',branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:parts?2000+Number(parts[1]):null,emailBranchCode:parts?.[2]??null,verifiedInstitutionalEmail:Boolean(parts),createdAt:FieldValue.serverTimestamp()});
      });

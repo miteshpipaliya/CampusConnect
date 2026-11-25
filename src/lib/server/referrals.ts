@@ -6,8 +6,9 @@ import {generateCode,normalizeCode,readAttribution,studentDigest,isOpen,inCompet
 export function referralSecret(){const key=process.env.REFERRAL_SIGNING_SECRET||process.env.OTP_SIGNING_SECRET;if(!key||key.length<32)throw Error('Referral signing unavailable');return key}
 export function institutional(email:unknown){return typeof email==='string'&&isAllowedEmail(email,'')}
 export function eligible(d:DocumentData|undefined){return Boolean(d&&institutional(d.email)&&d.verifiedInstitutionalEmail===true&&!d.deletedAt&&!d.suspendedAt)}
-export async function activeOwner(code:string){const store=db(),idx=(await store.collection('referralCodes').doc(code).get()).data();if(idx?.status!=='active'||typeof idx.uid!=='string')return null;const [p,u]=await Promise.all([store.collection('users').doc(idx.uid).get(),auth().getUser(idx.uid).catch(()=>null)]);return eligible(p.data())&&u?.emailVerified&&!u.disabled&&institutional(u.email)?idx.uid as string:null}
-export async function registrationFields(tx:Transaction,uid:string,email:string,fresh:boolean,token:string|undefined){
+async function getIdentity(uid:string){return auth().getUser(uid).catch(e=>{if((e as {code?:string}).code==='auth/user-not-found')return null;throw e})}
+export async function activeOwner(code:string){const store=db(),idx=(await store.collection('referralCodes').doc(code).get()).data();if(idx?.status!=='active'||typeof idx.uid!=='string')return null;const [p,u]=await Promise.all([store.collection('users').doc(idx.uid).get(),getIdentity(idx.uid)]);return eligible(p.data())&&u?.emailVerified&&!u.disabled&&institutional(u.email)?idx.uid as string:null}
+export async function registrationFields(tx:Transaction,email:string,fresh:boolean,token:string|undefined){
  if(!institutional(email))return {referralCodeEntryStatus:'skipped'};
  const key=referralSecret(),ledger=db().collection('referralStudents').doc(studentDigest(email,key)),prior=await tx.get(ledger);
  if(!prior.exists)tx.create(ledger,{firstSeenAt:FieldValue.serverTimestamp()});
@@ -16,7 +17,7 @@ export async function registrationFields(tx:Transaction,uid:string,email:string,
 }
 export async function ensureReferralCode(uid:string){
  const store=db(),ref=store.collection('users').doc(uid);
- const identity=await auth().getUser(uid).catch(()=>null);
+ const identity=await getIdentity(uid);
  if(!identity?.emailVerified||identity.disabled||!institutional(identity.email))return null;
  for(let attempt=0;attempt<5;attempt++){
   const candidate=generateCode();
@@ -75,6 +76,6 @@ export async function backfillReferrals(cursor:string|undefined){
  const store=db();let query=store.collection('users').orderBy(FieldPath.documentId()).limit(50);
  if(cursor)query=query.startAfter(cursor);
  const page=await query.get();let issued=0,failed=0;
- for(const doc of page.docs){try{if(await ensureReferralCode(doc.id))issued++}catch{failed++;console.error('Referral backfill record failed')}}
+ for(let i=0;i<page.docs.length;i+=5)await Promise.all(page.docs.slice(i,i+5).map(async doc=>{try{if(await ensureReferralCode(doc.id))issued++}catch{failed++;console.error('Referral backfill record failed')}}));
  return {issued,failed,next:page.size===50?page.docs.at(-1)?.id??null:null};
 }
