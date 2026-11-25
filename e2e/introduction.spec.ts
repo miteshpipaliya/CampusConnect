@@ -7,7 +7,7 @@ test('new recording plays from Enter Campus, reveals aligned captions, and gates
  await page.route('**/api/introduction',async r=>{const a=r.request().method()==='POST'?r.request().postDataJSON().action:'status';actions.push(a);return r.fulfill({json:{completed:a==='finish'}})});
  await page.route('**/api/auth',r=>r.fulfill({status:401,json:{error:'Sign in required'}}));
  await page.setViewportSize({width:1440,height:900});await page.goto('/');await page.getByRole('link',{name:'ENTER CAMPUS'}).click();await expect(page).toHaveURL(/\/enter$/);const dialog=page.locator('.cc-intro-dialogue');await expect(dialog).toBeVisible();
- const caption=page.locator('.cc-intro-transcript');await expect(caption).toContainText('Welcome to CampusConnect!',{timeout:10000});
+ const caption=page.locator('.cc-intro-transcript');await expect(caption).toContainText('Welcome to CampusConnect!',{timeout:10000});await expect(caption.locator('.cc-caption-active')).toBeVisible({timeout:10000});await expect(caption.locator('.cc-caption-active')).toHaveCSS('font-weight','750');
  await expect(page.getByRole('link',{name:'Log in',exact:true})).toHaveCount(0);await expect(page.getByRole('link',{name:'Sign up with BVM email'})).toHaveCount(0);
  await expect.poll(()=>page.locator('audio').evaluate((a:HTMLAudioElement)=>a.currentTime)).toBeGreaterThan(0);
  expect(await page.locator('audio').evaluate((a:HTMLAudioElement)=>Math.abs(a.duration-34.272625)<.2)).toBeTruthy();
