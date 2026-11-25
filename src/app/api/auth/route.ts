@@ -97,17 +97,15 @@ export async function POST(request:NextRequest){
   const parsed=z.object({email:emailSchema,code:z.string().regex(/^\d{6}$/)}).safeParse(raw);
   if(!parsed.success)return errorResponse(400,'Enter your six-digit code');
   try{
-   const email=parsed.data.email,ref=challengeRef(email),now=Date.now();
+   const email=parsed.data.email,ref=challengeRef(email),now=Date.now(),proof=randomBytes(32).toString('hex');
    const nonce=await db().runTransaction(async tx=>{
     const doc=await tx.get(ref),data=doc.data();
     if(!data||data.used||data.verified||data.expires<now||data.attempts>=5)throw Error('INVALID');
     const expected=Buffer.from(data.codeHash,'hex'),actual=Buffer.from(digest(email+':'+data.nonce+':'+parsed.data.code),'hex');
     if(expected.length!==actual.length||!timingSafeEqual(expected,actual)){tx.update(ref,{attempts:FieldValue.increment(1)});return null}
-    tx.update(ref,{verified:true,codeHash:FieldValue.delete()});return data.nonce as string;
+    tx.update(ref,{verified:true,codeHash:FieldValue.delete(),proofHash:digest(proof),proofExpires:now+600000});return data.nonce as string;
    });
    if(!nonce)return errorResponse(400,'Incorrect code. Please try again');
-   const proof=randomBytes(32).toString('hex');
-   await ref.update({proofHash:digest(proof),proofExpires:now+600000});
    const existing=await auth().getUserByEmail(email).catch(e=>{if((e as {code?:string}).code==='auth/user-not-found')return null;throw e});
    const profile=existing?await db().collection('users').doc(existing.uid).get():null;
    const needsProfile=!existing||!profile?.exists;

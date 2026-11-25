@@ -79,3 +79,5 @@ Implemented auth throttling, atomic OTP proof consumption, server-side session d
 - S4 partial: reuse storage client, visibility-aware adaptive chat fallback, remove duplicate legacy feed polls, 60s story/avatar refresh, document privacy/performance tradeoffs. Query budget instrumentation and load tests outstanding.
 
 - U partial: measured reel caption gutter, 40px avatar, reduced-motion-aware delayed hover, account-scoped Explore photo neighbours and modal arrows. Signed preview batching and complete modal polish remain outstanding. Also deny suspended authors and check video attachment parent IDs.
+
+- Added bounded, authenticated video preview batch API; per-post authorization, attachment binding and 10-minute signing cap. Client still uses previous lazy per-tile media URL path; integration of batch API remains outstanding. OTP proof now written atomically with verification. Added static route guard marker regression test (not a substitute for authorization behavior tests).

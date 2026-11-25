@@ -51,3 +51,5 @@ Updated 2026-11-24.
 - Validate signed cookies before writing denylist records; perform push binding cleanup before revocation. Health details require optional HEALTH_SECRET; anonymous callers receive status only.
 
 - Keep signed media lifetimes and no-store redirect policy unchanged rather than implementing hour-stable bearer URLs or browser caching across account switches.
+
+- Preview URLs are issued only for visible, active video posts and verified attached media. No public bucket, no secrets, no production changes. Source marker tests supplement, not replace, live IDOR acceptance.
