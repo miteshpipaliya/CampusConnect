@@ -17,3 +17,7 @@
 **Deployment:** GitHub CI runs lint, strict typecheck, unit tests, high/critical dependency audit, Next build and Gitleaks. Vercel builds both preview and production. A Ready preview proves deployment/build, not multi-user acceptance or production correctness.
 
 See `KNOWN_RISKS.md` for bounded fanout, index provisioning, asynchronous Stream/R2 failures and other incomplete verification.
+
+
+## Progressive Web App
+See [PWA architecture and device QA](docs/PWA.md). iOS push requires an installed app on 16.4+ and may require a separate login. Push is generic; offline mode never caches private content. Versioned caches, no-cache worker delivery and user-confirmed updates mitigate stale workers.
