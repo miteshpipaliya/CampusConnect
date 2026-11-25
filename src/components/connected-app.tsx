@@ -82,8 +82,8 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
      <label>Username<input required pattern="[a-z][a-z0-9._]{2,29}" maxLength={30} placeholder="your.username" value={handle} onChange={e=>setHandle(e.target.value.toLowerCase())}/></label>
     </>}
     {stage==='privacy'&&<>
-     <label>Relationship status<select required value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value)}><option value="">Choose your status</option>{['Single','In Relationship','Engaged','Married','Situationship'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
-     <label>Who can see your relationship status?<select required value={relationshipVisibility} onChange={e=>setRelationshipVisibility(e.target.value)}><option value="me">Only me (recommended)</option><option value="followers">Followers only</option><option value="campus">Campus members</option></select></label>
+     <label>Relationship status<select required aria-label="Relationship status" value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value)}><option value="">Choose your status</option>{['Single','In Relationship','Engaged','Married','Situationship'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+     <label>Who can see your relationship status?<select required aria-label="Who can see your relationship status?" value={relationshipVisibility} onChange={e=>setRelationshipVisibility(e.target.value)}><option value="me">Only me (recommended)</option><option value="followers">Followers only</option><option value="campus">Campus members</option></select></label>
      <label className="cc-check"><input type="checkbox" required checked={acceptTerms} onChange={e=>setAcceptTerms(e.target.checked)}/> I accept the Terms of Service</label>
      <label className="cc-check"><input type="checkbox" required checked={acknowledgePrivacy} onChange={e=>setAcknowledgePrivacy(e.target.checked)}/> I acknowledge the Privacy Policy</label>
     </>}
