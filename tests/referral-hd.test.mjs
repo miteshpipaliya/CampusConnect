@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import sharp from 'sharp';
+import {REFERRAL_REWARDS} from '../src/lib/core/referral-rewards.ts';
+test('all five reward images have centered square HD and 4K variants',async()=>{for(const r of REFERRAL_REWARDS){for(const [suffix,size] of [['-hd',768],['-4k',3840]]){const file='public'+r.image.replace('.webp',suffix+'.webp');const info=await sharp(file).metadata();assert.equal(info.width,size);assert.equal(info.height,size);assert.equal(info.format,'webp');const {data}=await sharp(file).extract({left:0,top:0,width:1,height:1}).raw().toBuffer({resolveWithObject:true});assert.ok([...data].every(v=>v>=245));}}});

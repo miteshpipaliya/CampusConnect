@@ -24,3 +24,6 @@ Thumbs.db
 playwright-report/
 test-results/
 playwright/.auth/
+
+/public/rewards/*-hd.webp
+/public/rewards/*-4k.webp

@@ -12,9 +12,9 @@
     "audit": "npm audit --audit-level=high",
     "migrate": "node --experimental-strip-types scripts/migrate.mjs",
     "test:e2e": "playwright test",
-    "prebuild": "node scripts/prepare-firebase-runtime.mjs",
-    "predev": "node scripts/prepare-firebase-runtime.mjs",
-    "pretest": "node scripts/prepare-firebase-runtime.mjs"
+    "prebuild": "node scripts/prepare-firebase-runtime.mjs && node scripts/prepare-rewards.mjs",
+    "predev": "node scripts/prepare-firebase-runtime.mjs && node scripts/prepare-rewards.mjs",
+    "pretest": "node scripts/prepare-firebase-runtime.mjs && node scripts/prepare-rewards.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1173.0",
