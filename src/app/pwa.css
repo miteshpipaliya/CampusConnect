@@ -7,3 +7,29 @@
  .cc-mobile-header button,.cc-mobile-header a,.cc-mobile-nav a {min-width:44px;min-height:44px}
 }
 @media (display-mode:standalone) {html,body {min-height:100dvh;overscroll-behavior-y:none;touch-action:manipulation}}
+
+.cc-pwa-update,.cc-pwa-install,.cc-pwa-offline,.cc-push-control {padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.cc-pwa-update {position:fixed;z-index:10000;bottom:calc(76px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);border:1px solid #454b55;background:#111820;color:#fff;border-radius:12px;max-width:calc(100vw - 24px)}
+.cc-pwa-update button,.cc-pwa-install button,.cc-push-control button,.cc-offline-page button {padding:10px 14px;border:1px solid currentColor;border-radius:8px;min-height:44px}
+.cc-pwa-offline {background:#493c18;color:#fff}
+.cc-offline-page {min-height:100dvh;background:#080a0e;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px}
+.cc-offline-page svg {width:64px;height:64px}
+.cc-pwa-more {padding:0;border:0;background:transparent;color:inherit;width:100%;max-width:100%;max-height:90dvh;margin:auto 0 0}
+.cc-pwa-more::backdrop {background:#0009}
+.cc-pwa-more-content {background:#151a22;color:#fff;border-radius:20px 20px 0 0;padding:12px max(16px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:grid;gap:8px;max-height:85dvh;overflow:auto}
+.cc-pwa-more-content header {display:flex;align-items:center;justify-content:space-between}
+.cc-pwa-more-content>a,.cc-pwa-more-content button {min-height:44px;padding:10px;text-align:left}
+.cc-pwa-handle {width:40px;height:4px;border-radius:4px;background:#777;justify-self:center}
+.cc-pwa-back {display:flex;align-items:center;gap:4px}
+.cc-pwa-back button {display:grid;place-items:center}
+.cc-push-control small {flex-basis:100%}
+@media(max-width:720px) {
+ .cc-mobile-actions button {display:grid;place-items:center;background:none;border:0;color:inherit}
+ .cc-chat-mode .cc-page {min-height:0;max-height:var(--cc-vvh,100dvh);overscroll-behavior:contain}
+ .cc-story-screen {padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);height:100dvh}
+ .cc-app {min-height:100dvh!important}
+ .cc-pwa-more-content button,.cc-mobile-actions a {min-width:44px}
+}
+@media(display-mode:standalone) {
+ .cc-story-screen {height:100dvh;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+}
