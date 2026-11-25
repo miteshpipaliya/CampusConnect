@@ -24,3 +24,7 @@ Thumbs.db
 playwright-report/
 test-results/
 playwright/.auth/
+
+# Generated from the committed original hoodie photo by the reward image preparation script.
+/public/rewards/hoodie-2k.webp
+/public/rewards/hoodie-2k.webp.tmp
