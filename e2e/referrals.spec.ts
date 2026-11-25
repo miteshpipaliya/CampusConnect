@@ -42,7 +42,7 @@ test('referral workspace, podium, enabled rewards and profile navigation render 
  await page.getByRole('link',{name:'Rewards',exact:true}).click();
  await expect(page).toHaveURL(/tab=rewards/);
  await expect(page.locator('.cc-reward-card')).toHaveCount(5);
- for(const [i,name] of ['Black hoodie','Wireless earbuds','Plain black T-shirt','Steel water bottle','The Alchemist'].entries()){const card=page.locator('.cc-reward-card').nth(i);await expect(card.getByRole('heading',{name,exact:true})).toBeVisible();await expect.poll(()=>card.locator('img').evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(0)}
+ for(const [i,name] of ['Black hoodie','Wireless earbuds','Plain black T-shirt','Steel water bottle','The Alchemist'].entries()){const card=page.locator('.cc-reward-card').nth(i);await expect(card.getByRole('heading',{name,exact:true})).toBeVisible();await expect.poll(()=>card.locator('img').evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBe(2048);await expect(card.locator('img')).toHaveCSS('object-fit','contain');await expect(card.locator('img')).toHaveCSS('object-position','50% 50%');const geometry=await card.locator('img').evaluate(el=>{const a=el.getBoundingClientRect(),b=el.parentElement!.getBoundingClientRect();return Math.abs(a.width-b.width)<1&&Math.abs(a.height-b.height)<1&&Math.abs(a.left-b.left)<1&&Math.abs(a.top-b.top)<1});expect(geometry).toBe(true)}
  await page.setViewportSize({width:390,height:844});
  await expect(page.getByRole('link',{name:'Rewards',exact:true})).toBeVisible();
  expect(await page.locator('.cc-board-v2').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);

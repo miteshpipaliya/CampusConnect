@@ -19,3 +19,5 @@ New displayed codes use CC-XXXX with a random mixed uppercase alphanumeric suffi
 
 ## Five-prize reward catalog
 Rank 1 black hoodie, rank 2 wireless earbuds (AirPods-style, manufacturer not verified), rank 3 plain black T-shirt, rank 4 black 1L steel water bottle, rank 5 The Alchemist by Paulo Coelho. Local optimized WebP copies of the supplied photos are served from public/rewards; no external asset dependency. The catalog does not create prize claims or shipment records. Final eligible ranks determine winners, subject to review. The canonical short code and URL are returned as one pair; legacy aliases remain valid.
+
+Reward images are generated from the five versioned original PNG photographs in assets/rewards during prebuild/predev/pretest using Next's locked sharp dependency. Output is centered 2048×2048 WebP with white padding; source detail is preserved, not native 2K capture. No external runtime photo service.

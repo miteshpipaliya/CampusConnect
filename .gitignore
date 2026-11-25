@@ -24,3 +24,6 @@ Thumbs.db
 playwright-report/
 test-results/
 playwright/.auth/
+
+# Generated 2K reward assets (built from versioned originals)
+/public/rewards/hd/
