@@ -5,7 +5,7 @@ export function usePreviewBatch(uid:string|null,enabled:boolean,version:string){
  const grid=useRef<HTMLDivElement>(null);
  const [state,setState]=useState<{uid:string;items:Record<string,Preview>}|null>(null);
  useEffect(()=>{
-  const root=grid.current;if(!uid||!enabled||!root)return;
+  const root=grid.current;if(!uid||!enabled||!root)return;const accountUid=uid;
   let active=true,busy=false,timer:ReturnType<typeof setTimeout>|undefined;
   const pending=new Set<string>(),sent=new Set<string>(),controller=new AbortController();
   const schedule=()=>{if(active&&!busy&&pending.size&&timer===undefined)timer=setTimeout(()=>{timer=undefined;void flush()},200)};
@@ -17,7 +17,7 @@ export function usePreviewBatch(uid:string|null,enabled:boolean,version:string){
     if(!response.ok)return;
     const body=await response.json() as {previews?:Record<string,Preview>};
     const entries=ids.flatMap(id=>{const value=body.previews?.[id];return value&&typeof value.url==='string'&&value.url.startsWith('https://')&&typeof value.expiresAt==='number'&&value.expiresAt>Date.now()?[[id,value] as const]:[]});
-    if(active)setState(old=>({uid,items:{...(old?.uid===uid?old.items:{}),...Object.fromEntries(entries)}}));
+    if(active)setState(old=>({uid:accountUid,items:{...(old?.uid===accountUid?old.items:{}),...Object.fromEntries(entries)}}));
    }catch{/* The authenticated per-media endpoint remains the fallback. */}
    finally{busy=false;schedule()}
   }
