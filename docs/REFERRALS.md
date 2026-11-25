@@ -19,3 +19,6 @@ New displayed codes use CC-XXXX with a random mixed uppercase alphanumeric suffi
 
 ## Five-prize reward catalog
 Rank 1 black hoodie, rank 2 wireless earbuds (AirPods-style, manufacturer not verified), rank 3 plain black T-shirt, rank 4 black 1L steel water bottle, rank 5 The Alchemist by Paulo Coelho. Local optimized WebP copies of the supplied photos are served from public/rewards; no external asset dependency. The catalog does not create prize claims or shipment records. Final eligible ranks determine winners, subject to review. The canonical short code and URL are returned as one pair; legacy aliases remain valid.
+
+### 2K reward photos
+The original five uploaded PNGs are retained under assets/rewards-original. The existing locked Next.js sharp package produces 2048 × 2048 WebP files in public/rewards/hd-v1 before development, tests and production builds. Lanczos resizing, mild sharpening and equal white padding preserve product proportions without clipping. These are upscaled, not native 2K captures. The versioned URL avoids stale thumbnails; rewards and referral logic are unchanged.
