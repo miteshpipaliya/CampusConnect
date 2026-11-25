@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {ReferralOnboarding} from './referrals/referral-onboarding';
 import {LoadingSkeleton} from './loading-skeleton';
 import {PushSettings,PushConnection} from './push-settings';
 import '@/app/chat-live-upgrade.css';
@@ -31,7 +32,7 @@ import {StreamConnectionProvider} from './chat/stream-connection';
 import { useRouter } from 'next/navigation';
 
 type NavItem={label:string;href:string};
-const links:NavItem[]=[{label:'Home',href:'/home'},{label:'Reels',href:'/reels'},{label:'Messages',href:'/messages'},{label:'Search',href:'/explore'},{label:'Notifications',href:'/notifications'},{label:'Create',href:'/home?compose=1'},{label:'Dashboard',href:'/dashboard'},{label:'Profile',href:'/profile/me'}];
+const links:NavItem[]=[{label:'Home',href:'/home'},{label:'Reels',href:'/reels'},{label:'Messages',href:'/messages'},{label:'Search',href:'/explore'},{label:'Notifications',href:'/notifications'},{label:'Create',href:'/home?compose=1'},{label:'Dashboard',href:'/dashboard'},{label:'Leaderboard',href:'/leaderboard'},{label:'Profile',href:'/profile/me'}];
 const mobileLabels=new Set(['Home','Reels','Messages','Search','Profile']);
 function Badge({count,label,mobile=false}:{count:number;label:string;mobile?:boolean}){const value=badgeLabel(count,mobile);return value?<b className="cc-nav-badge" aria-label={label} title={count+' '+label.toLowerCase()}>{value}</b>:null}
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -111,7 +112,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
     </aside>
     <main className="cc-main" id="main-content">
       <header className="cc-mobile-header">{isRootTab(actualPath)?<Brand compact/>:<MobileBackBar path={actualPath}/>}<div className="cc-mobile-actions"><Link href="/home?compose=1" aria-label="Create"><NavIcon name="Create"/></Link><Link href="/notifications" aria-label="Notifications"><NavIcon name="Notifications"/><Badge count={counts.unread} label="Unread notifications" mobile/></Link><button type="button" aria-label="More" onClick={()=>setMobileMore(true)}><Menu size={24}/></button></div></header>
-      <OfflineBanner/><InstallPrompt/><div className="cc-page">{children}</div>
+      <OfflineBanner/><InstallPrompt/><ReferralOnboarding key={uid}/><div className="cc-page">{children}</div>
     </main>
     {!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
     <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} mobile />
