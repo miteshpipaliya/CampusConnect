@@ -4,7 +4,7 @@ import {db} from './services';
 import {backfillReferrals} from './referrals';
 export {backfillReferrals};
 const MAX_REFERRALS=5000,MAX_SCORES=400;
-type AdminAction={action:'competition';title:string;startAt:number;endAt:number}|{action:'edit';id:string;title:string;startAt:number;endAt:number}|{action:'finalize';id:string}|{action:'disqualify';id:string;reason:string}|{action:'reconcile';handle:string}|{action:'backfill';cursor?:string|undefined};
+type AdminAction={action:'competition';title:string;startAt:number;endAt:number}|{action:'edit';id:string;title:string;startAt:number;endAt:number}|{action:'finalize';id:string}|{action:'disqualify';id:string;reason:string}|{action:'review';id:string;status:'flagged'|'cleared';reason:string}|{action:'reconcile';handle:string}|{action:'backfill';cursor?:string|undefined};
 export async function manageReferrals(actor:string,input:AdminAction){
  const store=db(),audit=store.collection('referralAuditLogs').doc(),pointer=store.collection('referralConfig').doc('current');
  if(input.action==='backfill'){const result=await backfillReferrals(input.cursor);await audit.create({actorUid:actor,action:input.action,timestamp:FieldValue.serverTimestamp(),metadata:{issued:result.issued,failed:result.failed}});return result}
@@ -25,12 +25,20 @@ export async function manageReferrals(actor:string,input:AdminAction){
    if(!c||c.status!=='active'||Date.now()<Number(c.endAt))throw Error('Competition must have ended and not be finalized');
    const [records,old]=await Promise.all([tx.get(store.collection('referrals').where('competitionId','==',input.id).where('status','==','eligible').limit(MAX_REFERRALS+1)),tx.get(ref.collection('scores').limit(MAX_SCORES+1))]);
    if(records.size>MAX_REFERRALS||old.size>MAX_SCORES)throw Error('Competition exceeds safe atomic finalization capacity');
+   if(records.docs.some(d=>d.data().reviewStatus==='flagged'))throw Error('Resolve flagged referrals before finalization');
    const totals=new Map<string,{count:number;reachedAt:number}>();
    for(const record of records.docs){const d=record.data();if(Number(d.createdAt)<Number(c.startAt)||Number(d.createdAt)>=Number(c.endAt))continue;const uid=String(d.referrerUid),prior=totals.get(uid);totals.set(uid,{count:(prior?.count??0)+1,reachedAt:Math.max(prior?.reachedAt??0,Number(d.createdAt))})}
    if(new Set([...old.docs.map(d=>d.id),...totals.keys()]).size>MAX_SCORES)throw Error('Competition exceeds safe atomic finalization capacity');
    for(const d of old.docs)if(!totals.has(d.id))tx.delete(d.ref);
    for(const [uid,score] of totals)tx.set(ref.collection('scores').doc(uid),score);
    tx.update(ref,{status:'finalized',finalizedAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});log({competitionId:input.id,metadata:{participants:totals.size,eligible:records.size}});return {ok:true};
+  }
+  if(input.action==='review'){
+   const ref=store.collection('referrals').doc(input.id),d=(await tx.get(ref)).data();if(!d||d.status!=='eligible')throw Error('Eligible referral not found');
+   const comp=typeof d.competitionId==='string'?await tx.get(store.collection('referralCompetitions').doc(d.competitionId)):null;
+   if(comp?.data()?.status==='finalized')throw Error('Finalized competition results are immutable');
+   tx.update(ref,{reviewStatus:input.status,reviewReason:input.reason,reviewedAt:FieldValue.serverTimestamp()});
+   log({targetUid:input.id,competitionId:d.competitionId??null,reason:input.reason,metadata:{reviewStatus:input.status}});return {ok:true};
   }
   if(input.action==='disqualify'){
    const ref=store.collection('referrals').doc(input.id),d=(await tx.get(ref)).data();if(!d||d.status!=='eligible')throw Error('Eligible referral not found');
@@ -62,6 +70,6 @@ export async function adminReferralRecords(handle:string|undefined,page:number){
  const records=await query.orderBy('createdAt','desc').offset(page*30).limit(31).get();
  const ids=[...new Set(records.docs.flatMap(d=>[String(d.data().referrerUid),d.id]))];const profiles=ids.length?await store.getAll(...ids.map(id=>store.collection('users').doc(id))):[];
  const handles=new Map(profiles.map(p=>[p.id,p.data()?.deletedAt?'Deleted student':String(p.data()?.handle||'Unavailable student')]));
- return {rows:records.docs.slice(0,30).map(d=>({id:d.id,referrer:handles.get(String(d.data().referrerUid)),student:handles.get(d.id),method:d.data().referralMethod,status:d.data().status,createdAt:d.data().createdAt,reason:d.data().eligibilityReason??null,competitionId:d.data().competitionId??null})),hasMore:records.size>30};
+ return {rows:records.docs.slice(0,30).map(d=>({id:d.id,referrer:handles.get(String(d.data().referrerUid)),student:handles.get(d.id),method:d.data().referralMethod,status:d.data().status,createdAt:d.data().createdAt,reason:d.data().eligibilityReason??null,reviewStatus:d.data().reviewStatus??'unreviewed',reviewReason:d.data().reviewReason??null,competitionId:d.data().competitionId??null})),hasMore:records.size>30};
 }
-export async function exportCompetition(id:string){const store=db(),ref=store.collection('referralCompetitions').doc(id),c=(await ref.get()).data();if(c?.status!=='finalized')throw Error('Finalize competition before export');const scores=await ref.collection('scores').where('count','>',0).orderBy('count','desc').orderBy('reachedAt','asc').orderBy(FieldPath.documentId(),'asc').limit(MAX_SCORES+1).get();if(scores.size>MAX_SCORES)throw Error('Export exceeds supported capacity');const users=scores.size?await store.getAll(...scores.docs.map(d=>store.collection('users').doc(d.id))):[];const handles=new Map(users.map(d=>[d.id,d.data()?.deletedAt?'Deleted student':String(d.data()?.handle||'Unavailable student')]));return {title:String(c.title),rows:scores.docs.map((d,i)=>({rank:i+1,handle:handles.get(d.id),count:d.data().count,reachedAt:d.data().reachedAt}))}}
+export async function exportCompetition(id:string,actor:string){const store=db(),ref=store.collection('referralCompetitions').doc(id),c=(await ref.get()).data();if(c?.status!=='finalized')throw Error('Finalize competition before export');const scores=await ref.collection('scores').where('count','>',0).orderBy('count','desc').orderBy('reachedAt','asc').orderBy(FieldPath.documentId(),'asc').limit(MAX_SCORES+1).get();if(scores.size>MAX_SCORES)throw Error('Export exceeds supported capacity');const users=scores.size?await store.getAll(...scores.docs.map(d=>store.collection('users').doc(d.id))):[];const handles=new Map(users.map(d=>[d.id,d.data()?.deletedAt?'Deleted student':String(d.data()?.handle||'Unavailable student')]));await store.collection('referralAuditLogs').doc().create({actorUid:actor,action:'export',competitionId:id,timestamp:FieldValue.serverTimestamp()});return {title:String(c.title),rows:scores.docs.map((d,i)=>({rank:i+1,handle:handles.get(d.id),count:d.data().count,reachedAt:d.data().reachedAt}))}}
