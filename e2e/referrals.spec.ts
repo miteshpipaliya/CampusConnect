@@ -1,0 +1,2 @@
+import {test,expect} from '@playwright/test';
+test('referral APIs reject unauthenticated access',async({request})=>{for(const path of ['/api/referrals','/api/leaderboard','/api/admin/referrals']){const r=await request.get(path);expect(r.status()).toBe(401);expect(r.headers()['content-type']).toContain('json')}const invalid=await request.get('/r/invalid-code',{maxRedirects:0});expect([302,307,308]).toContain(invalid.status());expect(invalid.headers()['location']).toContain('/login');expect(invalid.headers()['set-cookie']||'').not.toContain('cc_referral=')});

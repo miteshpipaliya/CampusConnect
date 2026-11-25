@@ -1,4 +1,5 @@
 'use client';
+import {ReferralDashboard} from './referrals/referral-dashboard';
 import {SafeImg} from '@/components/safe-img';
 import {LoadingSkeleton} from './loading-skeleton';
 import Link from 'next/link';
@@ -42,6 +43,7 @@ export function RealProfile({username}:{username:string}){
   </header>
   {data.private&&<p role="status" className="cc-profile-private-notice">This account is private. Follow to request access to posts and stories.</p>}
 
+  {self&&<ReferralDashboard/>}
   <ProfileHighlights handle={profile.handle} self={self}/>
   <div className="cc-profile-tabs" role="tablist" aria-label="Profile content">
    {([{key:'posts',label:'Posts',Icon:Grid3X3},{key:'reels',label:'Reels',Icon:Clapperboard},{key:'reposts',label:'Reposts',Icon:Repeat2},...(self?[{key:'saved' as const,label:'Saved',Icon:Bookmark}]:[]),{key:'tagged',label:'Tagged',Icon:AtSign}] as const).map(({key,label,Icon})=><button type="button" role="tab" aria-selected={tab===key} className={tab===key?'active':''} key={key} onClick={()=>setTab(key)}><Icon size={18}/>{label}</button>)}
