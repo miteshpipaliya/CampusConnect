@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {z} from 'zod';
-import {guard} from '@/lib/server/guard';
+import {guard,parsedInput} from '@/lib/server/guard';
 import {authorizedStory} from '@/lib/server/story-service';
 import {sendStoryDM} from '@/lib/server/story-reply';
 import {db} from '@/lib/server/services';
@@ -21,8 +21,8 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{id:string}>
    const relation=await store.collection('follows').doc(story.authorUid+'_'+checked.user.uid).get();
    if(relation.data()?.status!=='active')return errorResponse(403,'Story reply restricted');
   }
-  const idSent=await sendStoryDM(checked.user.uid,story.authorUid,id,schema.parse(checked.input).text);
-  await notify({recipientUid:story.authorUid,actorUid:checked.user.uid,type:'story_reply',storyId:id}).catch(()=>{});
+  const idSent=await sendStoryDM(checked.user.uid,story.authorUid,id,parsedInput<z.infer<typeof schema>>(checked).text);
+  await notify({recipientUid:story.authorUid,actorUid:checked.user.uid,type:'story_reply',storyId:id}).catch(()=>console.error('Story notification failed'));
   return NextResponse.json({ok:true,messageId:idSent},{headers:safeHeaders});
  }catch{return errorResponse(503,'Story reply unavailable')}
 }

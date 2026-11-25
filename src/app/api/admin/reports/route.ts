@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {FieldValue} from 'firebase-admin/firestore';
 import {z} from 'zod';
-import {guard} from '@/lib/server/guard';
+import {guard,parsedInput} from '@/lib/server/guard';
 import {isAdmin} from '@/lib/server/admin';
 import {db,auth} from '@/lib/server/services';
 import {errorResponse,safeHeaders} from '@/lib/server/session';
@@ -29,7 +29,7 @@ export async function POST(req:NextRequest){
  const checked=await guard(req,{write:true,schema,rateLimit:{key:'admin-moderation:{uid}',limit:60,windowSec:3600}});
  if(!checked.ok)return checked.response;
  if(!await permitted(checked.user.uid))return errorResponse(403,'Administrator access required');
- const {id,action}=schema.parse(checked.input),store=db(),ref=store.collection('reports').doc(id),report=await ref.get();
+ const {id,action}=parsedInput<z.infer<typeof schema>>(checked),store=db(),ref=store.collection('reports').doc(id),report=await ref.get();
  if(!report.exists)return errorResponse(404,'Report unavailable');
  const details=report.data()!,targetType=String(details.targetType||''),targetId=String(details.targetId||'');
  if(!mayModerate(action,targetType))return errorResponse(400,'Action is not valid for this report');

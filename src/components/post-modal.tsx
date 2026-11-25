@@ -1,4 +1,6 @@
 'use client';
+import {PanelErrorBoundary} from '@/components/panel-error-boundary';
+
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {useRouter} from 'next/navigation';
@@ -15,7 +17,7 @@ export function PostModal({id}:{id:string}){
  return createPortal(<div className="cc-post-modal-backdrop cc-post-modal-v2" role="presentation" onClick={()=>router.back()}>
    <section ref={panel} className="cc-post-modal-panel" role="dialog" aria-modal="true" aria-label="Post detail" onClick={e=>e.stopPropagation()}>
     <button ref={close} type="button" className="cc-post-modal-close" onClick={()=>router.back()} aria-label="Close post detail">×</button>
-    <LivePostDetail key={id} id={id} modal/>
+    <PanelErrorBoundary label="Post"><LivePostDetail key={id} id={id} modal/></PanelErrorBoundary>
    </section>
  </div>,document.body);
 }

@@ -73,3 +73,5 @@ Single branch per owner request. Audio defaults to full volume; stories remove m
 Implemented auth throttling, atomic OTP proof consumption, server-side session denylist, token revocation, profile field allowlist, reserved handles, bounded auth body and optional CSP nonce. CI/live acceptance pending.
 
 - S2 partial: health diagnostics restricted, probes cached/coalesced, guard payloads bounded, strict write quotas fail closed, block/mute/close-friends quotas added. Read-limit sweep pending.
+
+- S2: 11 discovery/directory route families now have read budgets and security matrix; S3 partial: error pages, panel recovery, request ID/timing error wrapper and selected double-parse removals. Global route and lint sweep still pending.
