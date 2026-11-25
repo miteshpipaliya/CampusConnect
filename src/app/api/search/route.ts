@@ -1,3 +1,4 @@
+import {readLimit} from '@/lib/server/read-limit';
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
@@ -8,6 +9,7 @@ import {explorePage} from '@/lib/server/explore-service';
 export const runtime='nodejs';
 export async function GET(req:NextRequest){
  const user=await session(req);if(!user)return errorResponse(401,'Sign in required');
+ const limited=await readLimit(user.uid,'search',60);if(limited)return limited;
  const raw=req.nextUrl.searchParams.get('q')||'',q=normalizeSearch(raw);
  const type=req.nextUrl.searchParams.get('type')||'accounts';
  if(!validSearch(q)||!['accounts','tags','posts'].includes(type))return errorResponse(400,'Invalid search');

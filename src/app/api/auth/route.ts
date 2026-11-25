@@ -5,7 +5,10 @@ import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 import { auth, db, identityKey } from '@/lib/server/services';
 import { proposedCodes, relationshipStatuses, relationshipVisibilities, isAllowedEmail } from '@/lib/student-email';
-import { session, setSession, clearSession, sameOrigin, errorResponse, safeHeaders } from '@/lib/server/session';
+import {authThrottle} from '@/lib/server/auth-throttle';
+import {ownProfileView} from '@/lib/core/own-profile';
+import {isReservedHandle} from '@/lib/core/phase2-rules';
+import { revokeSession, session, setSession, clearSession, sameOrigin, errorResponse, safeHeaders } from '@/lib/server/session';
 
 export const runtime='nodejs';
 const emailSchema=z.string().trim().toLowerCase().email().max(254);
@@ -28,17 +31,26 @@ async function signIn(uid:string,response:NextResponse){
 }
 export async function GET(request:NextRequest){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
- try{const doc=await db().collection('users').doc(user.uid).get();return NextResponse.json({user:{uid:user.uid,email:user.email,profile:doc.exists?doc.data():null}},{headers:safeHeaders})}
+ try{const doc=await db().collection('users').doc(user.uid).get();return NextResponse.json({user:{uid:user.uid,email:user.email,profile:ownProfileView(doc.data())}},{headers:safeHeaders})}
  catch{return errorResponse(503,'Account service unavailable')}
 }
 export async function POST(request:NextRequest){
  if(!sameOrigin(request))return errorResponse(403,'Untrusted request origin');
  if(!request.headers.get('content-type')?.includes('application/json')||Number(request.headers.get('content-length')||0)>8192)return errorResponse(400,'Invalid request');
- let raw:unknown;try{raw=await request.json()}catch{return errorResponse(400,'Invalid JSON')}
+ let raw:unknown;try{const reader=request.body?.getReader();if(!reader)return errorResponse(400,'Invalid JSON');const chunks:Uint8Array[]=[];let size=0;try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>8192){await reader.cancel();return errorResponse(400,'Invalid request')}chunks.push(value)}}finally{reader.releaseLock()}raw=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return errorResponse(400,'Invalid JSON')}
  const action=(raw as {action?:string})?.action;
- if(action==='logout'){const binding=request.cookies.get(PUSH_COOKIE)?.value;if(binding){const user=await session(request);if(user)await revokePush(user.uid,binding).catch(()=>{})}const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);r.cookies.delete(PUSH_COOKIE);return r}
+ if(action==='logout'){
+  const cookie=request.cookies.get('cc_session')?.value,binding=request.cookies.get(PUSH_COOKIE)?.value;
+  if(cookie){try{
+   // Never allocate denylist entries for arbitrary unsigned cookie values.
+   const identity=await auth().verifySessionCookie(cookie).catch(error=>{if(['auth/argument-error','auth/invalid-session-cookie','auth/session-cookie-expired'].includes((error as {code?:string}).code||''))return null;throw error});
+   if(identity){if(binding)await revokePush(identity.uid,binding).catch(()=>console.error('Push logout cleanup failed'));await revokeSession(cookie)}
+  }catch{return errorResponse(503,'Sign-out unavailable. Please retry')}}
+  const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);r.cookies.delete(PUSH_COOKIE);return r
+ }
  if(action==='loginPassword'){
   const parsed=z.object({email:emailSchema,password:z.string().min(1).max(128)}).safeParse(raw);
+  const limited=await authThrottle(request,'loginPassword',parsed.success?parsed.data.email:undefined);if(limited)return limited;
   if(!parsed.success||!allowedEmail(parsed.data.email))return errorResponse(401,'Invalid email or password');
   try{
    const response=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(identityKey()),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:parsed.data.email,password:parsed.data.password,returnSecureToken:true}),cache:'no-store'});
@@ -52,6 +64,7 @@ export async function POST(request:NextRequest){
   }catch{return errorResponse(503,'Sign-in unavailable')}
  }
  if(action==='requestOtp'){
+  const limited=await authThrottle(request,'requestOtp');if(limited)return limited;
   const parsed=emailSchema.safeParse((raw as {email?:unknown}).email);
   if(!parsed.success||!allowedEmail(parsed.data))return errorResponse(400,'Enter your valid BVM institutional email');
   const email=parsed.data;
@@ -80,20 +93,19 @@ export async function POST(request:NextRequest){
   }catch(e){if(e instanceof Error&&e.message==='COOLDOWN')return errorResponse(429,'Wait 60 seconds before requesting another code');if(e instanceof Error&&e.message==='LIMIT')return errorResponse(429,'Too many codes requested. Try again in one hour');return errorResponse(503,'Unable to send verification code')}
  }
  if(action==='verifyOtp'){
+  const limited=await authThrottle(request,'verifyOtp');if(limited)return limited;
   const parsed=z.object({email:emailSchema,code:z.string().regex(/^\d{6}$/)}).safeParse(raw);
   if(!parsed.success)return errorResponse(400,'Enter your six-digit code');
   try{
-   const email=parsed.data.email,ref=challengeRef(email),now=Date.now();
+   const email=parsed.data.email,ref=challengeRef(email),now=Date.now(),proof=randomBytes(32).toString('hex');
    const nonce=await db().runTransaction(async tx=>{
     const doc=await tx.get(ref),data=doc.data();
     if(!data||data.used||data.verified||data.expires<now||data.attempts>=5)throw Error('INVALID');
     const expected=Buffer.from(data.codeHash,'hex'),actual=Buffer.from(digest(email+':'+data.nonce+':'+parsed.data.code),'hex');
     if(expected.length!==actual.length||!timingSafeEqual(expected,actual)){tx.update(ref,{attempts:FieldValue.increment(1)});return null}
-    tx.update(ref,{verified:true,codeHash:FieldValue.delete()});return data.nonce as string;
+    tx.update(ref,{verified:true,codeHash:FieldValue.delete(),proofHash:digest(proof),proofExpires:now+600000});return data.nonce as string;
    });
    if(!nonce)return errorResponse(400,'Incorrect code. Please try again');
-   const proof=randomBytes(32).toString('hex');
-   await ref.update({proofHash:digest(proof),proofExpires:now+600000});
    const existing=await auth().getUserByEmail(email).catch(e=>{if((e as {code?:string}).code==='auth/user-not-found')return null;throw e});
    const profile=existing?await db().collection('users').doc(existing.uid).get():null;
    const needsProfile=!existing||!profile?.exists;
@@ -103,13 +115,16 @@ export async function POST(request:NextRequest){
   }catch{return errorResponse(400,'Code expired or verification failed. Request a new code')}
  }
  if(action==='finishOtp'){
+  const limited=await authThrottle(request,'finishOtp');if(limited)return limited;
   const parsed=z.object({email:emailSchema,password:passwordSchema,profile:profileSchema.optional()}).safeParse(raw);
   if(!parsed.success)return errorResponse(400,'Please complete all required details');
+  if(parsed.data.profile&&isReservedHandle(parsed.data.profile.handle))return errorResponse(409,'Username not available');
   const email=parsed.data.email,proof=request.cookies.get(otpCookie)?.value;
   if(!proof||!allowedEmail(email))return errorResponse(403,'Verify your college email first');
   try{
-   const ref=challengeRef(email),challenge=await ref.get(),data=challenge.data();
-   if(!data||!data.verified||data.used||data.proofExpires<Date.now()||data.proofHash!==digest(proof))return errorResponse(403,'Verification expired. Request a new code');
+   const ref=challengeRef(email);
+   const claimed=await db().runTransaction(async tx=>{const data=(await tx.get(ref)).data();if(!data||!data.verified||data.used||data.proofExpires<Date.now()||data.proofHash!==digest(proof))return false;tx.update(ref,{used:true,proofHash:FieldValue.delete()});return true});
+   if(!claimed)return errorResponse(403,'Verification expired. Request a new code');
    let user=await auth().getUserByEmail(email).catch(e=>{if((e as {code?:string}).code==='auth/user-not-found')return null;throw e});
    const existingProfile=user?await db().collection('users').doc(user.uid).get():null;
    if(!existingProfile?.exists){
@@ -130,9 +145,9 @@ export async function POST(request:NextRequest){
     }catch(e){if(e instanceof Error&&e.message==='HANDLE_TAKEN')return errorResponse(409,'Username already taken. Choose another');if(e instanceof Error&&e.message==='PROFILE_EXISTS')return errorResponse(409,'Account already exists. Sign in');throw e}
    }else if(user)await auth().updateUser(user.uid,{emailVerified:true,password:parsed.data.password});
    if(!user)throw Error('User creation failed');
+   await auth().revokeRefreshTokens(user.uid);
    const response=NextResponse.json({ok:true},{headers:safeHeaders});
    await signIn(user.uid,response);
-   await ref.update({used:true,proofHash:FieldValue.delete()});
    response.cookies.delete(otpCookie);
    return response;
   }catch{return errorResponse(503,'Unable to complete sign-in. Please retry')}

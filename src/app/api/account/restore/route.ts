@@ -1,6 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db,auth} from '@/lib/server/services';
-import {sameOrigin,errorResponse,safeHeaders} from '@/lib/server/session';
+import {sameOrigin,sessionRevoked,errorResponse,safeHeaders} from '@/lib/server/session';
+import {checkRateLimit} from '@/lib/server/rate-limit';
 import {deletionDue} from '@/lib/core/phase2-rules';
 export const runtime='nodejs';
 export async function POST(request:NextRequest){
@@ -8,6 +9,8 @@ export async function POST(request:NextRequest){
  const cookie=request.cookies.get('cc_session')?.value;if(!cookie)return errorResponse(401,'Sign in required');
  try{
   const verified=await auth().verifySessionCookie(cookie,true);
+  if(await sessionRevoked(cookie))return errorResponse(401,'Sign in required');
+  const limit=await checkRateLimit({key:'restore:'+verified.uid,limit:5,windowSec:3600,failClosed:true});if(!limit.allowed)return NextResponse.json({error:'Too many requests'},{status:429,headers:{...safeHeaders,'Retry-After':String(limit.retryAfterSec)}});
   const identity=await auth().getUser(verified.uid);
   if(identity.disabled||!identity.emailVerified)return errorResponse(403,'Identity unavailable');
   const store=db(),ref=store.collection('users').doc(verified.uid);

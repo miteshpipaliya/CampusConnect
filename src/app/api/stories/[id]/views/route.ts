@@ -6,7 +6,7 @@ export const runtime='nodejs';
 export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await session(req);if(!user)return errorResponse(401,'Sign in required');
  const {id}=await params,story=await authorizedStory(user.uid,id,{allowArchive:true});
- if(!story||!story.owned)return errorResponse(403,'Only the owner can see viewers');
+ if(!story||!story.owned)return errorResponse(404,'Story unavailable');
  try{
   const ref=story.doc.ref.collection('views');
   const [snap,count,self]=await Promise.all([ref.orderBy('createdAt','desc').limit(100).get(),ref.count().get(),ref.doc(user.uid).get()]);

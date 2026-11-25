@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createTokenBucket} from '../src/lib/core/token-bucket.ts';
+test('token bucket isolates identities, bounds storage and refills with time',()=>{let now=0;const b=createTokenBucket(2,()=>now);for(let i=0;i<5;i++)assert.equal(b.take('a',5).allowed,true);assert.equal(b.take('a',5).allowed,false);assert.equal(b.take('b',5).allowed,true);now=12000;assert.equal(b.take('a',5).allowed,true);b.take('c',5);assert.equal(b.size(),2)});

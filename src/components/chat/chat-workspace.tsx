@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {LoadingSkeleton} from '../loading-skeleton';
 import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent,type KeyboardEvent} from 'react';
 import Link from 'next/link';
@@ -9,6 +10,7 @@ import {ChatMediaUpload} from './chat-media-upload';
 import {ChatSharedContentCard} from './chat-shared-content-card';
 import {ChatPostPicker} from './chat-post-picker';
 import {inboxTime} from '@/lib/core/chat-activity';
+import {adaptivePoll} from '@/lib/client/adaptive-poll';
 import {useStreamConnection} from './stream-connection';
 
 type Member={uid:string;handle:string;name:string;avatarMediaId?:string|null;avatarUrl?:string|null};
@@ -53,12 +55,15 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   bottom=useRef<HTMLDivElement|null>(null),draftInput=useRef<HTMLTextAreaElement|null>(null);
  active.current=peer;
 
+ const inboxFingerprint=useRef(''),threadFingerprint=useRef('');
+ const invalidateInbox=useCallback(()=>{inboxSeq.current++},[]),invalidateThread=useCallback(()=>{sequence.current++},[]);
  const refreshInbox=useCallback(async()=>{
   const version=++inboxSeq.current;
   const d=await requestJson<{conversations:Conversation[]}>('/api/chat');
   if(version!==inboxSeq.current)return;
   const items=(Array.isArray(d.conversations)?d.conversations:[]).sort((a,b)=>(Date.parse(b.updatedAt)||0)-(Date.parse(a.updatedAt)||0));
-  setConversations(previous=>JSON.stringify(previous)===JSON.stringify(items)?previous:items);
+  const fingerprint=JSON.stringify(items);inboxFingerprint.current=fingerprint;
+  setConversations(previous=>JSON.stringify(previous)===fingerprint?previous:items);
   setInboxError('');setInboxLoading(false);
  },[]);
 
@@ -67,6 +72,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   const data=await requestJson<ConversationResponse>('/api/chat?with='+encodeURIComponent(handle)+(lightweight?'&refresh=1':''));
   if(active.current!==handle||sequence.current!==version)return;
   const incoming=Array.isArray(data.messages)?data.messages:[];
+  threadFingerprint.current=JSON.stringify(incoming);
   setMessages(previous=>{
    const optimistic=previous.filter(m=>m.id.startsWith('cc-optimistic-')&&!incoming.some(real=>
     real.senderUid===m.senderUid&&real.text===m.text&&Math.abs(Date.parse(real.createdAt||'')-Date.parse(m.createdAt||''))<20000));
@@ -115,8 +121,8 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    .then(data=>{if(live)setDirectory(Array.isArray(data.members)?data.members:[])}).catch(()=>{});
   void requestJson<{user?:{profile?:{handle?:string}}}>('/api/auth')
    .then(data=>{if(live)setViewerHandle(data.user?.profile?.handle||'')}).catch(()=>{});
-  return()=>{live=false;inboxSeq.current++};
- },[refreshInbox]);
+  return()=>{live=false;invalidateInbox()};
+ },[refreshInbox,invalidateInbox]);
 
  useEffect(()=>{
   if(!peer)return;
@@ -129,11 +135,11 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    finally{inFlight=false}
   };
   void refreshConversation(peer).catch(e=>{if(live){setLoading(false);setError(e instanceof Error?e.message:'Unable to load conversation')}});
-  const timer=status==='connected'&&channelWatching?null:window.setInterval(tick,3000);
+  const stop=status==='connected'&&channelWatching?null:adaptivePoll(async()=>{const before=threadFingerprint.current;await tick();return before!==threadFingerprint.current},3000,6000);
   const onResume=()=>{void tick()};
   document.addEventListener('visibilitychange',onResume);window.addEventListener('online',onResume);
-  return()=>{live=false;sequence.current++;if(timer!==null)window.clearInterval(timer);document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
- },[peer,status,channelWatching,refreshConversation]);
+  return()=>{live=false;invalidateThread();stop?.();document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
+ },[peer,status,channelWatching,refreshConversation,invalidateThread]);
 
  useEffect(()=>{
   let live=true,inFlight=false;
@@ -141,9 +147,9 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    if(!live||inFlight||document.visibilityState==='hidden'||!navigator.onLine)return;
    inFlight=true;try{await refreshInbox()}catch(e){if(live)setInboxError(e instanceof Error?e.message:'Inbox refresh unavailable')}finally{inFlight=false}
   };
-  const timer=status==='connected'?null:window.setInterval(tick,6000);
+  const stop=status==='connected'?null:adaptivePoll(async()=>{const before=inboxFingerprint.current;await tick();return before!==inboxFingerprint.current},6000);
   document.addEventListener('visibilitychange',tick);
-  return()=>{live=false;if(timer!==null)window.clearInterval(timer);document.removeEventListener('visibilitychange',tick)};
+  return()=>{live=false;stop?.();document.removeEventListener('visibilitychange',tick)};
  },[refreshInbox,status]);
 
  useEffect(()=>{
@@ -327,7 +333,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     {all.map(m=><article key={m.id} className={'cc-dm-msg'+(m.senderUid===myUid?' mine':' theirs')}>
      <div className="cc-dm-msg-body">
       {m.quotedMessageId&&<a className="cc-dm-quote" href={'#cc-msg-'+m.quotedMessageId}>↪ {all.find(item=>item.id===m.quotedMessageId)?.text.slice(0,100)||'Previous message'}</a>}
-      {m.mediaId&&(m.mediaType==='video'?<video src={'/api/media?id='+encodeURIComponent(m.mediaId)} controls playsInline preload="metadata" className="cc-dm-sent-media"/>:<a href={'/api/media?id='+encodeURIComponent(m.mediaId)} target="_blank" rel="noopener noreferrer"><img loading="lazy" src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Shared chat attachment" className="cc-dm-sent-media"/></a>)}
+      {m.mediaId&&(m.mediaType==='video'?<video src={'/api/media?id='+encodeURIComponent(m.mediaId)} controls playsInline preload="metadata" className="cc-dm-sent-media"/>:<a href={'/api/media?id='+encodeURIComponent(m.mediaId)} target="_blank" rel="noopener noreferrer"><SafeImg loading="lazy" src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Shared chat attachment" className="cc-dm-sent-media"/></a>)}
       {m.contentId&&<ChatSharedContentCard postId={m.contentId} kind={m.contentType==='reel'?'reel':'post'}/>}
       {m.text&&<span className="cc-dm-msg-text">{m.text}</span>}
       <small>{formattedTime(m.createdAt)}{m.senderUid===myUid?' · '+(m.id.startsWith('cc-optimistic-')?'Sending…':m.seen?'Seen':'Sent'):''}</small>

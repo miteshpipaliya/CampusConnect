@@ -1,0 +1,1 @@
+export function metaPlacement(stageWidth:number,frameWidth:number){const left=(stageWidth-frameWidth-48)/2;if(!Number.isFinite(left)||left<240)return {placement:'overlay' as const,width:0};return {placement:'outside' as const,width:Math.min(300,Math.floor(left-24))}}

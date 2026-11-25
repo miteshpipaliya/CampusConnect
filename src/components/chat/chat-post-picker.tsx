@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useState} from 'react';
 import {X,Share2} from 'lucide-react';
 
@@ -45,7 +46,7 @@ export function ChatPostPicker({recipientHandle,onClose,onSent}:Props){
     const media=post.media?.[0]?.url||post.mediaUrl;
     return <button type="button" className={'cc-dm-share-item'+(selected===post.id?' selected':'')} key={post.id}
       aria-pressed={selected===post.id} disabled={busy} onClick={()=>setSelected(post.id)}>
-      {media?<img src={media} alt="" loading="lazy"/>:<span className="cc-dm-share-placeholder"><Share2 size={20}/></span>}
+      {media?<SafeImg src={media} alt="" loading="lazy"/>:<span className="cc-dm-share-placeholder"><Share2 size={20}/></span>}
       <span><strong>{post.type==='reel'?'Reel':'Post'} · @{post.authorHandle||'campus'}</strong><small>{post.caption||'View original post'}</small></span>
     </button>;
    })}</div>

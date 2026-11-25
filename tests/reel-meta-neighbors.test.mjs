@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {metaPlacement} from '../src/lib/core/reel-meta-layout.ts';import {neighbors,validExploreIds} from '../src/lib/core/explore-neighbors.ts';
+test('metadata gutter fits available stage and falls back when narrow',()=>{assert.deepEqual(metaPlacement(1400,400),{placement:'outside',width:300});assert.deepEqual(metaPlacement(600,400),{placement:'overlay',width:0})});
+test('neighbour lookup is ordered, deduplicated and bounded',()=>{assert.deepEqual(neighbors(['a','b','b','c'],'b'),{previous:'a',next:'c'});assert.deepEqual(neighbors(['a'],'x'),{previous:null,next:null});assert.deepEqual(validExploreIds(['abcdefghij','bad/path','abcdefghij']),['abcdefghij'])});

@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {z} from 'zod';
 import {FieldValue} from 'firebase-admin/firestore';
-import {guard} from '@/lib/server/guard';
+import {guard,parsedInput} from '@/lib/server/guard';
 import {db} from '@/lib/server/services';
 import {errorResponse,safeHeaders} from '@/lib/server/session';
 import {notificationUnread} from '@/lib/core/notification-grouping';
@@ -12,7 +12,7 @@ const schema=z.object({id:idSchema.optional(),ids:z.array(idSchema).min(1).max(1
 export async function POST(req:NextRequest){
  const checked=await guard(req,{write:true,schema,rateLimit:{key:'notifications-read:{uid}',limit:80,windowSec:3600}});
  if(!checked.ok)return checked.response;
- const input=schema.parse(checked.input);
+ const input=parsedInput<z.infer<typeof schema>>(checked);
  if(!input.id&&!input.ids&&!input.all)return errorResponse(400,'Specify one notification or all');
  const ref=db().collection('users').doc(checked.user.uid).collection('notifications');
  try{

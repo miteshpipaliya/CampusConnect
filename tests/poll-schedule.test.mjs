@@ -1,0 +1,1 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {nextDelay} from '../src/lib/core/poll-schedule.ts';test('polling backs off and pauses while hidden',()=>{assert.equal(nextDelay(4000,false,false),8000);assert.equal(nextDelay(16000,false,false),30000);assert.equal(nextDelay(30000,true,false),4000);assert.equal(nextDelay(4000,true,true),null)});

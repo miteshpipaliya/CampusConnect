@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {LoadingSkeleton} from './loading-skeleton';
 import Link from 'next/link';
 import {useCallback,useEffect,useState} from 'react';
@@ -45,7 +46,7 @@ export function RealProfile({username}:{username:string}){
   <div className="cc-profile-tabs" role="tablist" aria-label="Profile content">
    {([{key:'posts',label:'Posts',Icon:Grid3X3},{key:'reels',label:'Reels',Icon:Clapperboard},{key:'reposts',label:'Reposts',Icon:Repeat2},...(self?[{key:'saved' as const,label:'Saved',Icon:Bookmark}]:[]),{key:'tagged',label:'Tagged',Icon:AtSign}] as const).map(({key,label,Icon})=><button type="button" role="tab" aria-selected={tab===key} className={tab===key?'active':''} key={key} onClick={()=>setTab(key)}><Icon size={18}/>{label}</button>)}
   </div>
-  {entries.length?<div className={"cc-profile-grid"+(tab==="reels"?" cc-profile-reel-grid":"")}>{entries.map(p=><article key={p.id} className="cc-profile-tile"><Link href={'/posts/'+encodeURIComponent(p.postId||p.id)}>{tab==='reels'&&<span className="cc-profile-reel-views"><Clapperboard size={16}/> {p.views??0}</span>}{p.pinned&&<span aria-label="Pinned post">📌</span>}{(p.mediaUrl||p.mediaId)?(p.contentType?.startsWith('video/')?<ProfileVideoPreview key={p.mediaUrl||p.mediaId} id={p.id} src={p.mediaUrl||'/api/media?id='+encodeURIComponent(p.mediaId||'')}/>:<img src={p.mediaUrl||'/api/media?id='+encodeURIComponent(p.mediaId||'')} loading="lazy" alt={p.caption||'Campus post'}/>):<div className="cc-profile-text-tile">{p.caption}</div>}</Link><small>{p.caption}</small></article>)}</div>:<div className="cc-profile-empty"><Grid3X3 size={30}/><p>No {tab} yet.</p>{self&&tab==='posts'&&<Link href="/home?compose=1"><Plus size={16}/> Create a post</Link>}</div>}
+  {entries.length?<div className={"cc-profile-grid"+(tab==="reels"?" cc-profile-reel-grid":"")}>{entries.map(p=><article key={p.id} className="cc-profile-tile"><Link href={'/posts/'+encodeURIComponent(p.postId||p.id)}>{tab==='reels'&&<span className="cc-profile-reel-views"><Clapperboard size={16}/> {p.views??0}</span>}{p.pinned&&<span aria-label="Pinned post">📌</span>}{(p.mediaUrl||p.mediaId)?(p.contentType?.startsWith('video/')?<ProfileVideoPreview key={p.mediaUrl||p.mediaId} id={p.id} src={p.mediaUrl||'/api/media?id='+encodeURIComponent(p.mediaId||'')}/>:<SafeImg src={p.mediaUrl||'/api/media?id='+encodeURIComponent(p.mediaId||'')} loading="lazy" alt={p.caption||'Campus post'}/>):<div className="cc-profile-text-tile">{p.caption}</div>}</Link><small>{p.caption}</small></article>)}</div>:<div className="cc-profile-empty"><Grid3X3 size={30}/><p>No {tab} yet.</p>{self&&tab==='posts'&&<Link href="/home?compose=1"><Plus size={16}/> Create a post</Link>}</div>}
   {report&&profile.uid&&<ReportDialog targetType="user" targetId={profile.uid} onClose={()=>setReport(false)}/>}
  </section>;
 }

@@ -1,3 +1,4 @@
+import {readLimit} from '@/lib/server/read-limit';
 import {NextRequest,NextResponse,after} from 'next/server';
 import {db,auth} from '@/lib/server/services';
 import {canViewAuthor,isBlockedEitherWay,canViewMany} from '@/lib/server/privacy';
@@ -11,6 +12,7 @@ import {routeTiming} from '@/lib/server/route-timing';
 export async function GET(request:NextRequest,{params}:{params:Promise<{username:string}>}){return routeTiming('profile',()=>readRoute(request,{params}))}
 async function readRoute(request:NextRequest,{params}:{params:Promise<{username:string}>}){
  const user=await session(request);if(!user)return errorResponse(401,'Sign in required');
+ const limited=await readLimit(user.uid,'profile/[username]',120);if(limited)return limited;
  const {username}=await params;
  try{
   const store=db(),current=await store.collection('users').doc(user.uid).get();

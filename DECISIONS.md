@@ -45,3 +45,13 @@ Updated 2026-11-24.
 - Thumbnail writes are optional for upload compatibility and share the parent post's server-side media authorization. No public bucket or API secret changes.
 
 - Preserve authorization on hover via the existing authenticated media route, no public video URLs. Legacy poster capture is best-effort and requires R2 CORS/browser decoder support; future uploads retain persisted thumbnails. Recommendation ranking is bounded per chronological page to avoid unbounded database scans.
+
+- Security overrides the requested cache optimization: no positive authorization cache (logout/revocation must work across serverless instances). Auth limits fail closed immediately, stronger than the requested three-error threshold. OTP proof is consumed once before side effects; failed signup/reset requires a fresh code. Nonce CSP remains off until preview acceptance.
+
+- Validate signed cookies before writing denylist records; perform push binding cleanup before revocation. Health details require optional HEALTH_SECRET; anonymous callers receive status only.
+
+- Keep signed media lifetimes and no-store redirect policy unchanged rather than implementing hour-stable bearer URLs or browser caching across account switches.
+
+- Preview URLs are issued only for visible, active video posts and verified attached media. No public bucket, no secrets, no production changes. Source marker tests supplement, not replace, live IDOR acceptance.
+
+- Preserve authenticated image rendering without shared Next image optimization. SafeImg supplies native lazy/async defaults and a local fallback. Lint warnings remain unverified until CI.

@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';import {z} from 'zod';import {createHash} from 'node:crypto';import {FieldValue} from 'firebase-admin/firestore';
-import {db} from '@/lib/server/services';import {session,errorResponse,safeHeaders} from '@/lib/server/session';import {guard} from '@/lib/server/guard';import {normalizeSearch,validSearch} from '@/lib/core/search-rules';
+import {db} from '@/lib/server/services';import {session,errorResponse,safeHeaders} from '@/lib/server/session';import {guard,parsedInput} from '@/lib/server/guard';import {normalizeSearch,validSearch} from '@/lib/core/search-rules';
 export const runtime='nodejs';
 const schema=z.object({query:z.string().min(2).max(60)});
 export async function GET(req:NextRequest){
@@ -10,7 +10,7 @@ export async function GET(req:NextRequest){
 }
 export async function POST(req:NextRequest){
  const checked=await guard(req,{write:true,schema,rateLimit:{key:'search-history:{uid}',limit:80,windowSec:3600}});if(!checked.ok)return checked.response;
- const term=normalizeSearch(schema.parse(checked.input).query);if(!validSearch(term))return errorResponse(400,'Invalid query');
+ const term=normalizeSearch(parsedInput<z.infer<typeof schema>>(checked).query);if(!validSearch(term))return errorResponse(400,'Invalid query');
  const ref=db().collection('users').doc(checked.user.uid).collection('searchHistory');
  const id=createHash('sha256').update(term).digest('hex').slice(0,32);
  await ref.doc(id).set({query:term,createdAt:FieldValue.serverTimestamp()});

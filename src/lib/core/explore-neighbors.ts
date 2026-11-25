@@ -1,0 +1,2 @@
+export function neighbors(ids:readonly string[],id:string){const unique=[...new Set(ids)],index=unique.indexOf(id);return {previous:index>0?unique[index-1]??null:null,next:index>=0?unique[index+1]??null:null}}
+export function validExploreIds(value:unknown):string[]{return Array.isArray(value)?[...new Set(value.filter((x):x is string=>typeof x==='string'&&/^[A-Za-z0-9_-]{10,100}$/.test(x)))].slice(0,500):[]}

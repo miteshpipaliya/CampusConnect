@@ -1,3 +1,4 @@
+import {readLimit} from '@/lib/server/read-limit';
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
@@ -5,6 +6,7 @@ import {blockedEitherWayMany} from '@/lib/server/privacy';
 export const runtime='nodejs';
 export async function GET(req:NextRequest){
  const viewer=await session(req);if(!viewer)return errorResponse(401,'Sign in required');
+ const limited=await readLimit(viewer.uid,'suggestions',30);if(limited)return limited;
  try{
   const store=db(),[me,users,follows]=await Promise.all([store.collection('users').doc(viewer.uid).get(),store.collection('users').limit(100).get(),store.collection('follows').where('followerUid','==',viewer.uid).limit(200).get()]);
   const following=new Set(follows.docs.map(d=>String(d.data().followingUid||'')));

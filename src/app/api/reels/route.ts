@@ -43,7 +43,7 @@ async function readRoute(req:NextRequest){
    const uid=String(data.authorUid||''),mediaId=reelMediaId(data);
    if(!mediaId||muted.has(uid)||!(await canViewMany(user.uid,[uid])).get(uid))return errorResponse(404,'Reel unavailable');
    const media=await store.collection('media').doc(mediaId).get();
-   if(!media.exists||!isPlayableReelMedia(media.data()))return errorResponse(404,'Reel unavailable');
+   if(!media.exists||!isPlayableReelMedia(media.data())||media.data()?.postId!==doc.id)return errorResponse(404,'Reel unavailable');
    seed={doc,media,mediaId};
   }
   let lastScanned:FirebaseFirestore.QueryDocumentSnapshot|undefined;
@@ -64,7 +64,7 @@ async function readRoute(req:NextRequest){
     const data=doc.data(),uid=String(data.authorUid||''),mediaId=reelMediaId(data);
     if(!mediaId||!visible.get(uid)||muted.has(uid))continue;
     const media=mediaById.get(mediaId);
-    if(!media||!media.exists||!isPlayableReelMedia(media.data()))continue;
+    if(!media||!media.exists||!isPlayableReelMedia(media.data())||media.data()?.postId!==doc.id)continue;
     selected.push({doc,media,mediaId});
     if(selected.length>=limit)break;
    }
@@ -104,7 +104,7 @@ async function readRoute(req:NextRequest){
   response.headers.set('Cache-Control','private, no-store');
   return response;
  }catch(error){
-  console.error('Reel feed failed',error instanceof Error?error.message:'unknown');
+  console.error('Reel feed failed',{name:error instanceof Error?error.name:'Unknown'});
   return errorResponse(503,'Reels unavailable');
  }
 }

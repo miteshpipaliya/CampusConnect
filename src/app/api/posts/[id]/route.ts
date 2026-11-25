@@ -13,10 +13,10 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
   if(!post.exists||post.data()?.deletedAt||(post.data()?.archived&&post.data()?.authorUid!==user.uid))return errorResponse(404,'Post unavailable');
   const d=post.data()!,authorUid=String(d.authorUid||'');
   if(!(await canViewAuthor(user.uid,authorUid)))return errorResponse(404,'Post unavailable');
-  const [liked,saved,avatars]=await Promise.all([
+  const [liked,saved,avatars,follow]=await Promise.all([
    ref.collection('likes').doc(user.uid).get(),
    store.collection('users').doc(user.uid).collection('saves').doc(id).get(),
-   hydrateAvatars([authorUid],user.uid)
+   hydrateAvatars([authorUid],user.uid),store.collection('follows').doc(user.uid+'_'+authorUid).get()
   ]);
   const mediaId=typeof d.mediaId==='string'?d.mediaId:null,media=mediaId?await store.collection('media').doc(mediaId).get():null;
   const allMedia=Array.isArray(d.media)?d.media as Array<{mediaId:string;alt?:string}>:[];
@@ -27,7 +27,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
    authorName:avatars[authorUid]?.name||'',verified:avatars[authorUid]?.verified===true,createdAt:d.createdAt?.toMillis?.()??0,avatarMediaId:avatars[authorUid]?.avatarMediaId??null,avatarUrl:avatars[authorUid]?.avatarUrl??null,
    mediaUrl:mediaId?mediaUrls[mediaId]?.url??null:null,media:allMedia.map(m=>({...m,contentType:mediaDocs.find(d=>d.id===m.mediaId)?.data()?.contentType||'',url:mediaUrls[m.mediaId]?.url??null})),
    mediaContentType:media?.data()?.contentType??null,hideLikeCount:d.hideLikeCount===true,commentsOff:d.commentsOff===true,pinned:d.pinned===true,likes:Number(d.counters?.likes||0),comments:Number(d.counters?.comments||0),
-   liked:liked.exists,saved:saved.exists
+   liked:liked.exists,saved:saved.exists,followStatus:authorUid===user.uid?'self':String(follow.data()?.status||'none')
   }},{headers:safeHeaders});
  }catch{return errorResponse(503,'Post unavailable')}
 }

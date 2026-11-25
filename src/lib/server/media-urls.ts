@@ -8,7 +8,7 @@ export type MediaUrl={url:string;expiresAt:number};
 type MediaDoc={id:string;ownerUid?:string;key?:string;status?:string;postId?:string;storyId?:string;avatarOwnerUid?:string;storyExpiresAt?:number};
 type Doc=FirebaseFirestore.DocumentSnapshot;
 function chunks<T>(items:T[],size:number):T[][]{const out:T[][]=[];for(let i=0;i<items.length;i+=size)out.push(items.slice(i,i+size));return out}
-export async function mintUrls(mediaDocs:MediaDoc[],opts:{viewerUid:string;storyExpiresAt?:number}):Promise<Record<string,MediaUrl>>{
+export async function mintUrls(mediaDocs:MediaDoc[],opts:{viewerUid:string;storyExpiresAt?:number;maxSeconds?:number}):Promise<Record<string,MediaUrl>>{
  const output:Record<string,MediaUrl>={};
  const eligible=mediaDocs.filter(media=>media.status==='uploaded'&&typeof media.key==='string'&&media.key.length>0);
  if(!eligible.length)return output;
@@ -52,7 +52,7 @@ export async function mintUrls(mediaDocs:MediaDoc[],opts:{viewerUid:string;story
    if(!allowed||!media.key)return;
    const expiry=storyData?.expiresAt?.toMillis?.();
    const deadlines=[media.storyExpiresAt,opts.storyExpiresAt,...(story&&!storyData?.highlight?[typeof expiry==='number'?expiry:0]:[])].filter((v):v is number=>typeof v==='number');
-   const seconds=signedMediaTTL(Date.now(),deadlines.length?Math.min(...deadlines):undefined,story?60:3600);
+   const seconds=signedMediaTTL(Date.now(),deadlines.length?Math.min(...deadlines):undefined,story?60:Math.min(3600,Math.max(1,opts.maxSeconds??3600)));
    if(!seconds)return;
    output[media.id]={url:await presignGet(media.key,seconds),expiresAt:Date.now()+seconds*1000};
   }catch{/* deny on failed authorization or signing */}

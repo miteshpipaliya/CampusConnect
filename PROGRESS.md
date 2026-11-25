@@ -68,3 +68,20 @@ Single branch per owner request. Audio defaults to full volume; stories remove m
 - New video uploads now attempt a bounded JPEG thumbnail capture; the post transaction validates ownership, confirmed image status and exclusive attachment, with a safe fallback if decoding/upload fails. Added thumbnail access and responsive mocked UI regression tests. Existing video backfill remains outstanding.
 
 - Explore hover playback now mounts only the hovered muted player; legacy thumbnails are decoded serially in the browser with a timeout and released on navigation. Seeded Reels validate the chosen item and paginate across newer/older campus candidates with hashtag/author affinity per page. Post modal uses a responsive two-pane layout. Verification pending CI and production deployment.
+
+## sec-audit S1
+Implemented auth throttling, atomic OTP proof consumption, server-side session denylist, token revocation, profile field allowlist, reserved handles, bounded auth body and optional CSP nonce. CI/live acceptance pending.
+
+- S2 partial: health diagnostics restricted, probes cached/coalesced, guard payloads bounded, strict write quotas fail closed, block/mute/close-friends quotas added. Read-limit sweep pending.
+
+- S2: 11 discovery/directory route families now have read budgets and security matrix; S3 partial: error pages, panel recovery, request ID/timing error wrapper and selected double-parse removals. Global route and lint sweep still pending.
+
+- S4 partial: reuse storage client, visibility-aware adaptive chat fallback, remove duplicate legacy feed polls, 60s story/avatar refresh, document privacy/performance tradeoffs. Query budget instrumentation and load tests outstanding.
+
+- U partial: measured reel caption gutter, 40px avatar, reduced-motion-aware delayed hover, account-scoped Explore photo neighbours and modal arrows. Signed preview batching and complete modal polish remain outstanding. Also deny suspended authors and check video attachment parent IDs.
+
+- Added bounded, authenticated video preview batch API; per-post authorization, attachment binding and 10-minute signing cap. Client still uses previous lazy per-tile media URL path; integration of batch API remains outstanding. OTP proof now written atomically with verification. Added static route guard marker regression test (not a substitute for authorization behavior tests).
+
+- Integrated visible-tile preview batch requests (12 max, 200ms debounce) with authenticated fallback, post modal follow state, date formatting, clickable captions, emoji picker, and activity-based primary chat backoff. Optional nonce mode opts into dynamic rendering. Browser and production-service acceptance still pending.
+
+- Migrated signed-image rendering to SafeImg and fixed the known exhaustive-deps warnings. Await exact-head lint, typecheck and browser validation; no dependency manifests edited.

@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useRef,useState} from 'react';
 import {Play,Pause,ChevronLeft,ChevronRight} from 'lucide-react';
 import {VolumeControl} from './volume-control';
@@ -26,7 +27,7 @@ export function MediaCarousel({items,ratio='1 / 1'}:{items:CarouselMedia[];ratio
  const video=Boolean(item.contentType?.startsWith('video/'));
  return <div className="cc-media-carousel" tabIndex={0} aria-label="Post media carousel" onKeyDown={e=>{if(e.target instanceof HTMLInputElement)return;if(e.key==='ArrowLeft')setIndex(i=>Math.max(0,i-1));if(e.key==='ArrowRight')setIndex(i=>Math.min(items.length-1,i+1))}} style={{position:'relative',maxWidth:'100%'}}>
   <div style={{...(video?{}:{aspectRatio:ratio}),overflow:'hidden',display:'grid',placeItems:'center'}}>
-   {video?<InlineVideo key={item.mediaId} src={src}/>:<img src={src} alt={item.alt||'Campus post media'} loading="lazy" style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain'}}/>}
+   {video?<InlineVideo key={item.mediaId} src={src}/>:<SafeImg src={src} alt={item.alt||'Campus post media'} loading="lazy" style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain'}}/>}
   </div>
   {items.length>1&&<div className="cc-media-carousel-controls" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
    <button aria-label="Previous media" disabled={index===0} onClick={()=>setIndex(i=>i-1)}><ChevronLeft size={18}/></button>

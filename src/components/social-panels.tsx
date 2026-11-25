@@ -1,6 +1,8 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import Link from 'next/link';
+import {adaptivePoll} from '@/lib/client/adaptive-poll';
 import {Avatar} from './avatar';
 import {ChatMediaUpload} from './chat/chat-media-upload';
 import {ChatSharedContentCard} from './chat/chat-shared-content-card';
@@ -41,16 +43,11 @@ export function SocialPanels({section,initialPeer}:{section:string;initialPeer?:
  if(section==='search')get<{members:Member[]}>('/api/chat?directory=1').then(d=>setMembers(d.members)).catch(e=>setNotice(String(e)));
  if(section==='notifications')get<{notifications:Notification[]}>('/api/notifications').then(d=>setNotifications(d.notifications)).catch(e=>setNotice(String(e)));
  if(section==='reels')get<{reels:Array<{id:string;caption:string;authorHandle:string;mediaId:string}>}>('/api/reels').then(d=>setReels(d.reels)).catch(e=>setNotice(String(e)));},[section]);
- useEffect(()=>{if(section!=='reels'&&section!=='notifications')return;
- const refresh=()=>{if(document.visibilityState!=='visible')return;
- if(section==='reels')void get<{reels:Array<{id:string;caption:string;authorHandle:string;mediaId:string}>}>('/api/reels').then(d=>setReels(d.reels)).catch(()=>{});
- if(section==='notifications')void get<{notifications:Notification[]}>('/api/notifications').then(d=>setNotifications(d.notifications)).catch(()=>{});
- };const timer=window.setInterval(refresh,10000);return()=>window.clearInterval(timer)},[section]);
  useEffect(()=>{if(section!=='chat'||!peer)return;
  let active=true,inFlight=false;const refresh=async()=>{if(inFlight||document.visibilityState==='hidden')return;inFlight=true;try{const d=await get<{messages:Message[];peerTyping:boolean;myUid:string}>('/api/chat?with='+encodeURIComponent(peer));if(!active)return;setLoadingChat(false);setNotice('');setMessages(current=>{const pending=current.filter(m=>m.id.startsWith('pending-'));return [...d.messages,...pending.filter(p=>!d.messages.some(m=>m.senderUid===p.senderUid&&m.text===p.text))]});setTyping(d.peerTyping);setMyUid(d.myUid);
  if(d.messages.some(m=>m.senderUid!==d.myUid&&!m.seen))await post('/api/chat',{action:'read',recipientHandle:peer});
  }catch(e){if(active){setLoadingChat(false);setNotice(e instanceof Error?e.message:'Chat unavailable')}}finally{inFlight=false}};
- void refresh();const timer=setInterval(()=>void refresh(),3000);return()=>{active=false;clearInterval(timer);void post('/api/chat',{action:'typing',recipientHandle:peer,typing:false}).catch(()=>{})}},[section,peer,retryCount]);
+ void refresh();const stop=adaptivePoll(async()=>{await refresh();return true});return()=>{active=false;stop();void post('/api/chat',{action:'typing',recipientHandle:peer,typing:false}).catch(()=>{})}},[section,peer,retryCount]);
  useEffect(()=>{if(section==='chat'&&peer)bottomRef.current?.scrollIntoView({block:'end',behavior:'smooth'})},[section,peer,messages.length]);
  useEffect(()=>{if(section!=='chat')return;const timer=window.setInterval(()=>{if(document.visibilityState!=='visible')return;void get<{conversations:Conversation[]}>('/api/chat').then(d=>setConversations(d.conversations)).catch(()=>{})},7000);return()=>window.clearInterval(timer)},[section]);
  async function send(e:FormEvent){e.preventDefault();const text=draft.trim();if(!text||!peer||sending)return;const recipient=peer;const tempId='pending-'+Date.now();setDraft('');setMessages(current=>[...current,{id:tempId,senderUid:myUid,text,seen:false,createdAt:new Date().toISOString()}]);setSending(true);try{await post('/api/chat',{action:'send',recipientHandle:recipient,text,...(replyTo?{quotedMessageId:replyTo.id}:{})});setNotice('');setReplyTo(null);void post('/api/chat',{action:'typing',recipientHandle:recipient,typing:false}).catch(()=>{});void get<{messages:Message[]}>('/api/chat?with='+encodeURIComponent(recipient)).then(d=>{if(peer===recipient)setMessages(d.messages)}).catch(()=>{})}catch(e){setMessages(current=>current.filter(m=>m.id!==tempId));setDraft(current=>current||text);setNotice(String(e))}finally{setSending(false)}}
@@ -84,7 +81,7 @@ export function SocialPanels({section,initialPeer}:{section:string;initialPeer?:
   
   
   <span>{m.text}</span>{m.senderUid===myUid&&<small>{m.id.startsWith('pending-')?'Sending…':m.seen?'Seen':'Sent'}</small>}</button>
- {m.mediaId&&(m.mediaType==='video'?<video src={'/api/media?id='+encodeURIComponent(m.mediaId)} controls playsInline preload="metadata" style={{width:'100%',maxHeight:260}}/>:<img src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Chat attachment" style={{width:'100%',maxHeight:260,objectFit:'contain'}}/>)}
+ {m.mediaId&&(m.mediaType==='video'?<video src={'/api/media?id='+encodeURIComponent(m.mediaId)} controls playsInline preload="metadata" style={{width:'100%',maxHeight:260}}/>:<SafeImg src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Chat attachment" style={{width:'100%',maxHeight:260,objectFit:'contain'}}/>)}
  {m.contentId&&<ChatSharedContentCard postId={m.contentId} kind={m.contentType==='reel'?'reel':'post'}/>}{selectedMessage===m.id&&<div className="cc-message-actions">{!m.id.startsWith('pending-')&&<><button type="button" onClick={()=>void messageAction('deleteForMe',m)}>Delete for me</button>{m.senderUid===myUid&&<button type="button" onClick={()=>void messageAction('unsend',m)}>Unsend for everyone</button>}
    <button type="button" onClick={()=>{setReplyTo(m);setSelectedMessage(null)}}>Reply</button>
    {(['love','laugh','fire'] as const).map(emoji=><button key={emoji} type="button" aria-label={'React '+emoji} onClick={()=>{setSelectedMessage(null);void reactTo(m,emoji)}}>{emoji==='love'?'❤️':emoji==='laugh'?'😂':'🔥'} {m.reactionCounts?.[emoji]??0}</button>)}</>}</div>}</div>)}<div ref={bottomRef}/></div>
