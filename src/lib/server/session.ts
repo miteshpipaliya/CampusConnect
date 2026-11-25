@@ -17,10 +17,10 @@ export async function revokeSession(cookie:string){
 export async function session(request:NextRequest){
  const cookie=request.cookies.get('cc_session')?.value;if(!cookie)return null;
  try{
-  const [verified,revoked]=await Promise.all([auth().verifySessionCookie(cookie,true),sessionRevoked(cookie)]);
-  if(revoked||!verified.email_verified||!verified.email||!isAllowedEmail(verified.email,process.env.APPROVED_TEST_EMAILS))return null;
-  const profile=await db().collection('users').doc(verified.uid).get();
-  if(!profile.exists||profile.data()?.deletedAt||profile.data()?.suspendedAt)return null;
+  const verified=await auth().verifySessionCookie(cookie,true);
+  if(!verified.email_verified||!verified.email||!isAllowedEmail(verified.email,process.env.APPROVED_TEST_EMAILS))return null;
+  const [profile,revoked]=await Promise.all([db().collection('users').doc(verified.uid).get(),sessionRevoked(cookie)]);
+  if(revoked||!profile.exists||profile.data()?.deletedAt||profile.data()?.suspendedAt)return null;
   return {uid:verified.uid,email:verified.email,admin:verified.admin===true};
  }catch{return null}
 }

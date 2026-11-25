@@ -77,3 +77,5 @@ Implemented auth throttling, atomic OTP proof consumption, server-side session d
 - S2: 11 discovery/directory route families now have read budgets and security matrix; S3 partial: error pages, panel recovery, request ID/timing error wrapper and selected double-parse removals. Global route and lint sweep still pending.
 
 - S4 partial: reuse storage client, visibility-aware adaptive chat fallback, remove duplicate legacy feed polls, 60s story/avatar refresh, document privacy/performance tradeoffs. Query budget instrumentation and load tests outstanding.
+
+- U partial: measured reel caption gutter, 40px avatar, reduced-motion-aware delayed hover, account-scoped Explore photo neighbours and modal arrows. Signed preview batching and complete modal polish remain outstanding. Also deny suspended authors and check video attachment parent IDs.

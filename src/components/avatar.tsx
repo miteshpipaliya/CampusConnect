@@ -2,7 +2,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {OnlineIndicator} from './online-indicator';
 type AvatarUser={name?:string;handle?:string;avatarUrl?:string|null;avatarMediaId?:string|null};
-type Props={user?:AvatarUser;uid?:string;handle?:string;size?:24|32|44|56|150;ring?:'none'|'unseen'|'seen'|'close';className?:string;online?:boolean;activityAllowed?:boolean};
+type Props={user?:AvatarUser;uid?:string;handle?:string;size?:24|32|40|44|56|150;ring?:'none'|'unseen'|'seen'|'close';className?:string;online?:boolean;activityAllowed?:boolean};
 export function Avatar({user,handle,size=44,ring='none',className='',online=false,activityAllowed=false}:Props){
  const display=user?.name||user?.handle||handle||'Student';
  const initials=useMemo(()=>display.trim().split(/\s+/).slice(0,2).map(word=>word[0]?.toUpperCase()||'').join('')||'?', [display]);

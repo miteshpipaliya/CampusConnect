@@ -9,7 +9,7 @@ export async function canViewMany(viewerUid:string,authorUids:string[]):Promise<
  if(!others.length)return out;
  const store=db();
  const viewer=await store.collection('users').doc(viewerUid).get();
- if(!viewer.exists||viewer.data()?.deletedAt){for(const uid of others)out.set(uid,false);return out}
+ if(!viewer.exists||(viewer.data()?.deletedAt||viewer.data()?.suspendedAt)){for(const uid of others)out.set(uid,false);return out}
  // Firestore getAll batches reference reads and avoids N separate network round trips.
  for(let i=0;i<others.length;i+=80){
   const ids=others.slice(i,i+80);
@@ -22,7 +22,7 @@ export async function canViewMany(viewerUid:string,authorUids:string[]):Promise<
   const docs=await store.getAll(...refs);
   ids.forEach((uid,j)=>{
    const [target,follow,ab,ba]=docs.slice(j*4,j*4+4);
-   out.set(uid,Boolean(target?.exists&&!target.data()?.deletedAt&&canViewPrivacy({
+   out.set(uid,Boolean(target?.exists&&!target.data()?.deletedAt&&!target.data()?.suspendedAt&&canViewPrivacy({
     self:false,blocked:Boolean(ab?.exists||ba?.exists),
     privateAccount:isPrivateAccount(target.data()),activeFollower:follow?.data()?.status==='active'
    })));

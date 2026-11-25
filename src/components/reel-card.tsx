@@ -6,7 +6,8 @@ import {VolumeControl} from './volume-control';
 import {Avatar} from './avatar';
 import {Heart,MessageCircle,Bookmark,Repeat2,Send,Play,Ellipsis,MapPin,BadgeCheck,Music2} from 'lucide-react';
 import {safeVideoAspect} from '@/lib/core/reel-discovery';
-import {captionPlacement,fitReelFrame} from '@/lib/core/reel-layout';
+import {metaPlacement} from '@/lib/core/reel-meta-layout';
+import {fitReelFrame} from '@/lib/core/reel-layout';
 import {clampCaption} from '@/lib/core/caption-clamp';
 import {ReelMenu} from './reel-menu';
 import {ChatShareSheet} from './chat/chat-share-sheet';
@@ -17,7 +18,7 @@ const format=(n:number)=>n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M
 
 export function ReelCard({reel,active,volume,onVolume,mounted=true,preloadNext=false}:{reel:Reel;active:boolean;volume:number;onVolume:(v:number)=>void;mounted?:boolean;preloadNext?:boolean}){
  const player=useRef<HTMLVideoElement>(null),stageRef=useRef<HTMLDivElement>(null),actionsRef=useRef<HTMLDivElement>(null),counted=useRef(false),lastTick=useRef(0),playedMs=useRef(0);
- const [paused,setPaused]=useState(false),[ratio,setRatio]=useState(()=>safeVideoAspect(reel.width??0,reel.height??0)),[progress,setProgress]=useState(0),[frame,setFrame]=useState<{width:number;height:number}|null>(null),[placement,setPlacement]=useState<'left'|'overlay'>('overlay');
+ const [paused,setPaused]=useState(false),[ratio,setRatio]=useState(()=>safeVideoAspect(reel.width??0,reel.height??0)),[progress,setProgress]=useState(0),[frame,setFrame]=useState<{width:number;height:number}|null>(null),[placement,setPlacement]=useState<'left'|'overlay'>('overlay'),[metaWidth,setMetaWidth]=useState(0);
  const [liked,setLiked]=useState(reel.liked),[saved,setSaved]=useState(reel.saved),[reposted,setReposted]=useState(reel.reposted),[likes,setLikes]=useState(reel.likes);
  const [busy,setBusy]=useState(false),[share,setShare]=useState(false),[comments,setComments]=useState(false),[follow,setFollow]=useState(reel.followStatus),[error,setError]=useState(''),[notice,setNotice]=useState(''),[expanded,setExpanded]=useState(false),[menu,setMenu]=useState(false),[removed,setRemoved]=useState(false);
  useEffect(()=>{const v=player.current;if(!v)return;let stop:(()=>void)|undefined;const update=()=>{stop?.();stop=undefined;if(active&&!paused&&!document.hidden)stop=playWithSound(v,volume);else{v.pause();v.muted=true;lastTick.current=0}};update();document.addEventListener('visibilitychange',update);return()=>{document.removeEventListener('visibilitychange',update);stop?.();v.pause()}},[active,paused,mounted,volume,reel.mediaUrl]);
@@ -34,8 +35,8 @@ export function ReelCard({reel,active,volume,onVolume,mounted=true,preloadNext=f
    const width=Math.max(0,stage.clientWidth-(window.innerWidth<=768?0:railWidth+gap));
    const height=Math.max(0,stage.clientHeight);
    const next=fitReelFrame(width,height,ratio);
-   const availableLeft=(stage.clientWidth-next.width)/2;
-   setPlacement(captionPlacement(ratio,window.innerWidth,availableLeft));
+   const meta=metaPlacement(stage.clientWidth,next.width);setMetaWidth(meta.width);
+   setPlacement(window.innerWidth>720&&ratio<.9&&meta.placement==='outside'?'left':'overlay');
    setFrame(prev=>prev?.width===next.width&&prev?.height===next.height?prev:next);
   };
   measure();
@@ -83,8 +84,8 @@ export function ReelCard({reel,active,volume,onVolume,mounted=true,preloadNext=f
  const caption=clampCaption(reel.caption);
  if(removed)return <article data-reel-card className="cc-reel-card"><p>Reel removed.</p></article>;
  const videoStyle={aspectRatio:String(ratio),...(frame&&frame.width>0&&frame.height>0?{width:frame.width,height:frame.height}:{} )} as CSSProperties;
- const authorBlock=<div className={"cc-reel-caption cc-reel-caption-"+placement} data-caption-placement={placement}>
-     <Link className="cc-reel-caption-avatar" href={'/profile/'+encodeURIComponent(reel.authorHandle)} aria-label={'Profile of '+reel.authorHandle}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={32}/></Link><div className="cc-reel-caption-copy">
+ const authorBlock=<div className={"cc-reel-caption cc-reel-caption-"+placement} data-caption-placement={placement} style={placement==='left'?{width:metaWidth}:undefined}>
+     <Link className="cc-reel-caption-avatar" href={'/profile/'+encodeURIComponent(reel.authorHandle)} aria-label={'Profile of '+reel.authorHandle}><Avatar user={{name:reel.authorName,handle:reel.authorHandle,avatarUrl:reel.avatarUrl}} size={40}/></Link><div className="cc-reel-caption-copy">
      <div className="cc-reel-author">
       <Link href={'/profile/'+encodeURIComponent(reel.authorHandle)}><strong>@{reel.authorHandle}</strong>{reel.verified&&<BadgeCheck size={15} aria-label="Verified"/>}</Link>
       {!reel.isMine&&<button type="button" onClick={()=>void followToggle()}>{follow==='active'?'Following':follow==='pending'?'Requested':'Follow'}</button>}
