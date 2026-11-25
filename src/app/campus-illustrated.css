@@ -57,12 +57,6 @@
 .cc-campus-account-top>a{justify-self:start}.cc-campus-account-top>small{justify-self:end}.cc-campus-account-top .cc-campus-official-brand{font-size:clamp(15px,1.5vw,22px)}
 .cc-campus-account-card{background:#11172eea;border-color:#b8c5df45;box-shadow:0 20px 50px #0d172c55}
 .cc-campus-account-card h1{font-size:clamp(29px,3.2vw,42px);letter-spacing:-.035em}
-/* Wider screens keep the full-height central landmark and fill the periphery
-   from the same illustration, rather than stretching the building or letterboxing. */
-@media(min-aspect-ratio:12/5) and (min-width:1000px){
- .cc-campus-entry-stage{background-position:center 63%}
- .cc-campus-entry-stage:before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:url('/campus/day.webp') center/auto 100% no-repeat;mask-image:linear-gradient(90deg,transparent 0%,#000 24%,#000 76%,transparent 100%);mask-size:min(100%,calc(100svh * 1672 / 941)) 100%;mask-repeat:no-repeat;mask-position:center}
-}
 @media(max-width:700px),(orientation:portrait){
  .cc-campus-entry-stage{padding:20px 16px max(24px,env(safe-area-inset-bottom));background-position:49% center;gap:16px}
  .cc-campus-entry-header small{font-size:10px;letter-spacing:.08em}
@@ -77,3 +71,58 @@
 /* Keep the guide disclosure in the document flow on narrow screens; its open
    panel must never cover a campus action button. */
 @media(max-width:720px){.cc-campus-guide[open]{flex-basis:100%}.cc-campus-guide[open]>div{position:static;margin-top:8px;min-width:0;width:100%}}
+
+/* Two distinct supplied-style scenes, genuine DOM controls. Responsive local
+   image optimization uses Next's existing built-in loader, never private R2 URLs. */
+.cc-campus-entry-stage,.cc-campus-account,.cc-campus-auth.auth-page{background:#19334b;position:relative;isolation:isolate}
+.cc-campus-scene{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none;user-select:none}
+.cc-campus-scene-image{object-fit:cover;object-position:50% 50%;display:block}
+.cc-campus-entry-stage{min-height:100svh;min-height:max(440px,100svh);display:grid;grid-template-rows:auto 1fr auto;gap:0;padding:clamp(15px,2vw,45px) clamp(18px,2.4vw,65px) max(clamp(16px,2vh,40px),env(safe-area-inset-bottom));overflow:hidden}
+.cc-campus-entry-stage:after{background:linear-gradient(180deg,#081b3659 0%,#14284a26 25%,transparent 46%,transparent 73%,#10182cdb 100%);z-index:-1}
+.cc-campus-entry-header{align-self:start;position:relative;z-index:2}
+.cc-campus-entry-header small{font-size:clamp(11px,1.2vw,22px)}
+.cc-campus-entry-title{position:absolute;top:5.5%;left:50%;transform:translateX(-50%);width:min(78%,1200px);margin:0;gap:0;text-align:center}
+.cc-campus-entry-title>p{font-size:clamp(14px,min(3.6svh,2.3vw),45px);letter-spacing:.45em;line-height:1.1;text-indent:.45em;font-weight:650}
+.cc-campus-entry-title h1{font-family:Manrope,'Arial Black',Arial,sans-serif;font-size:clamp(74px,min(16svh,10vw),260px);font-weight:950;line-height:.92;letter-spacing:-.045em;margin:5px 0 0;color:#fff;text-shadow:0 3px 15px #10234c50;transform:scaleX(1.12)}
+.cc-campus-entry-title .cc-campus-entry-script{font-family:'Segoe Script','Brush Script MT','Lucida Handwriting',Georgia,cursive;font-style:italic;font-weight:500;font-size:clamp(20px,min(4.2svh,3vw),61px);letter-spacing:-.04em;line-height:1.23;text-indent:0;white-space:normal;color:#fff;margin:0}
+.cc-campus-enter-button{grid-row:2;align-self:end;justify-self:center;margin-bottom:clamp(8px,1.1vh,16px);width:clamp(240px,22vw,600px);min-height:clamp(54px,7.6vh,130px);font-size:clamp(16px,1.6vw,36px);background:linear-gradient(115deg,#7729d6,#5622bc);border:2px solid #d4afff;box-shadow:0 0 20px #7034d96b;z-index:1}
+.cc-campus-enter-button svg{width:1.3em;height:1.3em}
+.cc-campus-entry-footer{grid-row:3;align-self:end;font-size:clamp(10px,1vw,23px);gap:12px}
+.cc-campus-entry-step i{width:clamp(60px,10vw,240px)}
+.cc-campus-official-brand{font-size:clamp(17px,1.75vw,40px)}
+.cc-campus-official-brand img{width:clamp(36px,3vw,80px);height:clamp(36px,3vw,80px)}
+.cc-campus-account,.cc-campus-auth.auth-page{background-image:none;background-attachment:scroll}
+.cc-campus-account:before,.cc-campus-auth:before{background:linear-gradient(90deg,#14233b38 0%,#15223b5c 54%,#10182eba 100%),linear-gradient(180deg,#10182f65,transparent 23%,transparent 80%,#10182f42);z-index:-1}
+.cc-campus-account{padding-top:clamp(82px,11vh,150px);padding-bottom:clamp(45px,6vh,85px)}
+.cc-campus-account-card{background:#111429f5;border-color:#8e8cac55;width:min(100%,clamp(360px,28vw,800px));padding:clamp(25px,2.7vw,70px);gap:clamp(12px,1.7vh,30px)}
+.cc-campus-account-card h1{font-size:clamp(32px,3.1vw,88px);line-height:1.12;letter-spacing:-.05em}
+.cc-campus-account-card>p:not(.cc-campus-eyebrow){font-size:clamp(14px,1vw,28px)}
+.cc-campus-account-card .cc-campus-primary,.cc-campus-account-card .cc-campus-secondary{min-height:clamp(48px,6vh,95px);font-size:clamp(14px,1vw,27px)}
+.cc-campus-account-card>small{font-size:clamp(10px,.8vw,22px)}
+.cc-campus-account-top .cc-campus-official-brand{font-size:clamp(15px,1.5vw,34px)}
+.cc-campus-auth .brand .cc-campus-official-brand{font-size:clamp(16px,1.6vw,28px)}
+/* Wide displays preserve artwork proportions with a cover crop, no letterbox.
+   Keep the roof and fountain inside the crop at normal laptop/TV aspect ratios. */
+@media(min-aspect-ratio:2/1) and (min-width:1000px){.cc-campus-scene-welcome .cc-campus-scene-image{object-position:50% 58%}.cc-campus-entry-title{top:4%}.cc-campus-entry-title h1{font-size:clamp(68px,12svh,220px)}.cc-campus-entry-title .cc-campus-entry-script{font-size:clamp(19px,3.5svh,48px)}}
+@media(min-width:701px) and (max-height:600px){.cc-campus-account{padding-top:72px;padding-bottom:45px}.cc-campus-account-card{gap:10px;padding:22px}.cc-campus-account-icon{width:40px;height:40px}.cc-campus-account-card h1{font-size:30px}.cc-campus-entry-title h1{font-size:clamp(64px,15svh,115px)}}
+@media(max-width:700px),(orientation:portrait){
+ .cc-campus-entry-stage{min-height:max(530px,100svh);padding:20px 16px max(20px,env(safe-area-inset-bottom));gap:0}
+ .cc-campus-entry-title{top:12%;width:calc(100% - 32px);margin:0}
+ .cc-campus-entry-title>p{font-size:clamp(15px,4.3vw,28px);letter-spacing:.28em;text-indent:.28em}
+ .cc-campus-entry-title h1{font-size:clamp(78px,23vw,170px);transform:none}
+ .cc-campus-entry-title .cc-campus-entry-script{font-size:clamp(19px,5vw,34px)}
+ .cc-campus-entry-header .cc-campus-official-brand{font-size:clamp(14px,4vw,23px)}
+ .cc-campus-entry-header small{font-size:10px;letter-spacing:.07em}
+ .cc-campus-official-brand img{width:34px;height:34px}
+ .cc-campus-enter-button{width:min(100%,320px);min-height:56px;font-size:16px;margin-bottom:18px}
+ .cc-campus-entry-footer{font-size:10px;gap:9px}
+ .cc-campus-account{padding:clamp(230px,40vh,460px) 16px 58px;align-items:center;justify-content:flex-end}
+ .cc-campus-account .cc-campus-scene-image{object-position:49% 50%}
+ .cc-campus-account-card{width:min(100%,460px);padding:23px;gap:12px}
+ .cc-campus-account-card h1{font-size:clamp(30px,7vw,43px)}
+ .cc-campus-account-top .cc-campus-official-brand{font-size:13px}
+ .cc-campus-auth.auth-page{padding:85px 14px 30px}
+ .cc-campus-auth .cc-campus-scene-image{object-position:49% center}
+}
+@media(max-width:360px){.cc-campus-entry-header .cc-campus-official-brand{font-size:12px}.cc-campus-entry-header small{font-size:9px}.cc-campus-account-top .cc-campus-official-brand{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.cc-campus-enter-button,.cc-campus-enter-button svg{transition:none}}

@@ -1,4 +1,6 @@
 'use client';
+import {CampusScene} from './campus/campus-scene';
+import {CampusBrand} from './campus/campus-brand';
 import { SocialPanels } from './social-panels';
 import {FeedList} from './feed/feed-list';
 import {CreateComposer} from './create-composer';
@@ -58,9 +60,10 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
   }
  }
  return <main className="auth-page cc-campus-auth">
-  <Link className="brand" href="/enter"><span className="brand-mark">CC</span><span>Campus<span className="brand-lite">Connect</span></span></Link>
+  <CampusScene view="account"/>
+  <Link className="brand" href="/enter"><CampusBrand/></Link>
   <section className="auth-card wide cc-otp-card">
-   <div className="cc-otp-icon" aria-hidden="true">C</div><Link className="cc-campus-auth-back" href="/enter">← Back to campus entry</Link>
+   <div className="cc-otp-icon" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8.1a4.5 4.5 0 1 0 0 7.8M17.7 8.1a4.5 4.5 0 1 0 0 7.8"/></svg></div><Link className="cc-campus-auth-back" href="/enter">← Back to campus entry</Link>
    <h1>{stage==='email'?(mode==='login'&&!resetMode?'Welcome back':mode==='register'?'Join CampusConnect':'Reset your password'):stage==='otp'?'Verify your college email':stage==='password'?'Create your password':'Make it yours'}</h1>
    <p>{stage==='email'?(mode==='login'&&!resetMode?'Sign in with your campus email and password.':'Verify your BVM email or approved test account.'):stage==='otp'?'Enter the six-digit code sent to your institutional inbox.':'A few details to finish your verified campus profile.'}</p>
    <div className="cc-otp-steps" aria-label="Registration progress"><span className="active"/><span className={stage!=='email'?'active':''}/><span className={stage==='profile'||stage==='privacy'?'active':''}/></div>
