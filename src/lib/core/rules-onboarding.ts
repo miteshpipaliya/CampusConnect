@@ -1,4 +1,4 @@
-export const RULES_VERSION='rules-v1';
+export const RULES_VERSION='rules-v2';
 export const RULES_AUDIO=[
  {name:'rules_Declar',label:'INTRODUCTION',title:'Three rules. One community.',duration:23.248938,sha256:'1c481c250d031deccf0398b5de09658bc5109ce3cc6d3a5557053e858c69bbb0'},
  {name:'rule_one',label:'RULE 01',title:'Respect personal space and boundaries',duration:52.192625,sha256:'5ce8eba38bb7c18d35948a7619c266881218b3497a337edb7a4fe06fd271f871'},
@@ -10,8 +10,8 @@ export type RulesWord={word:string;start:number;end:number};
 export type GiftCue={rank:number;start:number};
 export type RulesCaption={name:string;duration:number;sha256:string;words:RulesWord[];gifts?:GiftCue[]};
 export type RulesState={version:string;next:number;startedAt?:number;stepStartedAt?:number;attempt?:string;completedAt?:number};
-export function pendingRules(data:Record<string,unknown>|undefined){const r=data?.rulesOnboarding as RulesState|undefined;return r?.version===RULES_VERSION&&!(typeof r.completedAt==='number'&&r.next===RULES_AUDIO.length)}
-export function rulesStatus(data:Record<string,unknown>|undefined){const r=data?.rulesOnboarding as RulesState|undefined;return pendingRules(data)?{required:true,step:r!.next}:{required:false,step:RULES_AUDIO.length}}
+export function pendingRules(data:Record<string,unknown>|undefined){const r=data?.rulesOnboarding as RulesState|undefined;return !(r?.version===RULES_VERSION&&typeof r.completedAt==='number'&&r.next===RULES_AUDIO.length)}
+export function rulesStatus(data:Record<string,unknown>|undefined){const r=data?.rulesOnboarding as RulesState|undefined;return pendingRules(data)?{required:true,step:r?.version===RULES_VERSION?r.next:0}:{required:false,step:RULES_AUDIO.length}}
 export function advanceRules(state:RulesState,action:'start'|'finish'|'complete',step:number,attempt:string,now:number):RulesState{
  if(state.version!==RULES_VERSION||!Number.isInteger(state.next)||state.next<0||state.next>RULES_AUDIO.length)throw Error('Invalid onboarding state');
  if(state.completedAt!==undefined)return state;
