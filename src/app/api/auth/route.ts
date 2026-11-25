@@ -1,3 +1,4 @@
+import {INTRO_COOKIE,persistIntroduction} from '@/lib/server/introduction';
 import {REFERRAL_COOKIE} from '@/lib/core/referral-policy';
 import {registrationFields,ensureReferralCode,settleReferral} from '@/lib/server/referrals';
 import {PUSH_COOKIE,revokePush} from '@/lib/server/push-delivery';
@@ -62,7 +63,7 @@ export async function POST(request:NextRequest){
    const profile=await db().collection('users').doc(decoded.uid).get();
    if(!profile.exists)return errorResponse(403,'Complete your campus registration first');
    const cookie=await auth().createSessionCookie(result.idToken,{expiresIn:5*24*60*60*1000});
-   const reply=NextResponse.json({ok:true},{headers:safeHeaders});setSession(reply,cookie);reply.cookies.delete(REFERRAL_COOKIE);try{await ensureReferralCode(decoded.uid)}catch{console.error('Referral code initialization deferred')}return reply;
+   const reply=NextResponse.json({ok:true},{headers:safeHeaders});setSession(reply,cookie);try{await persistIntroduction(decoded.uid,request.cookies.get(INTRO_COOKIE)?.value)}catch{console.error('Introduction completion persistence deferred')}reply.cookies.delete(REFERRAL_COOKIE);try{await ensureReferralCode(decoded.uid)}catch{console.error('Referral code initialization deferred')}return reply;
   }catch{return errorResponse(503,'Sign-in unavailable')}
  }
  if(action==='requestOtp'){
@@ -152,6 +153,7 @@ export async function POST(request:NextRequest){
    await auth().revokeRefreshTokens(user.uid);
    const response=NextResponse.json({ok:true},{headers:safeHeaders});
    await signIn(user.uid,response);
+   try{await persistIntroduction(user.uid,request.cookies.get(INTRO_COOKIE)?.value)}catch{console.error('Introduction completion persistence deferred')}
    try{await ensureReferralCode(user.uid);await settleReferral(user.uid,'bootstrap')}catch{console.error('Referral initialization deferred to authenticated onboarding')}
    response.cookies.delete(REFERRAL_COOKIE);
    response.cookies.delete(otpCookie);

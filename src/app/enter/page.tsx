@@ -1,2 +1,2 @@
-import {CampusAccountChoice} from '@/components/campus/campus-account-choice';
-export default function EnterPage(){return <CampusAccountChoice/>}
+import {IntroScene} from '@/components/campus/intro-scene';
+export default function EnterPage(){return <IntroScene/>}
