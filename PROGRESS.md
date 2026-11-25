@@ -71,3 +71,5 @@ Single branch per owner request. Audio defaults to full volume; stories remove m
 
 ## sec-audit S1
 Implemented auth throttling, atomic OTP proof consumption, server-side session denylist, token revocation, profile field allowlist, reserved handles, bounded auth body and optional CSP nonce. CI/live acceptance pending.
+
+- S2 partial: health diagnostics restricted, probes cached/coalesced, guard payloads bounded, strict write quotas fail closed, block/mute/close-friends quotas added. Read-limit sweep pending.

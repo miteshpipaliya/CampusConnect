@@ -39,7 +39,15 @@ export async function POST(request:NextRequest){
  if(!request.headers.get('content-type')?.includes('application/json')||Number(request.headers.get('content-length')||0)>8192)return errorResponse(400,'Invalid request');
  let raw:unknown;try{const reader=request.body?.getReader();if(!reader)return errorResponse(400,'Invalid JSON');const chunks:Uint8Array[]=[];let size=0;try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>8192){await reader.cancel();return errorResponse(400,'Invalid request')}chunks.push(value)}}finally{reader.releaseLock()}raw=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return errorResponse(400,'Invalid JSON')}
  const action=(raw as {action?:string})?.action;
- if(action==='logout'){const cookie=request.cookies.get('cc_session')?.value;if(cookie){try{await revokeSession(cookie)}catch{return errorResponse(503,'Sign-out unavailable. Please retry')}}const binding=request.cookies.get(PUSH_COOKIE)?.value;if(binding){const user=await session(request);if(user)await revokePush(user.uid,binding).catch(()=>{})}const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);r.cookies.delete(PUSH_COOKIE);return r}
+ if(action==='logout'){
+  const cookie=request.cookies.get('cc_session')?.value,binding=request.cookies.get(PUSH_COOKIE)?.value;
+  if(cookie){try{
+   // Never allocate denylist entries for arbitrary unsigned cookie values.
+   const identity=await auth().verifySessionCookie(cookie).catch(error=>{if(['auth/argument-error','auth/invalid-session-cookie','auth/session-cookie-expired'].includes((error as {code?:string}).code||''))return null;throw error});
+   if(identity){if(binding)await revokePush(identity.uid,binding).catch(()=>console.error('Push logout cleanup failed'));await revokeSession(cookie)}
+  }catch{return errorResponse(503,'Sign-out unavailable. Please retry')}}
+  const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);r.cookies.delete(PUSH_COOKIE);return r
+ }
  if(action==='loginPassword'){
   const parsed=z.object({email:emailSchema,password:z.string().min(1).max(128)}).safeParse(raw);
   const limited=await authThrottle(request,'loginPassword',parsed.success?parsed.data.email:undefined);if(limited)return limited;
