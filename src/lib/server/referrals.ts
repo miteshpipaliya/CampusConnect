@@ -2,7 +2,7 @@ import 'server-only';
 import {FieldPath,FieldValue,type Transaction,type DocumentData} from 'firebase-admin/firestore';
 import {auth,db} from './services';
 import {isAllowedEmail} from '../student-email';
-import {generateCode,normalizeCode,readAttribution,studentDigest,isOpen,inCompetition,ONBOARDING_TTL} from '../core/referral-policy';
+import {generateCode,normalizeCode,isShortCode,readAttribution,studentDigest,isOpen,inCompetition,ONBOARDING_TTL} from '../core/referral-policy';
 export function referralSecret(){const key=process.env.REFERRAL_SIGNING_SECRET||process.env.OTP_SIGNING_SECRET;if(!key||key.length<32)throw Error('Referral signing unavailable');return key}
 export function institutional(email:unknown){return typeof email==='string'&&isAllowedEmail(email,'')}
 export function eligible(d:DocumentData|undefined){return Boolean(d&&institutional(d.email)&&d.verifiedInstitutionalEmail===true&&!d.deletedAt&&!d.suspendedAt)}
@@ -19,19 +19,22 @@ export async function ensureReferralCode(uid:string){
  const store=db(),ref=store.collection('users').doc(uid);
  const identity=await getIdentity(uid);
  if(!identity?.emailVerified||identity.disabled||!institutional(identity.email))return null;
- for(let attempt=0;attempt<5;attempt++){
+ for(let attempt=0;attempt<32;attempt++){
   const candidate=generateCode();
   const result=await store.runTransaction(async tx=>{
    const profile=(await tx.get(ref)).data();if(!eligible(profile))return {code:null,collision:false};
    const ledger=store.collection('referralStudents').doc(studentDigest(String(profile!.email),referralSecret()));
    const old=normalizeCode(String(profile!.referralCode??''));
-   const index=store.collection('referralCodes').doc(old??candidate);
-   const [reserved,known]=await Promise.all([tx.get(index),tx.get(ledger)]);
-   if(old){if(reserved.data()?.uid!==uid||reserved.data()?.status!=='active')return {code:null,collision:false};if(!known.exists)tx.create(ledger,{firstSeenAt:FieldValue.serverTimestamp()});return {code:old,collision:false}}
+   const index=store.collection('referralCodes').doc(candidate);
+   const oldRef=old?store.collection('referralCodes').doc(old):null;
+   const [reserved,known,previous]=await Promise.all([tx.get(index),tx.get(ledger),oldRef?tx.get(oldRef):Promise.resolve(null)]);
+   if(old&&(!previous?.exists||previous.data()?.uid!==uid||previous.data()?.status!=='active'))return {code:null,collision:false};
+   if(old&&isShortCode(old)){if(!known.exists)tx.create(ledger,{firstSeenAt:FieldValue.serverTimestamp()});return {code:old,collision:false}}
    if(reserved.exists)return {code:null,collision:true};
    tx.create(index,{uid,status:'active',createdAt:FieldValue.serverTimestamp()});
    if(!known.exists)tx.create(ledger,{firstSeenAt:FieldValue.serverTimestamp()});
-   tx.update(ref,{referralCode:candidate,referralCodeCreatedAt:FieldValue.serverTimestamp()});
+   // Keep the old reservation active as a permanent alias; never delete or reassign it.
+   tx.update(ref,{referralCode:candidate,...(old?{referralLegacyCode:old,referralCodeShortenedAt:FieldValue.serverTimestamp()}:{referralCodeCreatedAt:FieldValue.serverTimestamp()})});
    return {code:candidate,collision:false};
   });
   if(!result.collision)return result.code;
