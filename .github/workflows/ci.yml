@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main, 'upgrade/phase-*']
   push:
-    branches: [main, 'upgrade/phase-*']
+    branches: [main, 'upgrade/phase-*', 'intro-Aud']
   workflow_dispatch:
 
 permissions:
