@@ -39,6 +39,7 @@ export async function POST(req:NextRequest){
   if(action==='disable-account'){
    if(targetId===checked.user.uid)return errorResponse(403,'Cannot disable your own admin account');
    await auth().updateUser(targetId,{disabled:true});
+   await auth().revokeRefreshTokens(targetId);
   }
   await store.runTransaction(async tx=>{
    const current=await tx.get(ref);

@@ -15,3 +15,6 @@ Use distinct test accounts and verify follow/private/block/mute/close-friends me
 
 ## Audit branch
 `12-adudit` and draft PR #34 change both UI and backend behavior and are **not approved for production** without staging acceptance. External Firestore indexes and operator credentials are not modified by the PR.
+
+## sec-audit controls
+Auth throttles fail closed immediately. Revoked cookie hashes are persisted for five days and checked on every authenticated request; cron cleanup respects dry run. No public session cache. Optional CSP_NONCE=1 requires OWNER-VERIFY on dynamically rendered pages; default remains off. Verify cross-instance logout, password reset, account restoration, and Stream token revocation with test accounts before merging. HSTS preload directive does not itself submit the domain to the preload list.

@@ -45,3 +45,5 @@ Updated 2026-11-24.
 - Thumbnail writes are optional for upload compatibility and share the parent post's server-side media authorization. No public bucket or API secret changes.
 
 - Preserve authorization on hover via the existing authenticated media route, no public video URLs. Legacy poster capture is best-effort and requires R2 CORS/browser decoder support; future uploads retain persisted thumbnails. Recommendation ranking is bounded per chronological page to avoid unbounded database scans.
+
+- Security overrides the requested cache optimization: no positive authorization cache (logout/revocation must work across serverless instances). Auth limits fail closed immediately, stronger than the requested three-error threshold. OTP proof is consumed once before side effects; failed signup/reset requires a fresh code. Nonce CSP remains off until preview acceptance.

@@ -13,5 +13,6 @@ export function cropRect(imgWidth:number,imgHeight:number,size:number,zoom:numbe
  return {x,y,w,h};
 }
 
-export const RESERVED_HANDLES=new Set(['admin','administrator','support','campusconnect','moderator','security','help','staff','official','system','root']);
-export function isReservedHandle(handle:string):boolean{return RESERVED_HANDLES.has(handle.toLowerCase())}
+export const RESERVED_HANDLES=new Set(['admin','administrator','support','campusconnect','moderator','mod','security','help','staff','official','team','campus','bvm','system','root','null','undefined','api']);
+function normalizeHandle(handle:string){return handle.normalize('NFKC').toLowerCase().replace(/[_.]/g,'').replace(/0/g,'o').replace(/1/g,'l')}
+export function isReservedHandle(handle:string):boolean{const normalized=normalizeHandle(handle);return RESERVED_HANDLES.has(normalized)||RESERVED_HANDLES.has(normalized.replace(/l/g,'i'))||RESERVED_HANDLES.has(handle.toLowerCase())}
