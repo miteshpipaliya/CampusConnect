@@ -1,0 +1,9 @@
+/* PWA-specific overrides; existing desktop styles remain untouched. */
+@media (max-width:720px) {
+ html,body,.cc-app {min-height:100dvh;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+ .cc-mobile-header {padding-top:env(safe-area-inset-top);min-height:calc(62px + env(safe-area-inset-top));padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+ .cc-mobile-nav {padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+ input,textarea,select {font-size:16px!important}
+ .cc-mobile-header button,.cc-mobile-header a,.cc-mobile-nav a {min-width:44px;min-height:44px}
+}
+@media (display-mode:standalone) {html,body {min-height:100dvh;overscroll-behavior-y:none;touch-action:manipulation}}
