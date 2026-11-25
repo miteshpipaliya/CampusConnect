@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {LoadingSkeleton} from '../loading-skeleton';
 import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent,type KeyboardEvent} from 'react';
 import Link from 'next/link';
@@ -55,6 +56,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
  active.current=peer;
 
  const inboxFingerprint=useRef(''),threadFingerprint=useRef('');
+ const invalidateInbox=useCallback(()=>{inboxSeq.current++},[]),invalidateThread=useCallback(()=>{sequence.current++},[]);
  const refreshInbox=useCallback(async()=>{
   const version=++inboxSeq.current;
   const d=await requestJson<{conversations:Conversation[]}>('/api/chat');
@@ -119,8 +121,8 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    .then(data=>{if(live)setDirectory(Array.isArray(data.members)?data.members:[])}).catch(()=>{});
   void requestJson<{user?:{profile?:{handle?:string}}}>('/api/auth')
    .then(data=>{if(live)setViewerHandle(data.user?.profile?.handle||'')}).catch(()=>{});
-  return()=>{live=false;inboxSeq.current++};
- },[refreshInbox]);
+  return()=>{live=false;invalidateInbox()};
+ },[refreshInbox,invalidateInbox]);
 
  useEffect(()=>{
   if(!peer)return;
@@ -136,8 +138,8 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   const stop=status==='connected'&&channelWatching?null:adaptivePoll(async()=>{const before=threadFingerprint.current;await tick();return before!==threadFingerprint.current});
   const onResume=()=>{void tick()};
   document.addEventListener('visibilitychange',onResume);window.addEventListener('online',onResume);
-  return()=>{live=false;sequence.current++;stop?.();document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
- },[peer,status,channelWatching,refreshConversation]);
+  return()=>{live=false;invalidateThread();stop?.();document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
+ },[peer,status,channelWatching,refreshConversation,invalidateThread]);
 
  useEffect(()=>{
   let live=true,inFlight=false;
@@ -331,7 +333,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     {all.map(m=><article key={m.id} className={'cc-dm-msg'+(m.senderUid===myUid?' mine':' theirs')}>
      <div className="cc-dm-msg-body">
       {m.quotedMessageId&&<a className="cc-dm-quote" href={'#cc-msg-'+m.quotedMessageId}>↪ {all.find(item=>item.id===m.quotedMessageId)?.text.slice(0,100)||'Previous message'}</a>}
-      {m.mediaId&&(m.mediaType==='video'?<video src={'/api/media?id='+encodeURIComponent(m.mediaId)} controls playsInline preload="metadata" className="cc-dm-sent-media"/>:<a href={'/api/media?id='+encodeURIComponent(m.mediaId)} target="_blank" rel="noopener noreferrer"><img loading="lazy" src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Shared chat attachment" className="cc-dm-sent-media"/></a>)}
+      {m.mediaId&&(m.mediaType==='video'?<video src={'/api/media?id='+encodeURIComponent(m.mediaId)} controls playsInline preload="metadata" className="cc-dm-sent-media"/>:<a href={'/api/media?id='+encodeURIComponent(m.mediaId)} target="_blank" rel="noopener noreferrer"><SafeImg loading="lazy" src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Shared chat attachment" className="cc-dm-sent-media"/></a>)}
       {m.contentId&&<ChatSharedContentCard postId={m.contentId} kind={m.contentType==='reel'?'reel':'post'}/>}
       {m.text&&<span className="cc-dm-msg-text">{m.text}</span>}
       <small>{formattedTime(m.createdAt)}{m.senderUid===myUid?' · '+(m.id.startsWith('cc-optimistic-')?'Sending…':m.seen?'Seen':'Sent'):''}</small>

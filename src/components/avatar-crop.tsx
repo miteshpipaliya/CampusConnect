@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useRef,useState,type PointerEvent} from 'react';
+import {useCallback,useEffect,useRef,useState,type PointerEvent} from 'react';
 import {cropRect} from '@/lib/core/phase2-rules';
 type Props={file:File;onCancel:()=>void;onConfirm:(file:File)=>Promise<void>};
 const SIZE=320;
@@ -11,13 +11,13 @@ export function AvatarCrop({file,onCancel,onConfirm}:Props){
   img.onload=()=>{if(active){image.current=img;setReady(true)}};img.onerror=()=>{if(active)setError('Could not read this image')};img.src=url;
   return()=>{active=false;image.current=null;URL.revokeObjectURL(url)};
  },[file]);
- function draw(target:HTMLCanvasElement){
+ const draw=useCallback((target:HTMLCanvasElement)=>{
   const ctx=target.getContext('2d'),img=image.current;if(!ctx||!img)return false;
   const side=target.width,{x,y,w,h}=cropRect(img.naturalWidth,img.naturalHeight,side,zoom,pan.x,pan.y);
   ctx.clearRect(0,0,side,side);ctx.drawImage(img,x,y,w,h);
   return true;
- }
- useEffect(()=>{if(canvas.current&&ready)draw(canvas.current)},[zoom,pan,ready]);
+ },[zoom,pan.x,pan.y]);
+ useEffect(()=>{if(canvas.current&&ready)draw(canvas.current)},[draw,ready]);
  function move(event:PointerEvent<HTMLCanvasElement>){
   if(!drag.current||!image.current)return;
   const img=image.current,scale=Math.max(SIZE/img.naturalWidth,SIZE/img.naturalHeight)*zoom;

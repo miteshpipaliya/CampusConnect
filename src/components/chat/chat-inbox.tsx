@@ -25,12 +25,13 @@ export function ChatInbox(){
   setItems(previous=>JSON.stringify(previous)===JSON.stringify(conversations)?previous:conversations);
   setError('');
  },[]);
+ const invalidateRequests=useCallback(()=>{requestVersion.current++},[]);
  useEffect(()=>{
   const abort=new AbortController();
   refresh(abort.signal).catch(e=>{if(!abort.signal.aborted)setError(e instanceof Error?e.message:'Chat unavailable')})
    .finally(()=>{if(!abort.signal.aborted)setLoading(false)});
-  return()=>{abort.abort();requestVersion.current++};
- },[refresh]);
+  return()=>{abort.abort();invalidateRequests()};
+ },[refresh,invalidateRequests]);
  useEffect(()=>{
   if(loading)return;
   let active=true,inFlight=false;

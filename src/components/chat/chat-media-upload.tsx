@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useRef,useState,type ChangeEvent} from 'react';
 import {validateFileForPurpose} from '@/lib/core/content-rules';
 import {ImagePlus} from 'lucide-react';
@@ -95,7 +96,7 @@ export function ChatMediaUpload({recipientHandle,onSent,compact=false}:Props){
     className={compact?'cc-dm-hidden-file':'cc-dm-visible-file'}/>
   {(file||busy||error)&&<div className={compact?'cc-dm-attachment-popover':'cc-dm-attachment-inline'} role="group" aria-label="Attachment preview">
    {file&&<div className="cc-dm-attachment-content">
-    {preview&&(file.type.startsWith('video/')?<video aria-label="Selected video preview" src={preview} controls playsInline style={{width:100,maxHeight:130}}/>:<img src={preview} alt="Selected attachment preview" style={{width:100,maxHeight:130,objectFit:'contain'}}/>)}
+    {preview&&(file.type.startsWith('video/')?<video aria-label="Selected video preview" src={preview} controls playsInline style={{width:100,maxHeight:130}}/>:<SafeImg src={preview} alt="Selected attachment preview" style={{width:100,maxHeight:130,objectFit:'contain'}}/>)}
     <div className="cc-dm-attachment-detail"><strong>{file.name}</strong><small>{(file.size/1048576).toFixed(1)} MB</small></div>
    </div>}
    {busy&&<><progress aria-label="Attachment upload progress" value={progress} max={100} style={{width:'100%'}}/><small role="status">{sending?'Delivering media…':progress===0?'Preparing upload…':progress+'% uploaded'}</small></>}

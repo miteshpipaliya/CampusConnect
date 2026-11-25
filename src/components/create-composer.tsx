@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useRef,useState} from 'react';
 import {uploadFile,readVideoDuration,readVideoSize,captureVideoPoster} from '@/lib/upload';
 import {validateFileForPurpose,canPublish} from '@/lib/core/content-rules';
@@ -47,7 +48,7 @@ export function CreateComposer({onClose,onPublished,initialKind}:{onClose:()=>vo
  </div>
  {kind==='post'&&<div style={{display:'flex',gap:12}}><label>Crop ratio <select value={ratio} onChange={e=>setRatio(e.target.value)}><option value="1 / 1">Square 1:1</option><option value="4 / 5">Portrait 4:5</option><option value="16 / 9">Landscape 16:9</option></select></label><label>Filter <select value={filter} onChange={e=>setFilter(e.target.value)}>{['none','grayscale','sepia','contrast','saturate','brightness'].map(x=><option key={x}>{x}</option>)}</select></label></div>}
  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:12}}>
- {items.map((item,index)=><div key={item.key}><div style={{aspectRatio:kind==='post'?ratio:'auto',overflow:'hidden'}}>{item.file.type.startsWith('video/')?<video src={item.url} playsInline muted preload="metadata" disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback" style={{width:'100%',height:'auto',maxHeight:260,objectFit:'contain'}}/>:<img src={item.url} alt="Selected preview" style={{width:'100%',height:'100%',objectFit:'cover',filter:filter==='none'?'none':filter==='grayscale'?'grayscale(1)':filter==='sepia'?'sepia(1)':filter==='contrast'?'contrast(1.5)':filter==='saturate'?'saturate(1.8)':'brightness(1.3)'}}/>}</div>
+ {items.map((item,index)=><div key={item.key}><div style={{aspectRatio:kind==='post'?ratio:'auto',overflow:'hidden'}}>{item.file.type.startsWith('video/')?<video src={item.url} playsInline muted preload="metadata" disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback" style={{width:'100%',height:'auto',maxHeight:260,objectFit:'contain'}}/>:<SafeImg src={item.url} alt="Selected preview" style={{width:'100%',height:'100%',objectFit:'cover',filter:filter==='none'?'none':filter==='grayscale'?'grayscale(1)':filter==='sepia'?'sepia(1)':filter==='contrast'?'contrast(1.5)':filter==='saturate'?'saturate(1.8)':'brightness(1.3)'}}/>}</div>
   {kind==='post'&&<><input aria-label="Alt text" placeholder="Alt text" value={item.alt} maxLength={250} onChange={e=>setItems(old=>old.map((v,i)=>i===index?{...v,alt:e.target.value}:v))}/><button onClick={()=>move(index,-1)} disabled={index===0||busy}>←</button><button onClick={()=>move(index,1)} disabled={index===items.length-1||busy}>→</button></>}
   <button disabled={busy} onClick={()=>{URL.revokeObjectURL(item.url);setItems(old=>old.filter((_,i)=>i!==index))}}>Remove</button><progress value={item.progress} max={1}/></div>)}
  </div>

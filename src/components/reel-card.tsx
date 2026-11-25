@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useRef,useState,type CSSProperties} from 'react';
+import {useCallback,useEffect,useRef,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {playWithSound} from '@/lib/client/play-with-sound';
 import {VolumeControl} from './volume-control';
@@ -127,8 +127,8 @@ export function ReelCard({reel,active,volume,onVolume,mounted=true,preloadNext=f
 
 function ReelComments({id,onClose}:{id:string;onClose:()=>void}){
  const [items,setItems]=useState<Array<{id:string;handle:string;text:string}>>([]),[text,setText]=useState(''),[error,setError]=useState(''),[sending,setSending]=useState(false);
- const load=async()=>{const r=await fetch('/api/posts/'+id+'/comments',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Comments unavailable');setItems(Array.isArray(d.comments)?d.comments:[])};
- useEffect(()=>{void load().catch(e=>setError(e instanceof Error?e.message:'Comments unavailable'))},[id]);
+ const load=useCallback(async()=>{const r=await fetch('/api/posts/'+id+'/comments',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Comments unavailable');setItems(Array.isArray(d.comments)?d.comments:[])},[id]);
+ useEffect(()=>{void load().catch(e=>setError(e instanceof Error?e.message:'Comments unavailable'))},[load]);
  async function send(){
   if(sending||!text.trim())return;setSending(true);setError('');
   try{const r=await fetch('/api/posts/'+id+'/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text.trim()})});if(!r.ok)throw Error((await r.json()).error||'Comment failed');setText('');await load()}
