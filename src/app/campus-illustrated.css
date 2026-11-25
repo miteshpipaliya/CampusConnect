@@ -234,7 +234,7 @@ body:has(.cc-campus-entry,.cc-campus-account,.cc-campus-intro,.cc-campus-auth){
 .cc-campus-entry-header .cc-campus-official-brand{font-size:clamp(14px,1.22vw,30px);font-weight:750;letter-spacing:-.025em;gap:8px}
 .cc-campus-entry-header .cc-campus-official-brand img{width:clamp(26px,2.05vw,57px);height:clamp(26px,2.05vw,57px);border-radius:7px}
 .cc-campus-entry-header small{font-size:clamp(10px,.9vw,21px);letter-spacing:.15em}
-.cc-campus-entry-title{top:clamp(18px,4.1dvh,90px);width:min(76%,1300px);gap:clamp(3px,.65dvh,14px)}
+.cc-campus-entry-title{top:clamp(18px,4.1dvh,90px);width:min(64%,1300px);gap:clamp(3px,.65dvh,14px)}
 .cc-campus-entry-title>p{font-family:Manrope,system-ui,sans-serif;font-weight:650;font-size:clamp(13px,min(2.8dvh,1.6vw),42px);letter-spacing:.38em;text-indent:.38em;line-height:1.2}
 .cc-campus-entry-title h1{font-family:Manrope,'Arial Black',Arial,sans-serif;font-weight:900;font-size:clamp(62px,min(13.4dvh,9.2vw),250px);letter-spacing:-.055em;line-height:.88;transform:scaleX(1.1);margin:0;text-shadow:0 3px 16px #09274745}
 .cc-campus-entry-title .cc-campus-entry-script{font-family:'Segoe Script','Brush Script MT','Lucida Handwriting',Georgia,cursive;font-weight:500;font-style:italic;font-size:clamp(17px,min(3.1dvh,2.2vw),56px);letter-spacing:-.035em;line-height:1.3;text-indent:0;text-shadow:0 2px 8px #10294680}
