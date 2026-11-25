@@ -1,3 +1,5 @@
+import {REFERRAL_COOKIE} from '@/lib/core/referral-policy';
+import {registrationFields,ensureReferralCode,settleReferral} from '@/lib/server/referrals';
 import {PUSH_COOKIE,revokePush} from '@/lib/server/push-delivery';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes, randomInt, createHmac, timingSafeEqual } from 'node:crypto';
@@ -46,7 +48,7 @@ export async function POST(request:NextRequest){
    const identity=await auth().verifySessionCookie(cookie).catch(error=>{if(['auth/argument-error','auth/invalid-session-cookie','auth/session-cookie-expired'].includes((error as {code?:string}).code||''))return null;throw error});
    if(identity){if(binding)await revokePush(identity.uid,binding).catch(()=>console.error('Push logout cleanup failed'));await revokeSession(cookie)}
   }catch{return errorResponse(503,'Sign-out unavailable. Please retry')}}
-  const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);r.cookies.delete(PUSH_COOKIE);return r
+  const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);r.cookies.delete(PUSH_COOKIE);r.cookies.delete(REFERRAL_COOKIE);return r
  }
  if(action==='loginPassword'){
   const parsed=z.object({email:emailSchema,password:z.string().min(1).max(128)}).safeParse(raw);
@@ -60,7 +62,7 @@ export async function POST(request:NextRequest){
    const profile=await db().collection('users').doc(decoded.uid).get();
    if(!profile.exists)return errorResponse(403,'Complete your campus registration first');
    const cookie=await auth().createSessionCookie(result.idToken,{expiresIn:5*24*60*60*1000});
-   const reply=NextResponse.json({ok:true},{headers:safeHeaders});setSession(reply,cookie);return reply;
+   const reply=NextResponse.json({ok:true},{headers:safeHeaders});setSession(reply,cookie);reply.cookies.delete(REFERRAL_COOKIE);try{await ensureReferralCode(decoded.uid)}catch{console.error('Referral code initialization deferred')}return reply;
   }catch{return errorResponse(503,'Sign-in unavailable')}
  }
  if(action==='requestOtp'){
@@ -132,6 +134,7 @@ export async function POST(request:NextRequest){
     const p=parsed.data.profile,parts=/^(\d{2})(cp|el|ec|it|me|cl|ee|pr)(\d{3,8})@bvmengineering\.ac\.in$/.exec(email);
     if(!parts&&!allowedEmail(email))return errorResponse(403,'Unsupported email address');
     const branch=parts?branchFor(parts[2] as keyof typeof proposedCodes):'';
+    const fresh=!user;
     if(!user)user=await auth().createUser({email,emailVerified:true,disabled:false,password:parsed.data.password});
     else await auth().updateUser(user.uid,{emailVerified:true,password:parsed.data.password});
     try{
@@ -139,8 +142,9 @@ export async function POST(request:NextRequest){
       const handle=db().collection('handles').doc(p.handle),profile=db().collection('users').doc(user!.uid);
       if((await tx.get(handle)).exists)throw Error('HANDLE_TAKEN');
       if((await tx.get(profile)).exists)throw Error('PROFILE_EXISTS');
+      const referral=await registrationFields(tx,user!.uid,email,fresh,request.cookies.get(REFERRAL_COOKIE)?.value);
       tx.create(handle,{uid:user!.uid});
-      tx.create(profile,{uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts?`${parts[1]!}${parts[2]!}${parts[3]!}`:'',branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:parts?2000+Number(parts[1]):null,emailBranchCode:parts?.[2]??null,verifiedInstitutionalEmail:Boolean(parts),createdAt:FieldValue.serverTimestamp()});
+      tx.create(profile,{...referral,uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts?`${parts[1]!}${parts[2]!}${parts[3]!}`:'',branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:parts?2000+Number(parts[1]):null,emailBranchCode:parts?.[2]??null,verifiedInstitutionalEmail:Boolean(parts),createdAt:FieldValue.serverTimestamp()});
      });
     }catch(e){if(e instanceof Error&&e.message==='HANDLE_TAKEN')return errorResponse(409,'Username already taken. Choose another');if(e instanceof Error&&e.message==='PROFILE_EXISTS')return errorResponse(409,'Account already exists. Sign in');throw e}
    }else if(user)await auth().updateUser(user.uid,{emailVerified:true,password:parsed.data.password});
@@ -148,6 +152,8 @@ export async function POST(request:NextRequest){
    await auth().revokeRefreshTokens(user.uid);
    const response=NextResponse.json({ok:true},{headers:safeHeaders});
    await signIn(user.uid,response);
+   try{await ensureReferralCode(user.uid);await settleReferral(user.uid,'bootstrap')}catch{console.error('Referral initialization deferred to authenticated onboarding')}
+   response.cookies.delete(REFERRAL_COOKIE);
    response.cookies.delete(otpCookie);
    return response;
   }catch{return errorResponse(503,'Unable to complete sign-in. Please retry')}
