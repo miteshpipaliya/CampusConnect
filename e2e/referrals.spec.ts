@@ -43,16 +43,12 @@ test('referral workspace, podium, enabled rewards and profile navigation render 
  await expect(page).toHaveURL(/tab=rewards/);
  await expect(page.locator('.cc-reward-card')).toHaveCount(5);
  for(const [i,name] of ['Black hoodie','Wireless earbuds','Plain black T-shirt','Steel water bottle','The Alchemist'].entries()){const card=page.locator('.cc-reward-card').nth(i);await expect(card.getByRole('heading',{name,exact:true})).toBeVisible();await expect.poll(()=>card.locator('img').evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(0)}
- const hoodie=page.locator('.cc-reward-rank-1 .cc-reward-photo img');
- await expect.poll(()=>hoodie.evaluate((img:HTMLImageElement)=>[img.naturalWidth,img.naturalHeight])).toEqual([2048,2048]);
- const tshirt=page.locator('.cc-reward-rank-3 .cc-reward-photo img');
- await expect.poll(()=>tshirt.evaluate((img:HTMLImageElement)=>[img.naturalWidth,img.naturalHeight])).toEqual([2048,2048]);
- const checkRewardFrame=async(image:typeof hoodie)=>{const geometry=await image.evaluate((img:HTMLImageElement)=>{const photo=img.parentElement!;const a=img.getBoundingClientRect(),b=photo.getBoundingClientRect();const css=getComputedStyle(img);return {contained:a.left>=b.left-1&&a.right<=b.right+1&&a.top>=b.top-1&&a.bottom<=b.bottom+1,centered:Math.abs((a.left+a.right-b.left-b.right)/2)<=1&&Math.abs((a.top+a.bottom-b.top-b.bottom)/2)<=1,square:Math.abs(b.width-b.height)<=1,fit:css.objectFit,position:css.objectPosition}});expect(geometry).toEqual({contained:true,centered:true,square:true,fit:'contain',position:'50% 50%'})};
- await checkRewardFrame(hoodie);
- await checkRewardFrame(tshirt);
+ const rewardImages=[1,2,3,4].map(rank=>page.locator('.cc-reward-rank-'+rank+' .cc-reward-photo img'));
+ for(const img of rewardImages)await expect.poll(()=>img.evaluate((element:HTMLImageElement)=>[element.naturalWidth,element.naturalHeight])).toEqual([2048,2048]);
+ const checkRewardFrame=async(image:typeof rewardImages[number])=>{const geometry=await image.evaluate((img:HTMLImageElement)=>{const photo=img.parentElement!;const a=img.getBoundingClientRect(),b=photo.getBoundingClientRect();const css=getComputedStyle(img);return {contained:a.left>=b.left-1&&a.right<=b.right+1&&a.top>=b.top-1&&a.bottom<=b.bottom+1,centered:Math.abs((a.left+a.right-b.left-b.right)/2)<=1&&Math.abs((a.top+a.bottom-b.top-b.bottom)/2)<=1,square:Math.abs(b.width-b.height)<=1,fit:css.objectFit,position:css.objectPosition}});expect(geometry).toEqual({contained:true,centered:true,square:true,fit:'contain',position:'50% 50%'})};
+ for(const img of rewardImages)await checkRewardFrame(img);
  await page.setViewportSize({width:390,height:844});
- await checkRewardFrame(hoodie);
- await checkRewardFrame(tshirt);
+ for(const img of rewardImages)await checkRewardFrame(img);
  await expect(page.getByRole('link',{name:'Rewards',exact:true})).toBeVisible();
  expect(await page.locator('.cc-board-v2').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
 });
