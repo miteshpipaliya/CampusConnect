@@ -146,7 +146,7 @@ export async function POST(request:NextRequest){
       if((await tx.get(profile)).exists)throw Error('PROFILE_EXISTS');
       const referral=await registrationFields(tx,email,fresh,request.cookies.get(REFERRAL_COOKIE)?.value);
       tx.create(handle,{uid:user!.uid});
-      tx.create(profile,{...referral,...(parts?{rulesOnboarding:{version:RULES_VERSION,next:0}}:{}),uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts?`${parts[1]!}${parts[2]!}${parts[3]!}`:'',branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:parts?2000+Number(parts[1]):null,emailBranchCode:parts?.[2]??null,verifiedInstitutionalEmail:Boolean(parts),createdAt:FieldValue.serverTimestamp()});
+      tx.create(profile,{...referral,rulesOnboarding:{version:RULES_VERSION,next:0},uid:user!.uid,email,handle:p.handle,name:p.name,degree:'BTech',enrollmentNumber:parts?`${parts[1]!}${parts[2]!}${parts[3]!}`:'',branch,division:'',branchKey:branch.toLowerCase(),divisionKey:'',privacy:'campus',bio:'',relationshipStatus:p.relationshipStatus,relationshipVisibility:p.relationshipVisibility,emailYear:parts?2000+Number(parts[1]):null,emailBranchCode:parts?.[2]??null,verifiedInstitutionalEmail:Boolean(parts),createdAt:FieldValue.serverTimestamp()});
      });
     }catch(e){if(e instanceof Error&&e.message==='HANDLE_TAKEN')return errorResponse(409,'Username already taken. Choose another');if(e instanceof Error&&e.message==='PROFILE_EXISTS')return errorResponse(409,'Account already exists. Sign in');throw e}
    }else if(user)await auth().updateUser(user.uid,{emailVerified:true,password:parsed.data.password});
