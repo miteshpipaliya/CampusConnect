@@ -1,3 +1,4 @@
+import {readLimit} from '@/lib/server/read-limit';
 import {NextRequest,NextResponse} from 'next/server';
 import {Timestamp} from 'firebase-admin/firestore';
 import {db} from '@/lib/server/services';
@@ -6,6 +7,7 @@ import {mintUrls} from '@/lib/server/media-urls';
 export const runtime='nodejs';
 export async function GET(req:NextRequest){
  const user=await session(req);if(!user)return errorResponse(401,'Sign in required');
+ const limited=await readLimit(user.uid,'archive',120);if(limited)return limited;
  try{
   const now=Date.now(),store=db(),snap=await store.collection('stories').where('authorUid','==',user.uid).orderBy('createdAt','desc').limit(100).get();
   const archive=snap.docs.filter(d=>{const end=d.data().expiresAt;const expiry=end instanceof Timestamp?end.toMillis():end?.toMillis?.()??0;return expiry<=now&&d.data().archived!==false});

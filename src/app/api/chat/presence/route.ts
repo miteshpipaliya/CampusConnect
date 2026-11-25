@@ -1,3 +1,4 @@
+import {readLimit} from '@/lib/server/read-limit';
 import {NextRequest,NextResponse} from 'next/server';
 import {z} from 'zod';
 import {db} from '@/lib/server/services';
@@ -8,6 +9,7 @@ const idsSchema=z.string().min(1).max(4000).transform(value=>[...new Set(value.s
 /** Authorization only. Stream owns the actual online state; never store or simulate it in Firestore. */
 export async function GET(request:NextRequest){
  const auth=await session(request);if(!auth)return errorResponse(401,'Sign in required');
+ const limited=await readLimit(auth.uid,'chat/presence',60);if(limited)return limited;
  const parsed=idsSchema.safeParse(request.nextUrl.searchParams.get('uids')||'');
  if(!parsed.success)return errorResponse(400,'Invalid member IDs');
  try{

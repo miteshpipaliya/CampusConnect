@@ -1,3 +1,4 @@
+import {readLimit} from '@/lib/server/read-limit';
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/server/services';
 import {session,errorResponse,safeHeaders} from '@/lib/server/session';
@@ -5,6 +6,7 @@ import {isBlockedEitherWay} from '@/lib/server/privacy';
 export const runtime='nodejs';
 export async function GET(req:NextRequest){
  const user=await session(req);if(!user)return errorResponse(401,'Sign in required');
+ const limited=await readLimit(user.uid,'connections',60);if(limited)return limited;
  const handle=req.nextUrl.searchParams.get('handle')?.toLowerCase()||'';
  const type=req.nextUrl.searchParams.get('type')==='following'?'following':'followers';
  try{
