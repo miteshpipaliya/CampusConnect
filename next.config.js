@@ -9,6 +9,7 @@ const securityHeaders = [
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
 ];
 const nextConfig = {
+  outputFileTracingRoot: __dirname,
   poweredByHeader: false,
   experimental: { optimizePackageImports: ['lucide-react'] },
   images: { remotePatterns: [] },

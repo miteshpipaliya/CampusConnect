@@ -1,5 +1,5 @@
 import {test,expect,type BrowserContext} from '@playwright/test';
-const base='http://127.0.0.1:3000';
+const base='http://localhost:3000';
 type Person={uid:string;handle:string;name:string;avatarMediaId:null;avatarUrl:null};
 type Message={id:string;text:string;senderUid:string;createdAt:string;seen:boolean};
 test('mocked two-account fallback delivers, updates unread and clears a visible notification',async({browser})=>{
@@ -35,9 +35,9 @@ test('mocked two-account fallback delivers, updates unread and clears a visible 
   await Promise.all([ap.goto('/messages/beta'),bp.goto('/messages')]);
   const input=ap.getByRole('textbox',{name:'Message',exact:true});await expect(input).toBeVisible();await input.fill('Hello from Alpha');await ap.getByRole('button',{name:'Send message',exact:true}).click();
   await expect(ap.getByRole('log')).toContainText('Hello from Alpha');
-  const row=bp.getByRole('button',{name:/Alpha.*Hello from Alpha/});await expect(row).toBeVisible({timeout:15000});
+  await bp.bringToFront(); const row=bp.getByRole('button',{name:/Alpha.*Hello from Alpha/});await expect(row).toBeVisible({timeout:15000});
   await expect(bp.getByRole('navigation',{name:'Main navigation'}).getByLabel('Unread conversations')).toHaveText('1',{timeout:12000});
-  await row.click();await expect(bp.getByRole('log')).toContainText('Hello from Alpha');await expect.poll(()=>unread).toBe(false);await expect(ap.getByRole('log')).toContainText('Seen',{timeout:12000});
-  await bp.goto('/notifications');await expect(bp.getByText(/sent you a message/)).toBeVisible();await expect(bp.getByRole('button',{name:'Mark all as read'})).toHaveCount(0);await expect.poll(()=>readRequests,{timeout:12000}).toBeGreaterThan(0);
+  await row.click();await expect(bp.getByRole('log')).toContainText('Hello from Alpha');await expect.poll(()=>unread).toBe(false);await ap.bringToFront(); await expect(ap.getByRole('log')).toContainText('Seen',{timeout:12000});
+  await bp.bringToFront(); await bp.goto('/notifications');await expect(bp.getByText(/sent you a message/)).toBeVisible();await expect(bp.getByRole('button',{name:'Mark all as read'})).toHaveCount(0);await expect.poll(()=>readRequests,{timeout:12000}).toBeGreaterThan(0);
  }finally{await a.close();await b.close()}
 });

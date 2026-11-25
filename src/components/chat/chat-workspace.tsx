@@ -135,7 +135,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    finally{inFlight=false}
   };
   void refreshConversation(peer).catch(e=>{if(live){setLoading(false);setError(e instanceof Error?e.message:'Unable to load conversation')}});
-  const stop=status==='connected'&&channelWatching?null:adaptivePoll(async()=>{const before=threadFingerprint.current;await tick();return before!==threadFingerprint.current});
+  const stop=status==='connected'&&channelWatching?null:adaptivePoll(async()=>{const before=threadFingerprint.current;await tick();return before!==threadFingerprint.current},3000,6000);
   const onResume=()=>{void tick()};
   document.addEventListener('visibilitychange',onResume);window.addEventListener('online',onResume);
   return()=>{live=false;invalidateThread();stop?.();document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
