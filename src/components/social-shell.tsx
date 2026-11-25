@@ -68,12 +68,12 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   const backgroundPath=useRef(actualPath);const hasPostModal=Boolean(modalSegment&&modalSegment.includes('posts')&&actualPath.startsWith('/posts/'));if(!hasPostModal)backgroundPath.current=actualPath;const pathname=hasPostModal?backgroundPath.current:actualPath;
   const [avatarMediaId,setAvatarMediaId]=useState<string|null>(null),[menu,setMenu]=useState(false),[recent,setRecent]=useState<Array<{handle:string;avatarUrl:string|null;avatarMediaId:string|null}>>([]),[menuError,setMenuError]=useState('');
   const [rulesStep,setRulesStep]=useState<number|null>(null);
-  const rulesDone=useCallback(()=>setRulesStep(null),[]);
   const [panel,setPanel]=useState<'notifications'|null>(null);
   const [liveUnread,setLiveUnread]=useState<number|null>(null);
   const [uid,setUid]=useState<string|null>(null);
   const [handle,setHandle]=useState<string|null>(null),[checked,setChecked]=useState(false),[section,setSection]=useState(params.get('section')||'home');
   const queryClient=useQueryClient();
+  const rulesDone=useCallback(()=>{setRulesStep(null);void queryClient.invalidateQueries()},[queryClient]);
   const [mobileMore,setMobileMore]=useState(false);
   useVisualViewport();
   const logout=async()=>{setMenuError('');try{const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});if(!r.ok)throw Error('Sign out failed');queryClient.clear();await clearPwaDevice();window.location.assign('/login')}catch{setMenuError('Sign out failed')}};
@@ -107,7 +107,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   useEffect(()=>{setPanel(null);setMenu(false);setMobileMore(false)},[actualPath,params]);
   useEffect(()=>{if(rulesStep!==null&&actualPath!=='/home')router.replace('/home')},[rulesStep,actualPath,router]);
   if(!checked||!handle)return <LoadingSkeleton kind="shell"/>;
-  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}>{rulesStep===null&&<><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/></>}<div inert={rulesStep!==null} aria-hidden={rulesStep!==null?true:undefined} className={'cc-app cc-shell-v2'+(rulesStep!==null?' cc-rules-background':'')+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/leaderboard')?' cc-leaderboard-mode':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid} enabled={rulesStep===null}>{rulesStep===null&&<><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/></>}<div inert={rulesStep!==null} aria-hidden={rulesStep!==null?true:undefined} className={'cc-app cc-shell-v2'+(rulesStep!==null?' cc-rules-background':'')+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/leaderboard')?' cc-leaderboard-mode':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} onPanel={name=>{setMenu(false);setPanel(old=>old===name?null:name)}}/>

@@ -21,11 +21,12 @@ async function getCredentials():Promise<TokenResponse>{
 }
 
 /** One authenticated Stream connection per mounted campus session. Stream owns socket recovery and presence. */
-export function StreamConnectionProvider({children}:{children:ReactNode}){
+export function StreamConnectionProvider({children,enabled=true}:{children:ReactNode;enabled?:boolean}){
  const [session,setSession]=useState<StreamSession>({client:null,userId:null,status:'connecting'});
  const [attempt,setAttempt]=useState(0);
  const retry=useCallback(()=>{setSession({client:null,userId:null,status:'connecting'});setAttempt(x=>x+1)},[]);
  useEffect(()=>{
+  if(!enabled){setSession({client:null,userId:null,status:'disabled'});return}
   let live=true;
   let socket:StreamChat|null=null;
   let stopConnection:(()=>void)|null=null;
@@ -86,7 +87,7 @@ export function StreamConnectionProvider({children}:{children:ReactNode}){
    stopConnection?.();
    if(socket)void socket.disconnectUser();
   };
- },[attempt]);
+ },[attempt,enabled]);
  const value=useMemo<StreamContext>(()=>({...session,retry}),[session,retry]);
  return <Context.Provider value={value}>{children}</Context.Provider>;
 }

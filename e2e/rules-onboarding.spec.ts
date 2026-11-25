@@ -1,0 +1,22 @@
+import {test,expect,type Page} from '@playwright/test';
+test.use({serviceWorkers:'block'});
+const tracks=['rules_Declar','rule_one','rule_two','rule_thee','reffer-clng'];
+async function fixture(page:Page,initial:number){
+ let step=initial,completed=false;const actions:string[]=[];
+ await page.route('**/api/**',async route=>{const path=new URL(route.request().url()).pathname;
+ if(path==='/api/rules-onboarding'){const p=route.request().postDataJSON();actions.push(p.action+':'+p.step);if(p.action==='finish'&&p.step===step)step++;if(p.action==='complete'&&step===5)completed=true;return route.fulfill({json:{required:!completed,step}})}
+ const data=path==='/api/auth'?{user:{uid:'rules-fixture',profile:{handle:'campusstudent',avatarMediaId:null},rulesOnboarding:{required:!completed,step}}}:path==='/api/chat/token'?{error:'Disabled for fixture'}:path==='/api/notifications/summary'?{unread:0,unreadMessages:0}:path==='/api/posts'?{posts:[],nextCursor:null}:path==='/api/stories/tray'?{groups:[]}:path==='/api/suggestions'?{members:[]}:path==='/api/chat'?{conversations:[]}:path==='/api/referrals'?{status:'closed'}:{};
+ return route.fulfill({status:path==='/api/chat/token'?403:200,json:data})});
+ return {actions};
+}
+test('all five original audio tracks play to the end, reveal prizes in order and unlock only on final confirmation',async({page})=>{
+ test.setTimeout(420000);const {actions}=await fixture(page,0);await page.goto('/home');const dialog=page.getByRole('dialog',{name:/Three rules/});await expect(dialog).toBeVisible();await expect(page.locator('.cc-app')).toHaveAttribute('inert','');const modal=page.locator('.cc-rules-dialog');const audio=modal.locator('audio');
+ for(let i=0;i<tracks.length;i++){await expect(audio).toHaveAttribute('src',new RegExp('/'+tracks[i]+'\\.mp3'),{timeout:15000});const resume=modal.getByRole('button',{name:'Play / resume audio'});await expect.poll(async()=>{if(await resume.isVisible())await resume.click();return audio.evaluate((a:HTMLAudioElement)=>a.currentTime)},{timeout:15000}).toBeGreaterThan(0);await expect(modal.locator('.cc-rules-captions')).not.toBeEmpty();await expect(modal.getByRole('button',{name:'Enter CampusConnect'})).toHaveCount(0);
+ if(i===0){for(const [width,height] of [[390,844],[768,1024],[1440,900],[3840,2160]]){await page.setViewportSize({width,height});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy()}await page.setViewportSize({width:1440,height:900})}
+ if(i===4){for(const gift of ['Black hoodie','Wireless earbuds','Plain black T-shirt','Steel water bottle','The Alchemist'])await expect(modal.getByRole('img',{name:gift,exact:true})).toBeVisible({timeout:80000})}
+ await expect.poll(()=>actions.includes('finish:'+i),{timeout:150000,intervals:[500,1000]}).toBeTruthy();
+ }
+ await expect(modal.getByRole('button',{name:'Enter CampusConnect'})).toBeVisible();await expect(page.locator('.cc-app')).toHaveAttribute('inert','');await modal.getByRole('button',{name:'Enter CampusConnect'}).click();await expect(modal).toHaveCount(0);await expect(page.locator('.cc-app')).not.toHaveAttribute('inert','');expect(actions.filter(a=>a.startsWith('finish:'))).toEqual(['finish:0','finish:1','finish:2','finish:3','finish:4']);await page.reload();await expect(page.locator('.cc-feed-col')).toBeVisible();await expect(modal).toHaveCount(0);
+});
+test('an interrupted recording cannot finish and reload resumes the same step',async({page})=>{const {actions}=await fixture(page,2);await page.goto('/home');const audio=page.locator('.cc-rules-dialog audio');await expect(audio).toHaveAttribute('src',/rule_two\.mp3/);await expect.poll(()=>actions.includes('start:2')).toBeTruthy();await page.reload();await expect(audio).toHaveAttribute('src',/rule_two\.mp3/);await expect.poll(()=>actions.filter(a=>a==='start:2').length).toBeGreaterThanOrEqual(2);expect(actions.some(a=>a.startsWith('finish:')||a.startsWith('complete:'))).toBeFalsy();});
+test('failure to load audio keeps normal navigation locked',async({page})=>{const {actions}=await fixture(page,0);await page.route('**/audio/rules/rules_Declar.mp3*',r=>r.abort());await page.goto('/home');await expect(page.getByText('Audio could not load. Retry this recording.')).toBeVisible();await expect(page.locator('.cc-app')).toHaveAttribute('inert','');expect(actions.some(a=>a.startsWith('finish:'))).toBeFalsy();});
