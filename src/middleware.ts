@@ -7,4 +7,4 @@ export function middleware(request:NextRequest){
  const headers=new Headers(request.headers);headers.set('x-nonce',nonce);headers.set('Content-Security-Policy',policy);
  const response=NextResponse.next({request:{headers}});response.headers.set('Content-Security-Policy',policy);return response;
 }
-export const config={matcher:['/((?!api/|_next/|favicon.ico|firebase-messaging-sw.js|.*\\..*).*)']};
+export const config={matcher:['/((?!api/|_next/|favicon.ico|firebase-messaging-sw.js|.*\\.(?:js|css|png|jpg|jpeg|svg|ico|webp|woff2|json)$).*)']};

@@ -54,12 +54,14 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   bottom=useRef<HTMLDivElement|null>(null),draftInput=useRef<HTMLTextAreaElement|null>(null);
  active.current=peer;
 
+ const inboxFingerprint=useRef(''),threadFingerprint=useRef('');
  const refreshInbox=useCallback(async()=>{
   const version=++inboxSeq.current;
   const d=await requestJson<{conversations:Conversation[]}>('/api/chat');
   if(version!==inboxSeq.current)return;
   const items=(Array.isArray(d.conversations)?d.conversations:[]).sort((a,b)=>(Date.parse(b.updatedAt)||0)-(Date.parse(a.updatedAt)||0));
-  setConversations(previous=>JSON.stringify(previous)===JSON.stringify(items)?previous:items);
+  const fingerprint=JSON.stringify(items);inboxFingerprint.current=fingerprint;
+  setConversations(previous=>JSON.stringify(previous)===fingerprint?previous:items);
   setInboxError('');setInboxLoading(false);
  },[]);
 
@@ -68,6 +70,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
   const data=await requestJson<ConversationResponse>('/api/chat?with='+encodeURIComponent(handle)+(lightweight?'&refresh=1':''));
   if(active.current!==handle||sequence.current!==version)return;
   const incoming=Array.isArray(data.messages)?data.messages:[];
+  threadFingerprint.current=JSON.stringify(incoming);
   setMessages(previous=>{
    const optimistic=previous.filter(m=>m.id.startsWith('cc-optimistic-')&&!incoming.some(real=>
     real.senderUid===m.senderUid&&real.text===m.text&&Math.abs(Date.parse(real.createdAt||'')-Date.parse(m.createdAt||''))<20000));
@@ -130,7 +133,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    finally{inFlight=false}
   };
   void refreshConversation(peer).catch(e=>{if(live){setLoading(false);setError(e instanceof Error?e.message:'Unable to load conversation')}});
-  const stop=status==='connected'&&channelWatching?null:adaptivePoll(async()=>{await tick();return true});
+  const stop=status==='connected'&&channelWatching?null:adaptivePoll(async()=>{const before=threadFingerprint.current;await tick();return before!==threadFingerprint.current});
   const onResume=()=>{void tick()};
   document.addEventListener('visibilitychange',onResume);window.addEventListener('online',onResume);
   return()=>{live=false;sequence.current++;stop?.();document.removeEventListener('visibilitychange',onResume);window.removeEventListener('online',onResume)};
@@ -142,7 +145,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
    if(!live||inFlight||document.visibilityState==='hidden'||!navigator.onLine)return;
    inFlight=true;try{await refreshInbox()}catch(e){if(live)setInboxError(e instanceof Error?e.message:'Inbox refresh unavailable')}finally{inFlight=false}
   };
-  const stop=status==='connected'?null:adaptivePoll(async()=>{await tick();return false},6000);
+  const stop=status==='connected'?null:adaptivePoll(async()=>{const before=inboxFingerprint.current;await tick();return before!==inboxFingerprint.current},6000);
   document.addEventListener('visibilitychange',tick);
   return()=>{live=false;stop?.();document.removeEventListener('visibilitychange',tick)};
  },[refreshInbox,status]);
