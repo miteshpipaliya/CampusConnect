@@ -164,3 +164,67 @@ html:has(.cc-campus-entry,.cc-campus-account,.cc-campus-intro,.cc-campus-auth){s
 .cc-intro-dialogue{width:100%;min-width:0;box-sizing:border-box}
 .cc-intro-transcript{min-width:0;overscroll-behavior:contain}
 @media(max-width:700px),(orientation:portrait){.cc-campus-intro{padding-block-start:max(70px,env(safe-area-inset-top));padding-block-end:max(20px,env(safe-area-inset-bottom))}.cc-intro-layout{margin:0 auto;width:min(100%,520px)}}
+
+/* Public campus pages are viewport-sized scenes, not content-sized backgrounds.
+   Only the foreground panel can scroll on exceptionally short screens or when
+   the keyboard opens. The underlying artwork never grows with the form. */
+html:has(.cc-campus-entry,.cc-campus-account,.cc-campus-intro,.cc-campus-auth),
+body:has(.cc-campus-entry,.cc-campus-account,.cc-campus-intro,.cc-campus-auth){
+ height:100%;min-height:0;overflow:hidden;overscroll-behavior:none;scrollbar-gutter:auto
+}
+.cc-campus-entry,.cc-campus-entry-stage,.cc-campus-account,.cc-campus-intro,.cc-campus-auth.auth-page{
+ width:100%;height:100dvh;min-height:0;max-height:100dvh;overflow:hidden;box-sizing:border-box
+}
+.cc-campus-entry-stage{grid-template-rows:auto minmax(0,1fr) auto}
+:is(.cc-campus-entry-stage,.cc-campus-account,.cc-campus-intro,.cc-campus-auth)>.cc-campus-scene{
+ position:absolute;inset:0;width:100%;height:100%;overflow:hidden;pointer-events:none
+}
+.cc-campus-account{padding-block:clamp(66px,10dvh,125px) clamp(30px,5dvh,66px);justify-content:center}
+.cc-campus-account-card,.cc-campus-auth .cc-otp-card{
+ flex:0 1 auto;min-height:0;max-height:100%;overflow-y:auto;overflow-x:hidden;
+ overscroll-behavior:contain;scrollbar-width:none
+}
+.cc-campus-account-card::-webkit-scrollbar,.cc-campus-auth .cc-otp-card::-webkit-scrollbar,.cc-intro-dialogue::-webkit-scrollbar{display:none}
+.cc-campus-auth.auth-page{padding-block:clamp(62px,9dvh,100px) clamp(14px,3dvh,40px)}
+.cc-campus-auth .cc-otp-card{padding:clamp(22px,2.5vw,38px)!important;scroll-padding-block:12px}
+.cc-campus-auth .cc-otp-card .auth-legal{overflow-wrap:anywhere}
+.cc-campus-intro{grid-template-rows:minmax(0,1fr);align-content:stretch;align-items:center}
+.cc-intro-layout{max-height:100%;min-height:0;grid-template-rows:minmax(0,1fr)}
+.cc-intro-dialogue{min-height:0;max-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+@media(max-height:850px){
+ .cc-campus-auth .cc-otp-card{padding:22px 28px!important}
+ .cc-campus-auth .cc-otp-card h1{font-size:clamp(24px,3vw,29px);margin:8px 0}
+ .cc-campus-auth .cc-otp-icon{width:38px;height:38px}
+ .cc-campus-auth .cc-otp-card>p{margin:8px 0;font-size:12px;line-height:1.45}
+ .cc-campus-auth .cc-otp-steps{margin:14px 0}
+ .cc-campus-auth .cc-otp-card .auth-form{gap:10px}
+ .cc-campus-auth .cc-otp-card .auth-form label{gap:5px}
+ .cc-campus-auth .cc-otp-card .auth-form input:not([type=checkbox]),.cc-campus-auth .cc-otp-card .auth-form select{height:42px;min-height:42px;padding:8px 11px}
+ .cc-campus-auth .cc-email-preview{padding:9px 11px;gap:3px;font-size:12px;line-height:1.35}
+ .cc-campus-auth .cc-email-preview small{font-size:10px;line-height:1.4}
+ .cc-campus-auth .cc-text-action{font-size:12px;padding:3px 0}
+ .cc-campus-auth .cc-otp-card .primary-button.full{min-height:42px}
+ .cc-campus-auth .cc-campus-auth-back{top:22px;right:28px}
+}
+@media(max-width:700px),(orientation:portrait){
+ .cc-campus-account{align-items:center;justify-content:flex-end;padding:clamp(65px,22dvh,220px) 16px clamp(32px,6dvh,58px)}
+ .cc-campus-account-card{padding:20px;gap:10px}
+ .cc-campus-account-card h1{font-size:clamp(26px,6vw,40px)}
+ .cc-campus-account-icon{width:44px;height:44px}
+ .cc-campus-auth.auth-page{padding:clamp(58px,9dvh,85px) 14px 12px}
+ .cc-campus-auth .cc-otp-card{padding:20px!important}
+ .cc-campus-auth .cc-campus-auth-back{top:20px;right:20px}
+ .cc-campus-auth .cc-otp-card .auth-form input:not([type=checkbox]),.cc-campus-auth .cc-otp-card .auth-form select{font-size:16px}
+}
+@media(max-height:560px){
+ .cc-campus-entry-stage{padding:10px 14px}
+ .cc-campus-entry-title{top:20%}
+ .cc-campus-entry-title h1{font-size:clamp(45px,15dvh,100px)}
+ .cc-campus-entry-title .cc-campus-entry-script{font-size:clamp(15px,3.8dvh,24px)}
+ .cc-campus-enter-button{min-height:40px;margin-bottom:7px;padding:8px 14px}
+ .cc-campus-account{padding:55px 14px 24px}
+ .cc-campus-account-card{padding:16px;gap:7px}
+ .cc-campus-intro{padding-block:55px 12px}
+ .cc-intro-transcript{min-height:65px;max-height:30dvh}
+ .cc-campus-auth.auth-page{padding-block:55px 10px}
+}
