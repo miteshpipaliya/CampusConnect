@@ -156,3 +156,11 @@
 .cc-intro-footnote,.cc-intro-message{font-size:clamp(11px,.8vw,17px)}
 @media(max-width:700px),(orientation:portrait){.cc-campus-intro{padding:16px max(14px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom))}.cc-intro-layout{width:min(100%,520px);margin:65px auto 20px}.cc-intro-dialogue{padding:18px;gap:12px}.cc-intro-transcript{min-height:150px;max-height:40svh;font-size:17px}.cc-intro-status{font-size:10px}}
 @media(max-height:500px) and (orientation:landscape){.cc-intro-layout{margin:50px auto 12px}.cc-intro-dialogue{padding:16px;gap:9px}.cc-intro-transcript{min-height:90px;max-height:32svh}}
+
+/* Public scenes fill the available viewport; the social shell keeps its stable gutter. */
+html:has(.cc-campus-entry,.cc-campus-account,.cc-campus-intro,.cc-campus-auth){scrollbar-gutter:auto}
+.cc-campus-intro{display:grid;grid-template-columns:minmax(0,1fr);align-content:center;justify-items:center;padding-block-start:max(78px,env(safe-area-inset-top));padding-block-end:max(24px,env(safe-area-inset-bottom));box-sizing:border-box}
+.cc-intro-layout{margin:0 auto;width:min(100%,clamp(520px,48vw,1050px));min-width:0;max-width:100%;grid-template-columns:minmax(0,1fr)}
+.cc-intro-dialogue{width:100%;min-width:0;box-sizing:border-box}
+.cc-intro-transcript{min-width:0;overscroll-behavior:contain}
+@media(max-width:700px),(orientation:portrait){.cc-campus-intro{padding-block-start:max(70px,env(safe-area-inset-top));padding-block-end:max(20px,env(safe-area-inset-bottom))}.cc-intro-layout{margin:0 auto;width:min(100%,520px)}}
