@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {isRootTab} from '../src/lib/core/nav-active.ts';
+test('mobile back appears only on non-root routes',()=>{for(const p of ['/home','/home?source=pwa','/reels','/messages','/explore','/profile/me','/notifications'])assert.equal(isRootTab(p),true,p);for(const p of ['/posts/1','/messages/a','/messages/groups/a','/profile/other','/settings/saved','/explore/tags/test','/highlights/a','/stories/a','/communities/a','/events','/connections','/dashboard','/bookmarks'])assert.equal(isRootTab(p),false,p)});

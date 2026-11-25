@@ -24,3 +24,7 @@ The `STREAM_CLIENT_TOKENS_ENABLED` flag is disabled by default until live client
 
 ## Audit release policy
 Audit work is intentionally separate from `main`. Only merge PR #34 after current-head CI, Ready Vercel preview, signed-in acceptance, Firebase index readiness, Stream/R2 tests and independent review.
+
+
+## Progressive Web App
+See [PWA architecture and device QA](docs/PWA.md). iOS push requires an installed app on 16.4+ and may require a separate login. Push is generic; offline mode never caches private content. Versioned caches, no-cache worker delivery and user-confirmed updates mitigate stale workers.

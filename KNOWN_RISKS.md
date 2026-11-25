@@ -29,3 +29,7 @@ External Stream grants/two-way block mode and FCM browser delivery require previ
 - sec-audit: local read buckets are not a global quota. No production audit-clean claim until owner updates firebase-admin and CI verifies. Voice recording remains outside this audit; microphone policy stays disabled. New CSP mode and live privacy behavior need owner tests.
 
 - Most recent earlier CI audit: 14 moderate advisories overall, including Firebase Admin transitive uuid/gaxios/google-gax/Firestore/Storage and development typescript-eslint/minimatch. Owner must rerun production-only audit after upgrading Firebase Admin. Do not use npm audit fix --force without reviewing breaking changes.
+
+
+## Progressive Web App
+See [PWA architecture and device QA](docs/PWA.md). iOS push requires an installed app on 16.4+ and may require a separate login. Push is generic; offline mode never caches private content. Versioned caches, no-cache worker delivery and user-confirmed updates mitigate stale workers.
