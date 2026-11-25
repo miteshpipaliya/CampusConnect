@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import {CampusHome} from './campus/campus-home';
 import {ReferralOnboarding} from './referrals/referral-onboarding';
 import {LoadingSkeleton} from './loading-skeleton';
 import {PushSettings,PushConnection} from './push-settings';
@@ -103,9 +102,8 @@ export default function SocialShell({ children }: { children: ReactNode }) {
   useEffect(()=>{if(!uid)return;let live=true;void fetch('/api/chat',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(live)setRecent(Array.isArray(d?.conversations)?d.conversations.slice(0,3):[])}).catch(()=>{});return()=>{live=false}},[uid]);
   useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape'){setMenu(false);setPanel(null)}};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
   useEffect(()=>{setPanel(null);setMenu(false);setMobileMore(false)},[actualPath,params]);
-  const campusMode=pathname==='/home'&&section==='home';
   if(!checked||!handle)return <LoadingSkeleton kind="shell"/>;
-  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!campusMode&&!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/leaderboard')?' cc-leaderboard-mode':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(campusMode?' cc-campus-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
+  return <ShellSession.Provider value={uid}><StreamConnectionProvider key={uid}><PushConnection/><LiveMessageActivity onUnread={setLiveUnread} onRecent={setRecent}/><div className={'cc-app cc-shell-v2'+(panel?' cc-panel-open':'')+(panel?' cc-force-rail':'')+(!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')?' cc-with-suggestions':'')+(pathname.startsWith('/leaderboard')?' cc-leaderboard-mode':'')+(pathname.startsWith('/explore')?' cc-explore-mode':'')+(pathname==='/home'?' cc-home-mode':'')+(pathname.startsWith('/reels')?' cc-reels-mode':pathname.startsWith('/profile')?' cc-profile-mode':(section==='chat'||pathname.startsWith('/messages'))?' cc-chat-mode':'')}>
     <aside className="cc-sidebar" aria-label="Site navigation">
       <Brand />
       <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} onPanel={name=>{setMenu(false);setPanel(old=>old===name?null:name)}}/>
@@ -114,9 +112,9 @@ export default function SocialShell({ children }: { children: ReactNode }) {
     </aside>
     <main className="cc-main" id="main-content">
       <header className="cc-mobile-header">{isRootTab(actualPath)?<Brand compact/>:<MobileBackBar path={actualPath}/>}<div className="cc-mobile-actions"><Link href="/home?compose=1" aria-label="Create"><NavIcon name="Create"/></Link><Link href="/notifications" aria-label="Notifications"><NavIcon name="Notifications"/><Badge count={counts.unread} label="Unread notifications" mobile/></Link><button type="button" aria-label="More" onClick={()=>setMobileMore(true)}><Menu size={24}/></button></div></header>
-      <OfflineBanner/><InstallPrompt/><div className="cc-referral-onboarding-slot"><ReferralOnboarding key={uid}/></div><div className="cc-page">{campusMode&&<CampusHome handle={handle} avatarMediaId={avatarMediaId} counts={counts}/>}<div id={campusMode?'cc-campus-feed':undefined}>{children}</div></div>
+      <OfflineBanner/><InstallPrompt/><div className="cc-referral-onboarding-slot"><ReferralOnboarding key={uid}/></div><div className="cc-page">{children}</div>
     </main>
-    {!campusMode&&!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
+    {!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
     <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} mobile />
     <MobileMoreSheet open={mobileMore} onClose={()=>setMobileMore(false)} onLogout={()=>void logout()} error={menuError}/>
     {panel&&<SidePanel label="Notifications" onClose={()=>setPanel(null)}><NotificationsFeed/></SidePanel>}
