@@ -1,4 +1,5 @@
 'use client';
+import {UpdateToast} from './update-toast';
 import {useEffect,useState} from 'react';
 export function PwaRegister(){
  const [waiting,setWaiting]=useState<ServiceWorker|null>(null);
@@ -15,5 +16,5 @@ export function PwaRegister(){
   document.addEventListener('visibilitychange',update);const timer=window.setInterval(update,3600000);
   return()=>{live=false;clearInterval(timer);window.removeEventListener('load',start);window.removeEventListener('cc-pwa-update',accept);document.removeEventListener('visibilitychange',update);navigator.serviceWorker.removeEventListener('controllerchange',controllerChange)};
  },[]);
- return waiting?<div className="cc-pwa-update" role="status">Update available <button type="button" onClick={()=>{window.dispatchEvent(new Event('cc-pwa-update'));waiting.postMessage({type:'SKIP_WAITING'})}}>Refresh</button></div>:null;
+ return waiting?<UpdateToast onRefresh={()=>{window.dispatchEvent(new Event('cc-pwa-update'));waiting.postMessage({type:'SKIP_WAITING'})}}/>:null;
 }

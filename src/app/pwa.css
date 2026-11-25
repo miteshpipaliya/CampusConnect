@@ -33,3 +33,18 @@
 @media(display-mode:standalone) {
  .cc-story-screen {height:100dvh;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
 }
+
+@media(max-width:720px) {
+ .auth-page {min-height:100dvh;padding-top:calc(32px + env(safe-area-inset-top));padding-bottom:calc(32px + env(safe-area-inset-bottom));padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
+ .cc-story-screen .cc-story-progress {top:env(safe-area-inset-top)}
+ .cc-story-screen .cc-story-viewer>header {top:calc(18px + env(safe-area-inset-top));padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right))}
+ .cc-story-screen .cc-story-viewer>footer {padding-bottom:calc(16px + env(safe-area-inset-bottom));padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right))}
+ .cc-story-screen .cc-story-caption {bottom:calc(70px + env(safe-area-inset-bottom))}
+ .cc-story-screen .cc-story-poll {bottom:calc(120px + env(safe-area-inset-bottom))}
+ .cc-story-people-sheet {padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+ .cc-modal-backdrop,.cc-post-modal-backdrop,.cc-report-overlay,.cc-dm-modal-backdrop,.cc-dm-modal-overlay,.modal-backdrop {padding: max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+ .cc-chat-mode .cc-chat-layout,.cc-app:has(.cc-messages-section) .cc-chat-layout {height:calc(var(--cc-vvh,100dvh) - 124px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;min-height:0!important;overscroll-behavior:contain}
+ .cc-chat-mode .cc-chat-thread:has(.cc-chat-header) {height:100%;min-height:0;overscroll-behavior:contain}
+ .cc-story-screen button,.cc-post-modal-close {min-width:44px;min-height:44px}
+ .cc-mobile-nav {padding-left:max(4px,env(safe-area-inset-left));padding-right:max(4px,env(safe-area-inset-right))}
+}

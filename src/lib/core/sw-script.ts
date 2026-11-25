@@ -4,7 +4,7 @@ export function buildServiceWorker({version,push}:WorkerConfig):string {
 const STATIC=${JSON.stringify('cc-static-'+version)}, OFFLINE=${JSON.stringify('cc-offline-'+version)};
 const publicAsset=p=>p.startsWith('/_next/static/')||p.startsWith('/pwa-icon/')||p==='/cc-mark.svg';
 self.addEventListener('install',event=>event.waitUntil(Promise.all([
- caches.open(OFFLINE).then(c=>c.add('/offline')),
+ (async()=>{const c=await caches.open(OFFLINE);const response=await fetch('/offline',{cache:'reload'});if(!response.ok||response.redirected)throw Error('Offline page unavailable');const html=await response.clone().text();await c.put('/offline',response);const assets=[...new Set([...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)].map(m=>new URL(m[1],self.location.origin)).filter(u=>u.origin===self.location.origin&&u.pathname.startsWith('/_next/static/')).map(u=>u.href))];const staticCache=await caches.open(STATIC);await Promise.allSettled(assets.map(url=>staticCache.add(url)))})(),
  caches.open(STATIC).then(c=>c.addAll(['/cc-mark.svg','/pwa-icon/192?v=1']))
 ])));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
