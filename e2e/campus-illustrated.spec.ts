@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 test.use({serviceWorkers:'block'});
 test('illustrated entry and account choices are real navigable routes on desktop and mobile',async({page,request})=>{
+ await page.route('**/api/introduction',r=>r.fulfill({json:{completed:true}}));
  await page.route('**/api/auth',r=>r.fulfill({status:401,json:{error:'Sign in required'}}));
  for(const asset of ['entry','day']){const response=await request.get('/campus/'+asset+'.webp');expect(response.status()).toBe(200);expect(response.headers()['content-type']).toContain('image/webp')}
  await page.setViewportSize({width:1440,height:900});await page.goto('/');
