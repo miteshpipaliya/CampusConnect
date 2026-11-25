@@ -1,8 +1,11 @@
 name: Rules audio alignment
 on:
   push:
-    branches: [rule123-aud]
+    branches: [rule123-aud, 'fix/smooth-caption-flow']
     paths: ['public/audio/rules/**', 'scripts/align-rules.py', '.github/workflows/rules-alignment.yml']
+  pull_request:
+    branches: [main]
+    paths: ['scripts/align-rules.py', '.github/workflows/rules-alignment.yml']
   workflow_dispatch:
 permissions:
   contents: read
