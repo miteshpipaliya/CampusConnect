@@ -53,3 +53,5 @@ Updated 2026-11-24.
 - Keep signed media lifetimes and no-store redirect policy unchanged rather than implementing hour-stable bearer URLs or browser caching across account switches.
 
 - Preview URLs are issued only for visible, active video posts and verified attached media. No public bucket, no secrets, no production changes. Source marker tests supplement, not replace, live IDOR acceptance.
+
+- Preserve authenticated image rendering without shared Next image optimization. SafeImg supplies native lazy/async defaults and a local fallback. Lint warnings remain unverified until CI.

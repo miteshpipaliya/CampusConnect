@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 type Entry={id:string;caption:string;mediaUrl:string|null;contentType:string;createdAt:number};
@@ -29,7 +30,7 @@ export function StoryArchive(){
    </form>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:12}}>
     {items.map(entry=><label key={entry.id} style={{display:'grid',gap:5,cursor:'pointer',border:selected.includes(entry.id)?'2px solid #9374fc':'2px solid transparent',borderRadius:12,overflow:'hidden'}}>
-     {entry.mediaUrl?(entry.contentType.startsWith('video/')?<video src={entry.mediaUrl} playsInline muted preload="metadata" style={{width:'100%',aspectRatio:'9/16',objectFit:'cover'}}/>:<img src={entry.mediaUrl} loading="lazy" alt={entry.caption||'Archived story'} style={{width:'100%',aspectRatio:'9/16',objectFit:'cover'}}/>):<span>Media unavailable</span>}
+     {entry.mediaUrl?(entry.contentType.startsWith('video/')?<video src={entry.mediaUrl} playsInline muted preload="metadata" style={{width:'100%',aspectRatio:'9/16',objectFit:'cover'}}/>:<SafeImg src={entry.mediaUrl} loading="lazy" alt={entry.caption||'Archived story'} style={{width:'100%',aspectRatio:'9/16',objectFit:'cover'}}/>):<span>Media unavailable</span>}
      <span><input type="checkbox" checked={selected.includes(entry.id)} onChange={()=>toggle(entry.id)} disabled={!selected.includes(entry.id)&&selected.length>=50}/> {entry.caption||new Date(entry.createdAt).toLocaleDateString()}</span>
     </label>)}
    </div>

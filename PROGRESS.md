@@ -83,3 +83,5 @@ Implemented auth throttling, atomic OTP proof consumption, server-side session d
 - Added bounded, authenticated video preview batch API; per-post authorization, attachment binding and 10-minute signing cap. Client still uses previous lazy per-tile media URL path; integration of batch API remains outstanding. OTP proof now written atomically with verification. Added static route guard marker regression test (not a substitute for authorization behavior tests).
 
 - Integrated visible-tile preview batch requests (12 max, 200ms debounce) with authenticated fallback, post modal follow state, date formatting, clickable captions, emoji picker, and activity-based primary chat backoff. Optional nonce mode opts into dynamic rendering. Browser and production-service acceptance still pending.
+
+- Migrated signed-image rendering to SafeImg and fixed the known exhaustive-deps warnings. Await exact-head lint, typecheck and browser validation; no dependency manifests edited.

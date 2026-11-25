@@ -27,3 +27,5 @@ External Stream grants/two-way block mode and FCM browser delivery require previ
 - Audio: browsers may require a user gesture for audible autoplay; iOS hardware volume may override HTMLMediaElement.volume. Verify on a real phone and desktop. Legacy CSS outside the shell still needs broader consolidation. Real Stream and Firebase delivery remain external owner acceptance; no production secrets copied to Preview.
 
 - sec-audit: local read buckets are not a global quota. No production audit-clean claim until owner updates firebase-admin and CI verifies. Voice recording remains outside this audit; microphone policy stays disabled. New CSP mode and live privacy behavior need owner tests.
+
+- Most recent earlier CI audit: 14 moderate advisories overall, including Firebase Admin transitive uuid/gaxios/google-gax/Firestore/Storage and development typescript-eslint/minimatch. Owner must rerun production-only audit after upgrading Firebase Admin. Do not use npm audit fix --force without reviewing breaking changes.

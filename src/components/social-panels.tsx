@@ -1,4 +1,5 @@
 'use client';
+import {SafeImg} from '@/components/safe-img';
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import Link from 'next/link';
 import {adaptivePoll} from '@/lib/client/adaptive-poll';
@@ -80,7 +81,7 @@ export function SocialPanels({section,initialPeer}:{section:string;initialPeer?:
   
   
   <span>{m.text}</span>{m.senderUid===myUid&&<small>{m.id.startsWith('pending-')?'Sending…':m.seen?'Seen':'Sent'}</small>}</button>
- {m.mediaId&&(m.mediaType==='video'?<video src={'/api/media?id='+encodeURIComponent(m.mediaId)} controls playsInline preload="metadata" style={{width:'100%',maxHeight:260}}/>:<img src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Chat attachment" style={{width:'100%',maxHeight:260,objectFit:'contain'}}/>)}
+ {m.mediaId&&(m.mediaType==='video'?<video src={'/api/media?id='+encodeURIComponent(m.mediaId)} controls playsInline preload="metadata" style={{width:'100%',maxHeight:260}}/>:<SafeImg src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Chat attachment" style={{width:'100%',maxHeight:260,objectFit:'contain'}}/>)}
  {m.contentId&&<ChatSharedContentCard postId={m.contentId} kind={m.contentType==='reel'?'reel':'post'}/>}{selectedMessage===m.id&&<div className="cc-message-actions">{!m.id.startsWith('pending-')&&<><button type="button" onClick={()=>void messageAction('deleteForMe',m)}>Delete for me</button>{m.senderUid===myUid&&<button type="button" onClick={()=>void messageAction('unsend',m)}>Unsend for everyone</button>}
    <button type="button" onClick={()=>{setReplyTo(m);setSelectedMessage(null)}}>Reply</button>
    {(['love','laugh','fire'] as const).map(emoji=><button key={emoji} type="button" aria-label={'React '+emoji} onClick={()=>{setSelectedMessage(null);void reactTo(m,emoji)}}>{emoji==='love'?'❤️':emoji==='laugh'?'😂':'🔥'} {m.reactionCounts?.[emoji]??0}</button>)}</>}</div>}</div>)}<div ref={bottomRef}/></div>
