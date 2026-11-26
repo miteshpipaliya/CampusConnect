@@ -11,7 +11,7 @@ function InlineVideo({src}:{src:string}){
  useEffect(()=>{const hide=()=>{if(document.hidden){stop.current?.();player.current?.pause()}};document.addEventListener('visibilitychange',hide);return()=>{document.removeEventListener('visibilitychange',hide);stop.current?.()}},[]);
  function toggle(){const video=player.current;if(!video)return;if(video.paused){stop.current?.();stop.current=playWithSound(video,volume)}else{stop.current?.();video.pause()}}
  return <div className="cc-inline-video" style={{position:'relative',width:'100%',maxWidth:'100%',display:'grid',placeItems:'center',background:'#0d0f14'}}>
-  <video ref={player} src={src} playsInline preload="metadata"
+  <video crossOrigin="anonymous" ref={player} src={src} playsInline preload="metadata"
    disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
    onContextMenu={e=>e.preventDefault()} onClick={toggle} onEnded={()=>setPlaying(false)} onPause={()=>setPlaying(false)} onPlay={()=>setPlaying(true)}
    style={{display:'block',width:'100%',height:'auto',maxHeight:'68dvh',objectFit:'contain',cursor:'pointer'}}/>
