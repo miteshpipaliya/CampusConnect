@@ -120,6 +120,7 @@ export async function POST(request:NextRequest){
   }catch{return errorResponse(400,'Code expired or verification failed. Request a new code')}
  }
  if(action==='finishOtp'){
+  if(!introCompleted(request.cookies.get(INTRO_COOKIE)?.value))return errorResponse(403,'Complete the campus introduction first');
   const limited=await authThrottle(request,'finishOtp');if(limited)return limited;
   const parsed=z.object({email:emailSchema,password:passwordSchema,profile:profileSchema.optional()}).safeParse(raw);
   if(!parsed.success)return errorResponse(400,'Please complete all required details');
