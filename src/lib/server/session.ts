@@ -20,7 +20,7 @@ export async function session(request:NextRequest){
  try{
   const verified=await auth().verifySessionCookie(cookie,true);
   // One-time release cutoff: existing signed Firebase sessions must reauthenticate.
-  if(verified.auth_time<Math.floor(Date.parse('2026-11-25T21:00:00Z')/1000))return null;
+  if(verified.auth_time<Math.floor(Date.parse('2026-11-26T15:40:00Z')/1000))return null;
   if(!verified.email_verified||!verified.email||!isAllowedEmail(verified.email,process.env.APPROVED_TEST_EMAILS))return null;
   const [profile,revoked]=await Promise.all([db().collection('users').doc(verified.uid).get(),sessionRevoked(cookie)]);
   if(revoked||!profile.exists||profile.data()?.deletedAt||profile.data()?.suspendedAt)return null;
