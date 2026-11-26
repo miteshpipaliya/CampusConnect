@@ -68,3 +68,16 @@
 @media(max-width:380px){.cc-app .cc-dm-composer-icon{min-width:36px!important;width:36px!important;flex-basis:36px!important}}
 @media(min-width:1024px){.cc-dm-date-divider,.cc-dm-shared-play{display:none}}
 :root[data-theme=light]{--cc-mobile-chat-bg:#fff;--cc-mobile-received:#eceef1;--cc-mobile-composer:#eceef1;--cc-mobile-message-text:#17191c}
+
+@media(max-width:1023px){
+.cc-app.cc-shell-v2 .cc-mobile-home-header{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;min-height:calc(48px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 8px 0;gap:4px;z-index:40}
+.cc-app .cc-mobile-home-header .cc-mobile-centered-brand{font-size:clamp(18px,5vw,24px);font-weight:700;letter-spacing:-.9px;white-space:nowrap;text-decoration:none;color:inherit;min-width:0}
+.cc-app .cc-mobile-home-header .cc-mobile-create-wrap{position:relative;display:block;min-width:0}
+.cc-app .cc-mobile-home-header .cc-mobile-create-trigger{background:transparent;border:0;color:inherit;padding:0;cursor:pointer;width:44px}
+.cc-app .cc-mobile-home-header :is(.cc-mobile-create-trigger,.cc-mobile-heart) svg{width:26px;height:26px}
+.cc-app .cc-mobile-heart{position:relative;color:inherit}
+.cc-app .cc-mobile-heart .cc-nav-badge{position:absolute!important;top:2px!important;right:0!important;margin:0}
+.cc-app .cc-mobile-create-menu{position:absolute;top:100%;left:0;min-width:168px;display:grid;padding:5px;background:var(--cc-shell-raised,#25282d);border:1px solid var(--cc-shell-border,#30343a);border-radius:12px;box-shadow:0 8px 24px #0004;z-index:45}
+.cc-app .cc-mobile-create-menu a{display:flex;justify-content:flex-start;gap:12px;padding:0 12px;color:inherit;text-decoration:none;border-radius:8px;font-size:15px}
+.cc-app .cc-mobile-create-menu a:focus-visible,.cc-app .cc-mobile-create-menu a:hover{background:#8882}
+}
