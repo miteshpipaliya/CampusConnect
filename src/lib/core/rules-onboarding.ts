@@ -1,4 +1,4 @@
-export const RULES_VERSION='rules-v3';
+export const RULES_VERSION='rules-v4';
 export const RULES_AUDIO=[
  {name:'rules_Declar',label:'INTRODUCTION',title:'Three rules. One community.',duration:23.248938,sha256:'1c481c250d031deccf0398b5de09658bc5109ce3cc6d3a5557053e858c69bbb0'},
  {name:'rule_one',label:'RULE 01',title:'Respect personal space and boundaries',duration:52.192625,sha256:'5ce8eba38bb7c18d35948a7619c266881218b3497a337edb7a4fe06fd271f871'},

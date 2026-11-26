@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {createHash} from 'node:crypto';
-import {sameOrigin,session,safeHeaders,errorResponse} from '@/lib/server/session';
+import {sameOrigin,safeHeaders,errorResponse} from '@/lib/server/session';
 import {clientIp} from '@/lib/server/auth-throttle';
 import {checkRateLimit} from '@/lib/server/rate-limit';
 import {introSecret,introCompleted,INTRO_COOKIE} from '@/lib/server/introduction';
@@ -8,7 +8,7 @@ import {newIntroProof,finishIntroProof} from '@/lib/core/introduction-proof';
 export const runtime='nodejs';
 const reply=(completed:boolean)=>NextResponse.json({completed},{headers:safeHeaders});
 const setCookie=(r:NextResponse,token:string,done:boolean)=>r.cookies.set(INTRO_COOKIE,token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:done?30*86400:1800});
-export async function GET(req:NextRequest){return reply(introCompleted(req.cookies.get(INTRO_COOKIE)?.value)||Boolean(await session(req)))}
+export async function GET(req:NextRequest){return reply(introCompleted(req.cookies.get(INTRO_COOKIE)?.value))}
 export async function POST(req:NextRequest){
  if(!sameOrigin(req))return errorResponse(403,'Untrusted request origin');
  if(!req.headers.get('content-type')?.includes('application/json'))return errorResponse(400,'Invalid request');
@@ -16,7 +16,7 @@ export async function POST(req:NextRequest){
  if(action!=='start'&&action!=='finish')return errorResponse(400,'Invalid introduction action');
  try{
  const cookie=req.cookies.get(INTRO_COOKIE)?.value;
- if(introCompleted(cookie)||await session(req))return reply(true);
+ if(introCompleted(cookie))return reply(true);
  const key=introSecret();
  const limited=await checkRateLimit({key:'intro:'+action+':'+createHash('sha256').update(clientIp(req)).digest('hex'),limit:action==='start'?30:60,windowSec:3600,failClosed:true});
  if(!limited.allowed)return errorResponse(429,'Introduction service temporarily busy. Please try again.');

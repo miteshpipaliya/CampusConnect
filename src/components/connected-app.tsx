@@ -69,8 +69,8 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
    <div className="cc-otp-steps" aria-label="Registration progress"><span className="active"/><span className={stage!=='email'?'active':''}/><span className={stage==='profile'||stage==='privacy'?'active':''}/></div>
    <form className="auth-form" onSubmit={submit}>
     {stage==='email'&&<>
-     <label>BVM student email or approved tester<input autoFocus required type="email" autoComplete="email" placeholder="26el309@bvmengineering.ac.in" value={email} onChange={e=>setEmail(e.target.value.toLowerCase().trim())}/></label>
-     {mode==='login'&&!resetMode&&<label>Password<input required type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your password"/></label>}
+     <label>BVM student email or approved tester<input autoFocus required type="email" name="username" autoComplete="username" placeholder="26el309@bvmengineering.ac.in" value={email} onChange={e=>setEmail(e.target.value.toLowerCase().trim())}/></label>
+     {mode==='login'&&!resetMode&&<label>Password<input required type="password" name="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your password"/></label>}
      {parsed&&<div className="cc-email-preview"><strong>Student details detected</strong><span>Enrollment: {enrollment.toLowerCase()}</span><span>Branch: {branch}</span><small>Branch mapping is provisional and must be confirmed by BVM.</small></div>}
     </>}
     {stage==='otp'&&<>
