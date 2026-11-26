@@ -4,7 +4,7 @@ test.use({serviceWorkers:'block'});
 async function geometry(page:Page){
  return page.evaluate(()=>{const scene=document.querySelector('.cc-campus-scene')!;const img=scene.querySelector('img')!;const b=scene.getBoundingClientRect(),i=img.getBoundingClientRect(),root=document.documentElement;return {scene:[b.x,b.y,b.width,b.height],image:[i.x,i.y,i.width,i.height],fit:getComputedStyle(img).objectFit,position:getComputedStyle(img).objectPosition,viewport:[innerWidth,innerHeight],document:[root.scrollWidth,root.scrollHeight],scroll:[scrollX,scrollY]}});
 }
-async function fixedPage(page:Page){const g=await geometry(page);expect(g.scene).toEqual([0,0,...g.viewport]);expect(g.document).toEqual(g.viewport);expect(g.scroll).toEqual([0,0]);expect(g.fit).toBe('cover');return g;}
+async function fixedPage(page:Page){await expect(page.locator('.cc-campus-scene-image')).toBeVisible();await expect.poll(()=>page.locator('.cc-campus-scene-image').evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0),{message:'Campus artwork must load successfully',timeout:15000}).toBe(true);await expect.poll(async()=>{const g=await geometry(page);return g.scene},{message:'Campus background must cover the entire viewport'}).toEqual(await page.evaluate(()=>[0,0,innerWidth,innerHeight]));const g=await geometry(page);expect(g.scene).toEqual([0,0,...g.viewport]);expect(g.document).toEqual(g.viewport);expect(g.scroll).toEqual([0,0]);expect(g.fit).toBe('cover');return g;}
 test('email detection and a login error cannot resize the campus background or scroll the page',async({page})=>{
  await completedIntroduction(page);
  await page.route('**/api/auth',r=>r.fulfill({status:429,json:{error:'Too many requests. Please try again later.'}}));
@@ -26,7 +26,7 @@ test('welcome and login fill the viewport without document scrolling',async({pag
  for(const [width,height] of [[1518,695],[1920,1080],[3840,2160],[768,1024],[390,844],[320,568],[844,390]] as const){
   await page.setViewportSize({width,height});await page.goto('/');await fixedPage(page);
   await page.getByRole('link',{name:'ENTER CAMPUS'}).click();await expect(page).toHaveURL(/\/login$/);await expect(page.getByLabel('Password',{exact:true})).toBeVisible();await fixedPage(page);
-  await page.getByRole('link',{name:'Sign up with BVM email'}).click();await expect(page.getByLabel('BVM student email or approved tester')).toBeVisible();await fixedPage(page);
+  await page.getByRole('link',{name:'Sign up with BVM email'}).click();await expect(page).toHaveURL(/\/register$/);await expect(page.getByLabel('BVM student email or approved tester')).toBeVisible();await fixedPage(page);
  }
 });
 
