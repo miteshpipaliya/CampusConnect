@@ -1,5 +1,5 @@
 /* Mobile/tablet presentation only. Desktop retains existing layout. */
-@media (max-width:1024px){
+@media (max-width:1023px){
 .cc-app.cc-shell-v2{display:block!important;width:100%;max-width:none;margin:0;padding:0 0 calc(62px + env(safe-area-inset-bottom));min-height:100dvh}
 .cc-app .cc-sidebar,.cc-app .cc-suggestions{display:none!important}
 .cc-app .cc-main{width:100%;max-width:none;padding:0!important;min-width:0}
@@ -66,5 +66,5 @@
 .cc-app .cc-dm-shared-card[data-kind=reel] .cc-dm-shared-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;filter:drop-shadow(0 2px 4px #000)}
 }
 @media(max-width:380px){.cc-app .cc-dm-composer-icon{min-width:36px!important;width:36px!important;flex-basis:36px!important}}
-@media(min-width:1025px){.cc-dm-date-divider,.cc-dm-shared-play{display:none}}
+@media(min-width:1024px){.cc-dm-date-divider,.cc-dm-shared-play{display:none}}
 :root[data-theme=light]{--cc-mobile-chat-bg:#fff;--cc-mobile-received:#eceef1;--cc-mobile-composer:#eceef1;--cc-mobile-message-text:#17191c}
