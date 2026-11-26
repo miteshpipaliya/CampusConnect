@@ -18,16 +18,17 @@ export function MediaLifecycle(){
   const media=()=>Array.from(document.querySelectorAll<HTMLMediaElement>('audio,video')).filter(eligible);
   const clearIfIdle=()=>{if(!media().some(playing))clearMediaSession()};
   const pauseAll=()=>{for(const m of media())m.pause();clearIfIdle()};
+  const releaseRemoved=(m:HTMLMediaElement)=>{m.pause();m.removeAttribute('src');m.querySelectorAll('source').forEach(source=>source.removeAttribute('src'));m.load()};
   const observer=new IntersectionObserver(entries=>{for(const e of entries){const m=e.target as HTMLMediaElement;if(e.intersectionRatio===0&&playing(m)&&!m.hidden)m.pause()}},{threshold:[0,.01]});
-  const scan=()=>{let removed=false;for(const m of media()){if(!tracked.has(m)){tracked.add(m);if(m.tagName==='VIDEO')observer.observe(m)}}for(const m of tracked){if(!m.isConnected){m.pause();observer.unobserve(m);tracked.delete(m);removed=true}}if(removed)clearIfIdle()};
+  const scan=()=>{let removed=false;for(const m of media()){if(!tracked.has(m)){tracked.add(m);if(m.tagName==='VIDEO')observer.observe(m)}}for(const m of tracked){if(!m.isConnected){releaseRemoved(m);observer.unobserve(m);tracked.delete(m);removed=true}}if(removed)clearIfIdle()};
   const onPlay=(e:Event)=>{const m=e.target;if(!(m instanceof HTMLMediaElement)||!eligible(m))return;if(document.hidden||!m.isConnected){m.pause();return}if(!m.muted&&m.volume>0){for(const other of media())if(other!==m&&playing(other)&&!other.muted&&other.volume>0)other.pause()}};
   const onPause=()=>queueMicrotask(clearIfIdle);
-  const visibility=()=>{if(document.hidden)pauseAll()};
+  const visibility=()=>{if(document.hidden){pauseAll();queueMicrotask(clearIfIdle)}};
   const mutations=new MutationObserver(scan);
   mutations.observe(document.body,{childList:true,subtree:true});
   document.addEventListener('play',onPlay,true);document.addEventListener('pause',onPause,true);document.addEventListener('ended',onPause,true);
   document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',pauseAll);scan();
-  return()=>{mutations.disconnect();observer.disconnect();document.removeEventListener('play',onPlay,true);document.removeEventListener('pause',onPause,true);document.removeEventListener('ended',onPause,true);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',pauseAll);for(const m of tracked)if(!m.hidden)m.pause();clearIfIdle()};
+  return()=>{mutations.disconnect();observer.disconnect();document.removeEventListener('play',onPlay,true);document.removeEventListener('pause',onPause,true);document.removeEventListener('ended',onPause,true);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',pauseAll);for(const m of tracked){if(!m.isConnected)releaseRemoved(m);else if(!m.hidden)m.pause()}clearIfIdle()};
  },[path]);
  return null;
 }
