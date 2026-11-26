@@ -14,6 +14,8 @@ function audioContext(){
 function resumeContext(){if(context&&context.state!=='running')void context.resume().catch(()=>{})}
 function routeVideo(video:HTMLVideoElement):Route|undefined{
  if(isCall(video))return;
+ // Preserve Safari/iOS native audio behaviour; Android Chrome is the target of this change.
+ if(!routes.has(video)&&/iPad|iPhone|iPod/.test(navigator.userAgent))return;
  let route=routes.get(video);
  if(!route){
   // A CORS-enabled load is essential: cross-origin media otherwise outputs silence.
@@ -46,7 +48,7 @@ export function playWithSound(video:HTMLVideoElement,value:number):()=>void{
  const attach=()=>gestures.forEach(event=>document.addEventListener(event,unlock,{capture:true,passive:true}));
  const silence=()=>{const route=routes.get(video);if(route?.connected)route.gain.gain.value=0;video.muted=true};
  const apply=()=>{if(!active)return;routeVideo(video);resumeContext();setVideoVolume(video,volume);if(context&&routes.get(video)?.connected&&context.state!=='running'&&volume>0){waiting=true;attach()}};
- const ready=()=>{if(active&&!waiting)apply()};
+ const ready=()=>{if(active&&!waiting){apply();if(video.paused)void video.play().catch(error=>{if(active&&mayRetryMuted(error,volume)){waiting=true;silence();attach();void video.play().catch(()=>detach())}})}};
  const stop=()=>{if(!active)return;active=false;detach();video.removeEventListener('loadedmetadata',ready);video.pause();silence();if(stopCurrent===stop)stopCurrent=null};
  const unlock=()=>{if(!active||document.hidden||unlocking)return;unlocking=true;waiting=false;apply();resumeContext();void video.play().then(()=>{if(active&&(!routes.get(video)?.connected||context?.state==='running'))detach()}).catch(()=>{if(active){waiting=true;silence();attach()}}).finally(()=>{unlocking=false;if(!active)video.pause()})};
  stopCurrent=stop;
