@@ -58,3 +58,6 @@
 @media(min-width:1024px) and (max-width:1199px){.cc-app.cc-shell-v2 .cc-suggestions{display:none!important}.cc-app.cc-profile-mode .cc-profile-grid,.cc-app.cc-explore-mode .cc-explore-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:1024px) and (prefers-reduced-motion:reduce){.cc-app .cc-sidebar,.cc-app .cc-side-panel{transition:none!important;animation:none!important}}
 @media(max-width:1023px){.cc-app .cc-messages-pill,.cc-desktop-create-menu{display:none!important}}
+
+@media(min-width:1024px){.cc-app.cc-shell-v2 .cc-sidebar .cc-desktop-create-wrap>button{border:0;background:transparent;color:inherit;cursor:pointer}.cc-app.cc-shell-v2 .cc-sidebar .cc-desktop-create-wrap>button[aria-expanded=true]{background:var(--cc-shell-raised)}.cc-app.cc-shell-v2 .cc-sidebar:has(.cc-desktop-create-menu) .cc-navigation{overflow:visible}.cc-app.cc-shell-v2 .cc-sidebar:has(.cc-desktop-create-menu) .cc-desktop-create-menu{max-height:calc(100dvh - 120px);overflow:auto}}
+@media(max-width:1023px){.cc-app.cc-shell-v2 .cc-mobile-nav .cc-nav-item .cc-nav-icon{width:72px;height:44px;flex:0 1 72px}.cc-app.cc-shell-v2 .cc-mobile-nav .cc-nav-item.is-active .cc-nav-icon{background:var(--cc-shell-raised,#25292e)}}
