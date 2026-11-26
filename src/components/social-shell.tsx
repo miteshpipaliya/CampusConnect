@@ -13,7 +13,7 @@ import '@/app/explore-upgrade.css';
 import {NotificationsFeed} from './notifications-feed';
 import {BrandMark} from './brand-mark';
 import { usePathname, useSearchParams, useSelectedLayoutSegment } from 'next/navigation';
-import {Menu,Send} from 'lucide-react';
+import {Menu,Send,ImagePlus,Film,Camera} from 'lucide-react';
 import {NavIcon} from './icons/nav-icons';
 import {isRootTab,navActive,badgeLabel} from '@/lib/core/nav-active';
 import {clearPwaDevice,updateThemeColor} from '@/lib/client/pwa-device';
@@ -43,11 +43,16 @@ function Brand({ compact = false }: { compact?: boolean }) {
   </Link>;
 }
 function Nav({ pathname, section, mobile = false, counts, account, onPanel }: { pathname: string; section:string; mobile?: boolean; counts:{unread:number;unreadMessages:number};account?:{handle:string;avatarMediaId:string|null};onPanel?:(name:'notifications')=>void }) {
+  const [createOpen,setCreateOpen]=useState(false);
+  const createRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{setCreateOpen(false)},[pathname]);
+  useEffect(()=>{if(!createOpen)return;const close=(e:PointerEvent)=>{if(!createRef.current?.contains(e.target as Node))setCreateOpen(false)};const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){setCreateOpen(false);createRef.current?.querySelector('button')?.focus()}};const mq=window.matchMedia('(min-width:1024px)');const resize=()=>{if(!mq.matches)setCreateOpen(false)};document.addEventListener('pointerdown',close);document.addEventListener('keydown',key);mq.addEventListener('change',resize);return()=>{document.removeEventListener('pointerdown',close);document.removeEventListener('keydown',key);mq.removeEventListener('change',resize)}},[createOpen]);
   return <nav className={mobile ? 'cc-mobile-nav' : 'cc-navigation'} aria-label={mobile ? 'Mobile navigation' : 'Main navigation'}>
     {links.filter((item) => !mobile || mobileLabels.has(item.label)).map((item) => {
       const active=navActive(pathname,item.label,section);
+      if(!mobile&&item.label==='Create')return <div key={item.label} ref={createRef} className="cc-desktop-create-wrap"><button type="button" className="cc-nav-item" aria-label="Create" title="Create" aria-expanded={createOpen} onClick={()=>setCreateOpen(v=>!v)}><i className="cc-nav-icon"><NavIcon name="Create"/></i><span className="cc-nav-label">Create</span></button>{createOpen&&<div className="cc-desktop-create-menu" aria-label="Create content">{([{kind:'post',label:'Post',Icon:ImagePlus},{kind:'story',label:'Story',Icon:Camera},{kind:'reel',label:'Reel',Icon:Film}] as const).map(({kind,label,Icon})=><Link key={kind} href={'/home?compose=1&kind='+kind} onClick={()=>setCreateOpen(false)}>{label}<Icon size={20}/></Link>)}</div>}</div>;
       return <Link key={item.label} href={item.href} scroll={false} className={'cc-nav-item' + (active ? ' is-active' : '')}
-        onClick={e=>{if(!mobile&&onPanel&&item.label==='Notifications'){e.preventDefault();onPanel('notifications')}}} aria-current={active ? 'page' : undefined} aria-label={item.label}>
+        onClick={e=>{if(!mobile&&onPanel&&item.label==='Notifications'){e.preventDefault();onPanel('notifications')}}} aria-current={active ? 'page' : undefined} aria-label={item.label} title={item.label}>
         <i className="cc-nav-icon">{item.label==='Profile'&&account?<Avatar user={account} size={24} ring={active?'seen':'none'}/>:<NavIcon name={item.label} active={active}/>}</i>
         <span className="cc-nav-label">{item.label}</span>
         <Badge count={item.label==='Notifications'?counts.unread:item.label==='Messages'?counts.unreadMessages:0} label={item.label==='Messages'?'Unread conversations':'Unread notifications'} mobile={mobile}/>
@@ -115,13 +120,13 @@ export default function SocialShell({ children }: { children: ReactNode }) {
 
     </aside>
     <main className="cc-main" id="main-content">
-      <header className="cc-mobile-header">{isRootTab(actualPath)?<Brand compact/>:<MobileBackBar path={actualPath}/>}<div className="cc-mobile-actions"><Link href="/home?compose=1" aria-label="Create"><NavIcon name="Create"/></Link><Link href="/notifications" aria-label="Notifications"><NavIcon name="Notifications"/><Badge count={counts.unread} label="Unread notifications" mobile/></Link><button type="button" aria-label="More" onClick={()=>setMobileMore(true)}><Menu size={24}/></button></div></header>
+      <header className={'cc-mobile-header'+(actualPath==='/home'?' cc-mobile-home-header':'')}>{isRootTab(actualPath)?<Brand compact/>:<MobileBackBar path={actualPath}/>}<div className="cc-mobile-actions"><Link href="/home?compose=1" aria-label="Create"><NavIcon name="Create"/></Link><Link href="/notifications" aria-label="Notifications"><NavIcon name="Notifications"/><Badge count={counts.unread} label="Unread notifications" mobile/></Link><button type="button" aria-label="More" onClick={()=>setMobileMore(true)}><Menu size={24}/></button></div></header>
       <OfflineBanner/><InstallPrompt/><div className="cc-referral-onboarding-slot">{rulesStep===null&&<ReferralOnboarding key={uid}/>}</div><div className="cc-page">{children}</div>
     </main>
     {!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
     <Nav pathname={pathname} section={section} counts={counts} account={{handle,avatarMediaId}} mobile />
     <MobileMoreSheet open={mobileMore} onClose={()=>setMobileMore(false)} onLogout={()=>void logout()} error={menuError}/>
     {panel&&<SidePanel label="Notifications" onClose={()=>setPanel(null)}><NotificationsFeed/></SidePanel>}
-    {(pathname==='/home'||pathname.startsWith('/explore')||pathname.startsWith('/reels'))&&<Link href="/messages" className="cc-messages-pill"><Send size={23}/> Messages <span className="cc-recent-avatars">{recent.map(m=><Avatar key={m.handle} user={{handle:m.handle,avatarUrl:m.avatarUrl,avatarMediaId:m.avatarMediaId}} size={24}/>)}</span><Badge count={counts.unreadMessages} label="Unread conversations"/></Link>}
+    {(pathname==='/home'||pathname.startsWith('/explore')||pathname.startsWith('/reels')||pathname.startsWith('/profile'))&&<Link href="/messages" className="cc-messages-pill"><Send size={23}/> Messages <span className="cc-recent-avatars">{recent.map(m=><Avatar key={m.handle} user={{handle:m.handle,avatarUrl:m.avatarUrl,avatarMediaId:m.avatarMediaId}} size={24}/>)}</span><Badge count={counts.unreadMessages} label="Unread conversations"/></Link>}
   </div>{rulesStep!==null&&<RulesOnboarding key={uid} initialStep={rulesStep} onComplete={rulesDone}/>}</StreamConnectionProvider></ShellSession.Provider>;
 }
