@@ -18,11 +18,11 @@ export function ChatSharedContentCard({postId,kind}:{postId:string;kind:'post'|'
  if(!post)return <p role="status">Loading shared {kind}…</p>;
  const preview=post.media?.[0]?.url||post.mediaUrl;
  const video=post.media?.[0]?.contentType?.startsWith('video/');
- return <Link href={'/posts/'+encodeURIComponent(postId)} style={{display:'block',color:'inherit',textDecoration:'none',border:'1px solid #7775',borderRadius:12,padding:10,maxWidth:290}}>
+ return <Link className="cc-dm-shared-card" data-kind={kind} href={'/posts/'+encodeURIComponent(postId)} style={{display:'block',color:'inherit',textDecoration:'none',border:'1px solid #7775',borderRadius:12,padding:10,maxWidth:290}}>
   <small>Shared {kind==='reel'?'Reel':'post'}</small>
   <div style={{display:'flex',alignItems:'center',gap:8,margin:'6px 0'}}><Avatar user={{name:post.authorName,handle:post.authorHandle,avatarMediaId:post.avatarMediaId??null,avatarUrl:post.avatarUrl??null}} size={32}/><strong>@{post.authorHandle}</strong></div>
-  {preview&&(video?<video src={preview} preload="metadata" muted playsInline style={{maxWidth:'100%',maxHeight:180,borderRadius:8}}/>:<SafeImg src={preview} alt="Shared post preview" loading="lazy" style={{maxWidth:'100%',maxHeight:180,objectFit:'cover',borderRadius:8}}/>)}
-  <p style={{margin:'6px 0',overflowWrap:'anywhere'}}>{post.caption.slice(0,160)||'Open original content'}</p>
+  {preview&&(video?<video src={preview} preload="metadata" muted playsInline style={{maxWidth:'100%',maxHeight:180,borderRadius:8}}/>:<SafeImg className="cc-dm-shared-preview" src={preview} alt="Shared post preview" loading="lazy" style={{maxWidth:'100%',maxHeight:180,objectFit:'cover',borderRadius:8}}/>)}
+  {kind==='reel'&&<span className="cc-dm-shared-play" aria-hidden="true">▶</span>}<p style={{margin:'6px 0',overflowWrap:'anywhere'}}>{post.caption.slice(0,160)||'Open original content'}</p>
   <small>View original {kind}</small>
  </Link>;
 }
