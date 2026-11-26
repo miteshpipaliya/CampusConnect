@@ -1,13 +1,12 @@
 'use client';
-import {useRouter} from 'next/navigation';
 import {useEffect,useRef} from 'react';
 import {Volume2,AudioLines,CheckCircle2,LoaderCircle} from 'lucide-react';
 import {CampusScene} from './campus-scene';
 import {CampusBrand} from './campus-brand';
 import {CampusAccountChoice} from './campus-account-choice';
 import {useIntro} from './intro-provider';
-export function IntroScene(){const {phase,words,count,spoken,progress,message,start,resume,retryFinish,completePending}=useIntro();const bottom=useRef<HTMLSpanElement>(null);const router=useRouter();
- useEffect(()=>{if(phase==='done')router.replace('/login')},[phase,router]);
+export function IntroScene(){const {phase,words,count,spoken,progress,message,start,resume,retryFinish,completePending}=useIntro();const bottom=useRef<HTMLSpanElement>(null);
+ useEffect(()=>{if(phase==='done')window.location.replace('/login')},[phase]);
  useEffect(()=>{const el=bottom.current?.closest('.cc-intro-transcript');if(el)el.scrollTo({top:el.scrollHeight,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})},[count]);
  if(phase==='done')return <CampusAccountChoice/>;
  const status=phase==='playing'?'Speaking':phase==='buffering'?'Buffering audio':phase==='finishing'?'Introduction complete':phase==='interrupted'?'Audio interrupted':phase==='error'?'Attention needed':phase==='ready'?'Ready to begin':'Preparing introduction';
