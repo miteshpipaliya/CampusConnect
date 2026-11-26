@@ -115,7 +115,7 @@ export default function SocialShell({ children }: { children: ReactNode }) {
 
     </aside>
     <main className="cc-main" id="main-content">
-      <header className="cc-mobile-header">{isRootTab(actualPath)?<Brand compact/>:<MobileBackBar path={actualPath}/>}<div className="cc-mobile-actions"><Link href="/home?compose=1" aria-label="Create"><NavIcon name="Create"/></Link><Link href="/notifications" aria-label="Notifications"><NavIcon name="Notifications"/><Badge count={counts.unread} label="Unread notifications" mobile/></Link><button type="button" aria-label="More" onClick={()=>setMobileMore(true)}><Menu size={24}/></button></div></header>
+      <header className={'cc-mobile-header'+(actualPath==='/home'?' cc-mobile-home-header':'')}>{isRootTab(actualPath)?<Brand compact/>:<MobileBackBar path={actualPath}/>}<div className="cc-mobile-actions"><Link href="/home?compose=1" aria-label="Create"><NavIcon name="Create"/></Link><Link href="/notifications" aria-label="Notifications"><NavIcon name="Notifications"/><Badge count={counts.unread} label="Unread notifications" mobile/></Link><button type="button" aria-label="More" onClick={()=>setMobileMore(true)}><Menu size={24}/></button></div></header>
       <OfflineBanner/><InstallPrompt/><div className="cc-referral-onboarding-slot">{rulesStep===null&&<ReferralOnboarding key={uid}/>}</div><div className="cc-page">{children}</div>
     </main>
     {!pathname.startsWith('/leaderboard')&&!pathname.startsWith('/explore')&&!pathname.startsWith('/profile')&&!pathname.startsWith('/reels')&&section!=='chat'&&!pathname.startsWith('/messages')&&<Suggestions handle={handle} avatarMediaId={avatarMediaId}/>}
