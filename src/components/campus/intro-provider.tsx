@@ -27,7 +27,7 @@ export function IntroProvider({children}:{children:ReactNode}){
  const finish=useCallback(async()=>{if(!ended.current||!started.current||!wordsRef.current.length||done.current||finishLock.current)return;finishLock.current=true;const id=run.current;update('finishing');setCompletePending(true);setMessage('');
  // This public welcome is not an authentication boundary. A telemetry/signing outage
  // must not trap a visitor who has actually finished the entire recording.
- if(serverStarted.current){try{await api('finish')}catch{/* No completion cookie is issued by a failed request. */}}
+ try{if(!serverStarted.current)throw Error('Introduction could not be verified. Please restart the recording.');if(!await api('finish'))throw Error('Introduction completion not verified.');}catch(e){if(id===run.current){finishLock.current=false;setMessage(e instanceof Error?e.message:'Retry completion');update('error')}return}
  if(id!==run.current)return;done.current=true;setCompletePending(false);active.current=false;timer.current=setTimeout(()=>{if(id===run.current)update('done')},1000);
  },[update]);
  const start=useCallback(()=>{if(active.current||done.current)return;const a=audio.current;if(!a)return;if(!alignedWords){setMessage('Caption data does not match the recording.');update('error');return}const id=++run.current;active.current=true;started.current=false;ended.current=false;finishLock.current=false;serverStarted.current=false;setCompletePending(false);setMessage('');setCount(0);setSpoken(-1);setProgress(0);last.current=-1;lastSecond.current=-1;update('starting');
