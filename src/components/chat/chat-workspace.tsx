@@ -330,7 +330,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
     {loading&&all.length===0&&<LoadingSkeleton kind="conversation"/>}
     {!loading&&all.length===0&&<div className="cc-dm-empty-thread"><Smile size={40}/><strong>Say hello to {peerName||peer}</strong><p>Your private conversation starts here.</p></div>}
     {cursor&&<button type="button" className="cc-dm-older" disabled={loadingOlder} onClick={()=>void loadOlder()}>{loadingOlder?'Loading…':'Load earlier messages'}</button>}
-    {all.map(m=><article key={m.id} className={'cc-dm-msg'+(m.senderUid===myUid?' mine':' theirs')}>
+    {all.map(m=><article key={m.id} id={'cc-msg-'+m.id} className={'cc-dm-msg'+(m.senderUid===myUid?' mine':' theirs')}>
      <div className="cc-dm-msg-body">
       {m.quotedMessageId&&<a className="cc-dm-quote" href={'#cc-msg-'+m.quotedMessageId}>↪ {all.find(item=>item.id===m.quotedMessageId)?.text.slice(0,100)||'Previous message'}</a>}
       {m.mediaId&&(m.mediaType==='video'?<video src={'/api/media?id='+encodeURIComponent(m.mediaId)} controls playsInline preload="metadata" className="cc-dm-sent-media"/>:<a href={'/api/media?id='+encodeURIComponent(m.mediaId)} target="_blank" rel="noopener noreferrer"><SafeImg loading="lazy" src={'/api/media?id='+encodeURIComponent(m.mediaId)} alt="Shared chat attachment" className="cc-dm-sent-media"/></a>)}
@@ -340,7 +340,7 @@ export function ChatWorkspace({initialPeer=''}:{initialPeer?:string}){
      </div>
      <div className="cc-dm-message-menu">
       <button type="button" className="cc-dm-icon" aria-label="Message options" aria-expanded={selectedMessage===m.id} onClick={()=>setSelectedMessage(prev=>prev===m.id?null:m.id)}><MoreHorizontal size={17}/></button>
-      {selectedMessage===m.id&&<div className="cc-dm-menu-items" id={'cc-msg-'+m.id}>
+      {selectedMessage===m.id&&<div className="cc-dm-menu-items" >
        <button type="button" onClick={()=>{setReplyTo(m);setSelectedMessage(null);draftInput.current?.focus()}}>Reply</button>
        {m.text&&<button type="button" onClick={()=>{void navigator.clipboard.writeText(m.text).then(()=>setNotice('Copied')).catch(()=>setError('Could not copy'));setSelectedMessage(null)}}>Copy</button>}
        {(['love','laugh','fire'] as const).map(emoji=><button key={emoji} type="button" onClick={()=>void react(m,emoji)}>{emoji==='love'?'❤️':emoji==='laugh'?'😂':'🔥'}</button>)}
