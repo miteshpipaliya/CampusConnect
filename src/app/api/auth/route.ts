@@ -1,5 +1,5 @@
 import {RULES_VERSION,rulesStatus} from '@/lib/core/rules-onboarding';
-import {INTRO_COOKIE,persistIntroduction} from '@/lib/server/introduction';
+import {INTRO_COOKIE,introCompleted,persistIntroduction} from '@/lib/server/introduction';
 import {REFERRAL_COOKIE} from '@/lib/core/referral-policy';
 import {registrationFields,ensureReferralCode,settleReferral} from '@/lib/server/referrals';
 import {PUSH_COOKIE,revokePush} from '@/lib/server/push-delivery';
@@ -53,6 +53,7 @@ export async function POST(request:NextRequest){
   const r=NextResponse.json({ok:true},{headers:safeHeaders});clearSession(r);r.cookies.delete(otpCookie);r.cookies.delete(PUSH_COOKIE);r.cookies.delete(REFERRAL_COOKIE);return r
  }
  if(action==='loginPassword'){
+  if(!introCompleted(request.cookies.get(INTRO_COOKIE)?.value))return errorResponse(403,'Complete the campus introduction first');
   const parsed=z.object({email:emailSchema,password:z.string().min(1).max(128)}).safeParse(raw);
   const limited=await authThrottle(request,'loginPassword',parsed.success?parsed.data.email:undefined);if(limited)return limited;
   if(!parsed.success||!allowedEmail(parsed.data.email))return errorResponse(401,'Invalid email or password');
