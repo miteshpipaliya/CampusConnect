@@ -97,7 +97,7 @@ export function ReelCard({reel,active,volume,onVolume,mounted=true,preloadNext=f
   <div className={"cc-reel-stage cc-reel-stage-"+placement} ref={stageRef}>
    {placement==='left'&&authorBlock}
    <div className="cc-reel-video-box" style={videoStyle}>
-    {mounted&&reel.mediaUrl?<video ref={player} src={reel.mediaUrl} playsInline loop preload={active||preloadNext?'auto':'none'}
+    {mounted&&reel.mediaUrl?<video crossOrigin="anonymous" ref={player} src={reel.mediaUrl} playsInline loop preload={active||preloadNext?'auto':'none'}
      disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
      onContextMenu={e=>e.preventDefault()} onTimeUpdate={onTimeUpdate} onPause={()=>{lastTick.current=0}}
      onLoadedMetadata={e=>setRatio(safeVideoAspect(e.currentTarget.videoWidth,e.currentTarget.videoHeight))}
