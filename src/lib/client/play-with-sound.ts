@@ -24,6 +24,11 @@ function routeVideo(video:HTMLVideoElement):Route|undefined{
  if(!route.connected){try{route.source.connect(route.gain);route.gain.connect(route.source.context.destination);route.connected=true}catch{return}}
  return route
 }
+// Retry a failed CORS media request using native playback, before a graph owns the element.
+export function retryNativeVideo(video:HTMLVideoElement):boolean{
+ if(video.crossOrigin===null||routes.has(video)||isCall(video))return false;
+ video.removeAttribute('crossorigin');video.load();return true;
+}
 export function releaseVideoAudio(video:HTMLVideoElement){
  const route=routes.get(video);if(!route)return;
  route.gain.gain.value=0;route.source.disconnect();route.gain.disconnect();route.connected=false;
