@@ -103,5 +103,5 @@ export function CampusAuth({mode}:{mode:'login'|'register'}){
 export function ConnectedFeed(){
  const params=useSearchParams(),[section,setSection]=useState('home'),[composeOpen,setComposeOpen]=useState(false),[epoch,setEpoch]=useState(0);
  useEffect(()=>{const s=params.get('section')||'home';if(s==='chat'){window.location.replace('/messages');return}setSection(s);if(params.get('compose')==='1')setComposeOpen(true)},[params]);
- return <section className="cc-feed-col"><SocialPanels section={section}/>{composeOpen&&<CreateComposer onClose={()=>setComposeOpen(false)} onPublished={()=>setEpoch(n=>n+1)}/>} {(section==='home'||section==='community')&&<><LiveStories/><FeedList epoch={epoch}/></>}</section>
+ return <section className="cc-feed-col"><SocialPanels section={section}/>{composeOpen&&<CreateComposer key={params.get('kind')||'choose'} {...(params.get('kind')==='post'?{initialKind:'post' as const}:params.get('kind')==='story'?{initialKind:'story' as const}:params.get('kind')==='reel'?{initialKind:'reel' as const}:{})} onClose={()=>setComposeOpen(false)} onPublished={()=>setEpoch(n=>n+1)}/>} {(section==='home'||section==='community')&&<><LiveStories/><FeedList epoch={epoch}/></>}</section>
 }
