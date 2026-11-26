@@ -5,7 +5,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import {Pause,Play,X,ChevronLeft,ChevronRight,Heart,Send,Users,Ellipsis} from 'lucide-react';
-import {playWithSound} from '@/lib/client/play-with-sound';
+import {retryNativeVideo,playWithSound} from '@/lib/client/play-with-sound';
 import {Avatar} from './avatar';
 import {relativeTime} from '@/lib/core/feed-presentation';
 type Viewer={uid:string;handle:string;name:string;avatarUrl:string|null};
@@ -100,7 +100,7 @@ export function StoryViewer({handle,highlightId}:{handle:string;highlightId?:str
    <button aria-label="Story options" onClick={()=>setOptions(v=>!v)}><Ellipsis/></button><Link href={highlightId?'/profile/'+encodeURIComponent(group.handle):'/home'} aria-label="Close stories"><X/></Link>
   </header>
   <div className="cc-story-media" onPointerDown={e=>{touchX.current=e.clientX;setPaused(true)}} onPointerUp={e=>{const dx=e.clientX-touchX.current;setPaused(false);if(Math.abs(dx)>60)advance(dx<0?1:-1)}} onPointerCancel={()=>setPaused(false)}>
-   {story.mediaUrl?story.contentType.startsWith('video/')?<video key={story.id} ref={video} playsInline src={story.mediaUrl||undefined} onLoadedData={()=>setReady(true)} onError={()=>setError('Story media unavailable')} onEnded={()=>advance(1)}/>:<SafeImg src={story.mediaUrl||undefined} onLoad={()=>setReady(true)} onError={()=>setError('Story media unavailable')} alt={story.caption||'Campus story'}/>:<p>Media unavailable</p>}
+   {story.mediaUrl?story.contentType.startsWith('video/')?<video crossOrigin="anonymous" key={story.id} ref={video} playsInline src={story.mediaUrl||undefined} onLoadedData={()=>setReady(true)} onError={e=>{if(!retryNativeVideo(e.currentTarget))setError('Story media unavailable')}} onEnded={()=>advance(1)}/>:<SafeImg src={story.mediaUrl||undefined} onLoad={()=>setReady(true)} onError={()=>setError('Story media unavailable')} alt={story.caption||'Campus story'}/>:<p>Media unavailable</p>}
    {story.overlay?.text&&<strong className="cc-story-overlay" style={{color:story.overlay.color||'#fff',left:Math.round((story.overlay.x??.5)*100)+'%',top:Math.round((story.overlay.y??.5)*100)+'%'}}>{story.overlay.text}</strong>}
    <button type="button" aria-label="Previous story" className="cc-story-left" onClick={()=>advance(-1)}><ChevronLeft/></button>
    <button type="button" aria-label="Next story" className="cc-story-right" onClick={()=>advance(1)}><ChevronRight/></button>

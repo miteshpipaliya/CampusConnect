@@ -1,7 +1,7 @@
 'use client';
 import {useCallback,useEffect,useRef,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
-import {playWithSound} from '@/lib/client/play-with-sound';
+import {retryNativeVideo,playWithSound} from '@/lib/client/play-with-sound';
 import {VolumeControl} from './volume-control';
 import {Avatar} from './avatar';
 import {Heart,MessageCircle,Bookmark,Repeat2,Send,Play,Ellipsis,MapPin,BadgeCheck,Music2} from 'lucide-react';
@@ -97,11 +97,11 @@ export function ReelCard({reel,active,volume,onVolume,mounted=true,preloadNext=f
   <div className={"cc-reel-stage cc-reel-stage-"+placement} ref={stageRef}>
    {placement==='left'&&authorBlock}
    <div className="cc-reel-video-box" style={videoStyle}>
-    {mounted&&reel.mediaUrl?<video ref={player} src={reel.mediaUrl} playsInline loop preload={active||preloadNext?'auto':'none'}
+    {mounted&&reel.mediaUrl?<video crossOrigin="anonymous" ref={player} src={reel.mediaUrl} playsInline loop preload={active||preloadNext?'auto':'none'}
      disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
      onContextMenu={e=>e.preventDefault()} onTimeUpdate={onTimeUpdate} onPause={()=>{lastTick.current=0}}
      onLoadedMetadata={e=>setRatio(safeVideoAspect(e.currentTarget.videoWidth,e.currentTarget.videoHeight))}
-     onClick={()=>setPaused(v=>!v)} onDoubleClick={()=>{if(!liked)void action('like')}} onError={()=>setError('This Reel could not be loaded. Retry by refreshing the page.')}/>:mounted?<p>Video unavailable</p>:null}
+     onClick={()=>setPaused(v=>!v)} onDoubleClick={()=>{if(!liked)void action('like')}} onError={e=>{if(!retryNativeVideo(e.currentTarget))setError('This Reel could not be loaded. Retry by refreshing the page.')}}/>:mounted?<p>Video unavailable</p>:null}
     {paused&&<button type="button" className="cc-reel-play" aria-label="Resume Reel" onClick={()=>setPaused(false)}><Play size={28} fill="white"/></button>}
     {active&&<VolumeControl volume={volume} onChange={onVolume}/>}
     {placement==='overlay'&&authorBlock}
