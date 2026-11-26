@@ -19,7 +19,7 @@ export function MediaLifecycle(){
   const clearIfIdle=()=>{if(!media().some(playing))clearMediaSession()};
   const pauseAll=()=>{for(const m of media())m.pause();clearIfIdle()};
   const observer=new IntersectionObserver(entries=>{for(const e of entries){const m=e.target as HTMLMediaElement;if(e.intersectionRatio===0&&playing(m)&&!m.hidden)m.pause()}},{threshold:[0,.01]});
-  const scan=()=>{for(const m of media()){if(!tracked.has(m)){tracked.add(m);if(m.tagName==='VIDEO')observer.observe(m)}}for(const m of tracked){if(!m.isConnected){m.pause();observer.unobserve(m);tracked.delete(m)}}clearIfIdle()};
+  const scan=()=>{let removed=false;for(const m of media()){if(!tracked.has(m)){tracked.add(m);if(m.tagName==='VIDEO')observer.observe(m)}}for(const m of tracked){if(!m.isConnected){m.pause();observer.unobserve(m);tracked.delete(m);removed=true}}if(removed)clearIfIdle()};
   const onPlay=(e:Event)=>{const m=e.target;if(!(m instanceof HTMLMediaElement)||!eligible(m))return;if(document.hidden||!m.isConnected){m.pause();return}if(!m.muted&&m.volume>0){for(const other of media())if(other!==m&&playing(other)&&!other.muted&&other.volume>0)other.pause()}};
   const onPause=()=>queueMicrotask(clearIfIdle);
   const visibility=()=>{if(document.hidden)pauseAll()};
