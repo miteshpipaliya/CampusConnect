@@ -1,3 +1,4 @@
+import {completedIntroduction} from './intro-fixture';
 import {test,expect,type Page} from '@playwright/test';
 test.use({serviceWorkers:'block'});
 async function geometry(page:Page){
@@ -5,6 +6,7 @@ async function geometry(page:Page){
 }
 async function fixedPage(page:Page){const g=await geometry(page);expect(g.scene).toEqual([0,0,...g.viewport]);expect(g.document).toEqual(g.viewport);expect(g.scroll).toEqual([0,0]);expect(g.fit).toBe('cover');return g;}
 test('email detection and a login error cannot resize the campus background or scroll the page',async({page})=>{
+ await completedIntroduction(page);
  await page.route('**/api/auth',r=>r.fulfill({status:429,json:{error:'Too many requests. Please try again later.'}}));
  for(const [width,height] of [[1518,695],[1366,768],[1440,900],[390,844],[320,568]] as const){
   await page.setViewportSize({width,height});await page.goto('/login');
@@ -18,11 +20,12 @@ test('email detection and a login error cannot resize the campus background or s
   await expect(page.getByRole('link',{name:'Sign up with BVM email'})).toBeVisible();
  }
 });
-test('welcome and account chooser fill the viewport without document scrolling',async({page})=>{
+test('welcome and login fill the viewport without document scrolling',async({page})=>{
+ await completedIntroduction(page);
  await page.route('**/api/introduction',r=>r.fulfill({json:{completed:true}}));await page.route('**/api/auth',r=>r.fulfill({status:401,json:{error:'Sign in required'}}));
  for(const [width,height] of [[1518,695],[1920,1080],[3840,2160],[768,1024],[390,844],[320,568],[844,390]] as const){
   await page.setViewportSize({width,height});await page.goto('/');await fixedPage(page);
-  await page.getByRole('link',{name:'ENTER CAMPUS'}).click();await expect(page.getByRole('link',{name:'Log in',exact:true})).toBeVisible();await fixedPage(page);
+  await page.getByRole('link',{name:'ENTER CAMPUS'}).click();await expect(page).toHaveURL(/\/login$/);await expect(page.getByLabel('Password',{exact:true})).toBeVisible();await fixedPage(page);
   await page.getByRole('link',{name:'Sign up with BVM email'}).click();await expect(page.getByLabel('BVM student email or approved tester')).toBeVisible();await fixedPage(page);
  }
 });
